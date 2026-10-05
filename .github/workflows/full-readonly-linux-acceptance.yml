@@ -1,0 +1,483 @@
+name: FULL_READ_ONLY Linux 构建与隔离验收
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/unified-readonly-mcp
+      - codex/mcp-canary-two-tools
+      - codex/mcp-filter-argument-hardening
+    paths:
+      - .github/workflows/full-readonly-linux-acceptance.yml
+      - deploy/identity-acceptance/**
+      - deploy/fastgpt/**
+      - docs/mcp/**
+      - docs/ai-context/00_current_status.md
+      - docs/ai-context/06_decisions_log.md
+      - n8n/**
+      - scripts/**
+      - prisma/schema.prisma
+      - prisma/migrations/20260814113000_add_ai_lead_pool/**
+      - prisma/migrations/20260814170000_add_lead_write_audits/**
+      - prisma/migrations/20260818143000_add_lead_write_idempotencies/**
+      - src/lib/agent-auth/**
+      - src/lib/mcp/**
+      - src/app/api/mcp/**
+      - src/middleware.ts
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -e -o pipefail {0}
+
+concurrency:
+  group: full-readonly-linux-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-lead-write-migration:
+    name: MySQL 5.7 验证 Lead 写审计与幂等回执 migration up/down
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MYSQL_ROOT_PASSWORD: lead-write-migration-ci-only
+      MYSQL_DATABASE: lead_write_migration_test
+    services:
+      mysql:
+        image: mysql:5.7.44
+        env:
+          MYSQL_ROOT_PASSWORD: lead-write-migration-ci-only
+          MYSQL_DATABASE: lead_write_migration_test
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -plead-write-migration-ci-only"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: 拉取精确提交
+        uses: actions/checkout@v4
+
+      - name: 验证 Lead 基表、写审计和幂等回执 up、down 与再次 up
+        run: |
+          mysql_container='${{ job.services.mysql.id }}'
+          test -n "$mysql_container"
+          mysql_cmd=(docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$mysql_container" mysql -uroot --batch --skip-column-names "$MYSQL_DATABASE")
+          "${mysql_cmd[@]}" < prisma/migrations/20260814113000_add_ai_lead_pool/migration.sql
+          "${mysql_cmd[@]}" < prisma/migrations/20260814170000_add_lead_write_audits/migration.sql
+          "${mysql_cmd[@]}" -e "INSERT INTO leads (id,companyName,source,idempotencyKey,payloadHash,dedupKey,updatedAt) VALUES ('legacy-lead','迁移回填测试','MANUAL','legacy-idempotency',REPEAT('b',64),'legacy-dedup',CURRENT_TIMESTAMP(3))"
+          "${mysql_cmd[@]}" < prisma/migrations/20260818143000_add_lead_write_idempotencies/migration.sql
+          tables_count="$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('leads','lead_feedback_events','lead_write_audits','lead_write_idempotencies')")"
+          test "$tables_count" = "4"
+          test "$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM lead_write_idempotencies WHERE idempotencyKey='legacy-idempotency' AND payloadHash=REPEAT('b',64) AND leadId='legacy-lead'")" = "1"
+          "${mysql_cmd[@]}" -e "INSERT INTO lead_write_audits (id,principalType,principalId,action,entityType,idempotencyKey,outcome,payloadHash,requestId) VALUES ('audit-1','SERVICE','ci-service','LEAD_UPSERT','Lead','idem-1','CREATED',REPEAT('a',64),'request-1')"
+          "${mysql_cmd[@]}" < prisma/migrations/20260818143000_add_lead_write_idempotencies/rollback.sql
+          test "$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'lead_write_idempotencies'")" = "0"
+          "${mysql_cmd[@]}" < prisma/migrations/20260818143000_add_lead_write_idempotencies/migration.sql
+          test "$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM lead_write_idempotencies WHERE idempotencyKey='legacy-idempotency'")" = "1"
+          "${mysql_cmd[@]}" < prisma/migrations/20260814170000_add_lead_write_audits/rollback.sql
+          test "$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'lead_write_audits'")" = "0"
+          test "$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('leads','lead_feedback_events')")" = "2"
+          "${mysql_cmd[@]}" < prisma/migrations/20260814170000_add_lead_write_audits/migration.sql
+          test "$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'lead_write_audits'")" = "1"
+          echo "LEAD_WRITE_AUDIT_AND_IDEMPOTENCY_MIGRATION_MYSQL57_UP_DOWN=PASS"
+
+  lead-write-isolation-acceptance:
+    name: Lead 写工具服务身份与最小权限隔离验收
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: mysql://root:lead-write-acceptance-root@127.0.0.1:3306/dachuan_identity_acceptance
+      LEAD_WRITE_ACCEPTANCE_ROOT_DATABASE_URL: mysql://root:lead-write-acceptance-root@127.0.0.1:3306/dachuan_identity_acceptance
+      MCP_COMMAND_DATABASE_URL: mysql://dachuan_lead_writer:lead-write-acceptance-writer@127.0.0.1:3306/dachuan_identity_acceptance
+      MYSQL_ROOT_PASSWORD: lead-write-acceptance-root
+      MCP_ACCEPTANCE_ACCOUNT_SCOPE: LEAD_WRITE_ONLY
+      MCP_ACCEPTANCE_EXPECTED_DB_HOST: 127.0.0.1
+    services:
+      mysql:
+        image: mysql:5.7.44
+        env:
+          MYSQL_ROOT_PASSWORD: lead-write-acceptance-root
+          MYSQL_DATABASE: dachuan_identity_acceptance
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -plead-write-acceptance-root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: 拉取精确提交
+        uses: actions/checkout@v4
+
+      - name: 安装固定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+
+      - name: 安装依赖并生成 Prisma Client
+        run: |
+          corepack enable
+          corepack prepare "pnpm@10.33.4" --activate
+          test "$(pnpm --version)" = "10.33.4"
+          pnpm install --frozen-lockfile
+          pnpm exec prisma generate
+
+      - name: 应用 Lead 基表、写审计与幂等回执 migration
+        run: |
+          mysql_container='${{ job.services.mysql.id }}'
+          mysql_cmd=(docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$mysql_container" mysql -uroot dachuan_identity_acceptance)
+          "${mysql_cmd[@]}" < prisma/migrations/20260814113000_add_ai_lead_pool/migration.sql
+          "${mysql_cmd[@]}" < prisma/migrations/20260814170000_add_lead_write_audits/migration.sql
+          "${mysql_cmd[@]}" < prisma/migrations/20260818143000_add_lead_write_idempotencies/migration.sql
+
+      - name: 配置并验证 Lead 写账号最小权限
+        run: node scripts/provision-mcp-acceptance-accounts.mjs
+
+      - name: 签发服务断言并执行写入、重放、冲突、审计与人类拒绝验收
+        run: pnpm exec tsx scripts/run-lead-write-acceptance.ts
+
+  validate-lead-migration:
+    name: MySQL 5.7 验证线索 migration up/down
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MYSQL_ROOT_PASSWORD: lead-migration-ci-only
+      MYSQL_DATABASE: lead_migration_test
+    services:
+      mysql:
+        image: mysql:5.7.44
+        env:
+          MYSQL_ROOT_PASSWORD: lead-migration-ci-only
+          MYSQL_DATABASE: lead_migration_test
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -plead-migration-ci-only"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: 拉取精确提交
+        uses: actions/checkout@v4
+
+      - name: 验证 up、唯一约束、down 与再次 up
+        run: |
+          mysql_container='${{ job.services.mysql.id }}'
+          test -n "$mysql_container"
+          mysql_cmd=(docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$mysql_container" mysql -uroot --batch --skip-column-names "$MYSQL_DATABASE")
+          "${mysql_cmd[@]}" < prisma/migrations/20260814113000_add_ai_lead_pool/migration.sql
+          tables_count="$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('leads','lead_feedback_events')")"
+          test "$tables_count" = "2"
+          "${mysql_cmd[@]}" -e "INSERT INTO leads (id, companyName, source, idempotencyKey, dedupKey, updatedAt) VALUES ('lead-1','测试公司','MANUAL','idem-1','dedup-1',CURRENT_TIMESTAMP(3))"
+          if "${mysql_cmd[@]}" -e "INSERT INTO leads (id, companyName, source, idempotencyKey, dedupKey, updatedAt) VALUES ('lead-2','重复幂等','MANUAL','idem-1','dedup-2',CURRENT_TIMESTAMP(3))"; then
+            echo "idempotencyKey unique constraint did not reject a duplicate" >&2
+            exit 1
+          fi
+          if "${mysql_cmd[@]}" -e "INSERT INTO leads (id, companyName, source, idempotencyKey, dedupKey, updatedAt) VALUES ('lead-3','重复去重','MANUAL','idem-3','dedup-1',CURRENT_TIMESTAMP(3))"; then
+            echo "dedupKey unique constraint did not reject a duplicate" >&2
+            exit 1
+          fi
+          "${mysql_cmd[@]}" < prisma/migrations/20260814113000_add_ai_lead_pool/rollback.sql
+          tables_count="$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('leads','lead_feedback_events')")"
+          test "$tables_count" = "0"
+          "${mysql_cmd[@]}" < prisma/migrations/20260814113000_add_ai_lead_pool/migration.sql
+          tables_count="$("${mysql_cmd[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('leads','lead_feedback_events')")"
+          test "$tables_count" = "2"
+          echo "AI_LEAD_MIGRATION_MYSQL57_UP_DOWN=PASS"
+
+  build-accept-package:
+    name: 构建、验收并打包
+    needs: [validate-lead-migration, validate-lead-write-migration, lead-write-isolation-acceptance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      EXPECTED_MCP_TOOL_MODE: FULL_READ_ONLY
+      IDENTITY_ACCEPTANCE_TOOL_MODE: FULL_READ_ONLY
+      IDENTITY_ACCEPTANCE_AUTO_PROVISION_FASTGPT_KEY: "1"
+      ACCEPTANCE_ARTIFACT_NAME: dachuan-full-readonly-linux-${{ github.run_id }}
+      MCP_ONLY_ARTIFACT_NAME: dachuan-mcp-canary-linux-${{ github.run_id }}
+
+    steps:
+      - name: 拉取精确提交
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 安装固定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+
+      - name: 清理可信临时 Runner 的无关工具缓存
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h
+          docker version
+          docker compose version
+
+      - name: 验证基线和禁改文件
+        run: |
+          test -z "$(git status --short)"
+          git merge-base --is-ancestor eb1c0fdd39001008006f8eb0dfdbe008b5d3a940 HEAD
+          batch04_base=b651ae261b40a55b08e68656fe3ee31001085125
+          git merge-base --is-ancestor "$batch04_base" HEAD
+          n3_company_merge_base=7aaa9ffe332b793b20255d12beb9d32d7754d66e
+          git merge-base --is-ancestor "$n3_company_merge_base" HEAD
+          test -z "$(git diff "$n3_company_merge_base"..HEAD --name-only -- package.json pnpm-lock.yaml src/lib/mcp/tools.ts src/lib/mcp/prisma-data-source.ts src/lib/mcp/application.ts src/lib/mcp/command-tools.ts src/app/api/mcp src/lib/agent-auth/service-runtime.ts)"
+          disallowed_n3_company_merge_changes="$(git diff "$n3_company_merge_base"..HEAD --name-only | grep -vE '^(\.github/workflows/full-readonly-linux-acceptance\.yml|deploy/identity-acceptance/README\.md|docs/mcp/(README|LEAD_WRITE_N3_DEPLOYMENT|LEAD_E2E_N4_DEPLOYMENT)\.md|docs/mcp/sql/lead-writer-(grants|revoke)\.template\.sql|n8n/workflows/lead-staging-v1\.json|prisma/schema\.prisma|prisma/migrations/20260818143000_add_lead_write_idempotencies/(migration|rollback)\.sql|scripts/(lead-e2e-acceptance-support(\.test)?\.ts|lead-workflow-config\.test\.mjs|provision-mcp-acceptance-accounts\.mjs|run-lead-(write|e2e)-acceptance\.ts)|src/lib/mcp/prisma-command-data-source(\.test)?\.ts)$' || true)"
+          test -z "$disallowed_n3_company_merge_changes"
+          disallowed_prisma_changes="$(git diff eb1c0fdd39001008006f8eb0dfdbe008b5d3a940..HEAD --name-only -- prisma/schema.prisma prisma/migrations | grep -vE '^prisma/(schema\.prisma|migrations/(20260814113000_add_ai_lead_pool|20260814170000_add_lead_write_audits|20260818143000_add_lead_write_idempotencies)/(migration|rollback)\.sql)$' || true)"
+          test -z "$disallowed_prisma_changes"
+          disallowed_mcp_changes="$(git diff eb1c0fdd39001008006f8eb0dfdbe008b5d3a940..HEAD --name-only -- src/lib/mcp | grep -vE '^src/lib/mcp/(application(\.(full-read-only|identity|lead-write))?|config|tools|command-tools|prisma-data-source|prisma-command-data-source|input-schemas)(\.test)?\.ts$' || true)"
+          test -z "$disallowed_mcp_changes"
+          test "$GITHUB_REF_NAME" = "codex/unified-readonly-mcp" || test "$GITHUB_REF_NAME" = "codex/mcp-canary-two-tools" || test "$GITHUB_REF_NAME" = "codex/mcp-filter-argument-hardening"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "GIT_SHA=$GITHUB_SHA"
+
+      - name: Linux 脚本语法检查
+        run: |
+          bash -n deploy/identity-acceptance/start.sh
+          bash -n deploy/identity-acceptance/accept.sh
+          bash -n deploy/identity-acceptance/accept-lead-e2e.sh
+          bash -n deploy/identity-acceptance/rollback.sh
+          bash -n deploy/identity-acceptance/build-fastgpt.sh
+          bash -n deploy/identity-acceptance/pull-external-images.sh
+          bash -n deploy/identity-acceptance/package-linux-artifact.sh
+          node --check deploy/identity-acceptance/validate-prebuilt-image-archive.mjs
+          node --check deploy/identity-acceptance/verify-db-init-privilege-log.mjs
+          node --check deploy/identity-acceptance/provision-lead-e2e.mjs
+          node --check deploy/identity-acceptance/lead-e2e-workflow.mjs
+          node --check scripts/issue-lead-service-assertion.mjs
+          node --check scripts/lead-scoring-contract.mjs
+          node --check scripts/lead-llm-mock.mjs
+          node deploy/identity-acceptance/test-db-init-privilege-log.mjs
+
+      - name: 预构建外部镜像 tar 身份校验测试
+        run: |
+          node deploy/identity-acceptance/test-prebuilt-image-archive.mjs
+
+      - name: 报告生成 dry-run 预检
+        run: |
+          node --check deploy/identity-acceptance/generate-linux-report.mjs
+          report_dir="$RUNNER_TEMP/report-dry-run"
+          mkdir -p "$report_dir"
+          printf 'name\ttag\timageId\tsizeBytes\trepoDigests\nfastgpt\tdachuan-fastgpt:v4\tsha256:one\t1\t\n' > "$report_dir/IMAGE_IDS.tsv"
+          printf 'image\tlinuxAmd64ManifestDigest\tociIndexDigest\tconfigDigest\tarchive\nmysql:8.0.44\tsha256:platform\tsha256:index\tsha256:config\tmysql.tar.gz\n' > "$report_dir/EXTERNAL_IMAGE_IDS.tsv"
+          printf '{"overallStatus":"PASS","checks":["dry run"],"requestIdSummary":{"count":1,"uniqueCount":1}}' > "$report_dir/evidence.json"
+          ARTIFACT_DIR="$report_dir" EVIDENCE_FILE="$report_dir/evidence.json" PREBUILT_REVALIDATED=PASS node deploy/identity-acceptance/generate-linux-report.mjs "$report_dir" "$report_dir/evidence.json"
+          test -s "$report_dir/LINUX_ACCEPTANCE_REPORT.md"
+          grep -F '`SHA256SUMS`' "$report_dir/LINUX_ACCEPTANCE_REPORT.md"
+          grep -F '`docker load`' "$report_dir/LINUX_ACCEPTANCE_REPORT.md"
+          grep -F '`--pull never`' "$report_dir/LINUX_ACCEPTANCE_REPORT.md"
+
+      - name: 空缓存拉取并校验固定外部镜像
+        run: |
+          docker system prune --all --force --volumes
+          test -z "$(docker image ls -q)"
+          bash deploy/identity-acceptance/pull-external-images.sh
+          docker image ls --digests
+
+      - name: 生成仅限本次 Runner 的隔离环境
+        run: |
+          node deploy/identity-acceptance/prepare-env.mjs \
+            deploy/identity-acceptance/.env.identity-acceptance.example \
+            deploy/identity-acceptance/.env.identity-acceptance
+          chmod 600 deploy/identity-acceptance/.env.identity-acceptance
+          node deploy/identity-acceptance/validate-env.mjs deploy/identity-acceptance/.env.identity-acceptance
+
+      - name: 完整执行 start.sh
+        run: |
+          set -o pipefail
+          mkdir -p deploy/identity-acceptance/acceptance-output
+          ./deploy/identity-acceptance/start.sh 2>&1 | tee deploy/identity-acceptance/acceptance-output/linux-start.log
+
+      - name: 完整执行 accept.sh
+        run: |
+          set -o pipefail
+          EXPECTED_MCP_TOOL_MODE=FULL_READ_ONLY ./deploy/identity-acceptance/accept.sh 2>&1 | tee deploy/identity-acceptance/acceptance-output/linux-accept.log
+
+      - name: 完整执行 rollback.sh
+        run: |
+          set -o pipefail
+          printf '%s\n' PURGE-IDENTITY-ACCEPTANCE | ./deploy/identity-acceptance/rollback.sh --purge-isolated-data 2>&1 | tee deploy/identity-acceptance/acceptance-output/linux-rollback.log
+          test -z "$(docker compose -p dachuan-identity-acceptance --env-file deploy/identity-acceptance/.env.identity-acceptance -f deploy/identity-acceptance/docker-compose.yml ps -q)"
+          test -z "$(docker volume ls -q --filter label=com.docker.compose.project=dachuan-identity-acceptance)"
+          echo "IDENTITY_ACCEPTANCE_ROLLBACK=PASS"
+
+      - name: 组装三镜像 Linux 验收成品
+        env:
+          IDENTITY_ACCEPTANCE_VERIFY_PREBUILT: "1"
+        run: |
+          ./deploy/identity-acceptance/package-linux-artifact.sh "$RUNNER_TEMP/$ACCEPTANCE_ARTIFACT_NAME"
+          du -sh "$RUNNER_TEMP/$ACCEPTANCE_ARTIFACT_NAME"
+          df -h
+
+      - name: 组装轻量 MCP Canary 成品
+        run: |
+          full_artifact="$RUNNER_TEMP/$ACCEPTANCE_ARTIFACT_NAME"
+          mcp_artifact="$RUNNER_TEMP/$MCP_ONLY_ARTIFACT_NAME"
+          mcp_archive="images/dachuanpro-crm-erp-mcp-1.2.0-identity-acceptance.1.tar.gz"
+          mcp_image="dachuanpro-crm-erp-mcp:1.2.0-identity-acceptance.1"
+          test -s "$full_artifact/$mcp_archive"
+          mkdir -p "$mcp_artifact/images"
+          cp "$full_artifact/$mcp_archive" "$mcp_artifact/$mcp_archive"
+          cp "$full_artifact/deploy/identity-acceptance/validate-prebuilt-image-archive.mjs" "$mcp_artifact/validate-prebuilt-image-archive.mjs"
+          IFS=$'\t' read -r config_digest oci_manifest_digest < <(
+            node "$mcp_artifact/validate-prebuilt-image-archive.mjs" --identity-digests "$mcp_artifact/$mcp_archive" "$mcp_image"
+          )
+          IFS=$'\t' read -r name tag image_id size_bytes repo_digests < <(
+            awk -F '\t' '$1 == "crm-mcp"' "$full_artifact/IMAGE_IDS.tsv"
+          )
+          test "$name" = "crm-mcp"
+          test "$tag" = "$mcp_image"
+          case "$image_id" in
+            "$config_digest"|"$oci_manifest_digest") ;;
+            *) echo "Unexpected crm-mcp image ID: $image_id" >&2; exit 1 ;;
+          esac
+          printf 'name\ttag\tconfigDigest\tociManifestDigest\tsizeBytes\trepoDigests\n' > "$mcp_artifact/IMAGE_IDS.tsv"
+          printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$tag" "$config_digest" "$oci_manifest_digest" "$size_bytes" "$repo_digests" >> "$mcp_artifact/IMAGE_IDS.tsv"
+          test "$(wc -l < "$mcp_artifact/IMAGE_IDS.tsv")" -eq 2
+          node "$mcp_artifact/validate-prebuilt-image-archive.mjs" "$mcp_artifact/$mcp_archive" "$tag" "$config_digest" "$oci_manifest_digest"
+          cat > "$mcp_artifact/README.md" <<'EOF'
+          # MCP Canary 镜像成品
+
+          本成品仅含已经通过 FULL_READ_ONLY Linux 隔离验收的 MCP 镜像归档。
+          使用前先执行 `sha256sum -c SHA256SUMS`，再使用内置校验器核验归档标签、平台、Config Digest 与 OCI Manifest Digest，最后以 `docker load -i` 载入镜像。
+          Docker 的不同镜像存储后端可能把载入后的 `.Id` 显示为 Config Digest 或 OCI Manifest Digest；`IMAGE_IDS.tsv` 同时记录两者，载入后的值必须匹配其中之一。
+          不包含 FastGPT、Mongo、Redis 或任何环境变量；不得将本成品用于正式服务，除非另有独立授权。
+          EOF
+          (
+            cd "$mcp_artifact"
+            find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+          du -sh "$mcp_artifact"
+
+      - name: 上传可下载 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ACCEPTANCE_ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/${{ env.ACCEPTANCE_ARTIFACT_NAME }}
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 0
+          retention-days: 14
+
+      - name: 上传轻量 MCP Canary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.MCP_ONLY_ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/${{ env.MCP_ONLY_ARTIFACT_NAME }}
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 0
+          retention-days: 14
+
+      - name: 失败时安全停止隔离栈
+        if: failure()
+        run: |
+          if [[ -f deploy/identity-acceptance/.env.identity-acceptance ]]; then
+            ./deploy/identity-acceptance/rollback.sh || \
+              docker compose -p dachuan-identity-acceptance \
+                --env-file deploy/identity-acceptance/.env.identity-acceptance \
+                -f deploy/identity-acceptance/docker-compose.yml down --remove-orphans
+          fi
+
+  lead-end-to-end-acceptance:
+    name: Lead 端到端验收
+    needs: [build-accept-package, lead-write-isolation-acceptance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      IDENTITY_ACCEPTANCE_TOOL_MODE: FULL_READ_ONLY
+      IDENTITY_ACCEPTANCE_USE_PREBUILT_IMAGES: "1"
+      IDENTITY_ACCEPTANCE_AUTO_PROVISION_FASTGPT_KEY: "1"
+      ACCEPTANCE_ARTIFACT_NAME: dachuan-full-readonly-linux-${{ github.run_id }}
+
+    steps:
+      - name: 安装固定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+
+      - name: 下载已通过既有验收的隔离成品
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ACCEPTANCE_ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/lead-e2e-artifact
+
+      - name: 从空 Docker 状态启动隔离栈
+        working-directory: ${{ runner.temp }}/lead-e2e-artifact
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          docker system prune --all --force --volumes
+          sha256sum -c SHA256SUMS
+          mkdir -p deploy/identity-acceptance/acceptance-output
+          bash deploy/identity-acceptance/start.sh 2>&1 | tee deploy/identity-acceptance/acceptance-output/lead-e2e-start.log
+
+      - name: FastGPT SERVICE 断言到 Lead 写库真实链路
+        id: lead-e2e-chain
+        working-directory: ${{ runner.temp }}/lead-e2e-artifact
+        run: |
+          bash deploy/identity-acceptance/accept-lead-e2e.sh 2>&1 | tee deploy/identity-acceptance/acceptance-output/lead-e2e-run.log
+
+      - name: 收集 Lead E2E 服务日志
+        if: always()
+        working-directory: ${{ runner.temp }}/lead-e2e-artifact
+        run: |
+          mkdir -p deploy/identity-acceptance/acceptance-output
+          : > deploy/identity-acceptance/acceptance-output/lead-e2e-services.log
+          if [[ -f deploy/identity-acceptance/.env.identity-acceptance ]]; then
+            docker compose -p dachuan-identity-acceptance \
+              --env-file deploy/identity-acceptance/.env.identity-acceptance \
+              -f deploy/identity-acceptance/docker-compose.yml \
+              --profile lead-e2e logs --no-color \
+              fastgpt lead-mcp lead-llm-mock identity-redis mysql fastgpt-code-sandbox \
+              > deploy/identity-acceptance/acceptance-output/lead-e2e-services.log 2>&1 || true
+          fi
+
+      - name: Lead 链路敏感信息终审
+        if: always()
+        working-directory: ${{ runner.temp }}/lead-e2e-artifact
+        env:
+          LEAD_E2E_CHAIN_OUTCOME: ${{ steps.lead-e2e-chain.outcome }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const root = 'deploy/identity-acceptance';
+          const envPath = path.join(root, '.env.identity-acceptance');
+          const settings = fs.existsSync(envPath) ? Object.fromEntries(fs.readFileSync(envPath, 'utf8').split(/\r?\n/).filter((line) => line && !line.startsWith('#')).map((line) => { const i = line.indexOf('='); return [line.slice(0, i), line.slice(i + 1)]; })) : {};
+          const humanPrivate = settings.AGENT_AUTH_KEYS_JSON ? JSON.parse(settings.AGENT_AUTH_KEYS_JSON)[0]?.privateJwk?.d : undefined;
+          const servicePrivatePath = path.join(root, '.lead-service-private-jwk');
+          const servicePrivate = fs.existsSync(servicePrivatePath) ? JSON.parse(fs.readFileSync(servicePrivatePath, 'utf8')).d : undefined;
+          const secretNames = ['MCP_SERVICE_KEY','MCP_LEAD_SERVICE_KEY','MYSQL_PASSWORD','MYSQL_ROOT_PASSWORD','MCP_QUERY_DB_PASSWORD','MCP_AUDIT_DB_PASSWORD','MCP_COMMAND_DB_PASSWORD','REDIS_PASSWORD','AUTH_SECRET','CRM_AGENT_ASSERTION_SECRET','AGENT_GATEWAY_FASTGPT_API_KEY','LEAD_E2E_FASTGPT_API_KEY','FASTGPT_ROOT_PASSWORD','FASTGPT_ROOT_KEY','FASTGPT_TOKEN_KEY','FASTGPT_FILE_TOKEN_KEY','FASTGPT_AES_KEY','FASTGPT_INVOKE_TOKEN_SECRET','FASTGPT_MONGO_PASSWORD','FASTGPT_REDIS_PASSWORD','FASTGPT_MINIO_PASSWORD','FASTGPT_PG_PASSWORD','FASTGPT_PLUGIN_TOKEN','FASTGPT_SANDBOX_TOKEN','FASTGPT_AIPROXY_PG_PASSWORD','FASTGPT_AIPROXY_API_TOKEN'];
+          const secrets = secretNames.map((name) => settings[name]).concat(humanPrivate, servicePrivate).filter((value) => value && value.length >= 8 && !value.startsWith('REPLACE_'));
+          const logs = ['lead-e2e-start.log','lead-e2e-run.log','lead-e2e-services.log'].map((file) => { const target = path.join(root, 'acceptance-output', file); return fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : ''; }).join('\n');
+          if (secrets.some((secret) => logs.includes(secret))) throw new Error('Lead E2E log contains a configured secret');
+          if (/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/.test(logs)) throw new Error('Lead E2E log contains a JWT');
+          if (/x-dachuan-(?:user|service)-assertion\s*[:=]\s*\S+/i.test(logs)) throw new Error('Lead E2E log contains an assertion header value');
+          if (process.env.LEAD_E2E_CHAIN_OUTCOME === 'success' && (!logs.includes('LEAD_E2E_ACCEPTANCE=PASS') || !logs.includes('LEAD_E2E_ISOLATED_STACK=PASS'))) throw new Error('Lead E2E PASS markers are missing');
+          console.log('LEAD_E2E_SENSITIVE_SCAN=PASS');
+          NODE
+
+      - name: 清除本次隔离栈和命名卷
+        if: always()
+        working-directory: ${{ runner.temp }}/lead-e2e-artifact
+        run: |
+          if [[ -f deploy/identity-acceptance/.env.identity-acceptance ]]; then
+            printf '%s\n' PURGE-IDENTITY-ACCEPTANCE | bash deploy/identity-acceptance/rollback.sh --purge-isolated-data
+            test -z "$(docker compose -p dachuan-identity-acceptance --env-file deploy/identity-acceptance/.env.identity-acceptance -f deploy/identity-acceptance/docker-compose.yml ps -q)"
+          fi
+          echo "LEAD_E2E_ROLLBACK=PASS"
+
+      - name: 失败时安全停止隔离栈
+        if: failure()
+        working-directory: ${{ runner.temp }}/lead-e2e-artifact
+        run: |
+          if [[ -f deploy/identity-acceptance/.env.identity-acceptance ]]; then
+            bash deploy/identity-acceptance/rollback.sh || true
+          fi

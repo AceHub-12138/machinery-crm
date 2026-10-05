@@ -1,0 +1,10 @@
+# image<TAB>linux/amd64 manifest digest<TAB>OCI index digest<TAB>artifact archive
+mysql:8.0.44	sha256:f7878bec832c6be5e61c39d3949651be8aa977daf875089b4560ae1434d2cb9c	sha256:9c3380eac945af0736031b200027f581925927c81e010056214a4bd6b6693714	external-mysql-8.0.44-linux-amd64.tar.gz
+redis:7.2-alpine	sha256:942b86c020b801daa83baee4ab6a125c244bf6dba7e5c6996d03e569e6aa1c19	sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8	external-redis-7.2-alpine-linux-amd64.tar.gz
+mongo:5.0.32	sha256:b2ace5ddbeb6d2e035aab54c486b8145bef83cff7bc3d518598b8449db74f3aa	sha256:5e3e87afd24d75e722884d777c5713d254f7e88ba65381b5d6484f75a21b73e3	external-mongo-5.0.32-linux-amd64.tar.gz
+pgvector/pgvector:0.8.0-pg15	sha256:c50b98b074c4c370da995eb03c8f6bb6dcc2e9d8911e1974c1af981055a168e6	sha256:1dec32aaba982ea73c51e93bee0319abf54150110321e24101c3d9de0b88db98	external-pgvector-0.8.0-pg15-linux-amd64.tar.gz
+minio/minio:RELEASE.2025-09-07T16-13-09Z	sha256:a1a8bd4ac40ad7881a245bab97323e18f971e4d4cba2c2007ec1bedd21cbaba2	sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e	external-minio-RELEASE.2025-09-07T16-13-09Z-linux-amd64.tar.gz
+nginx:1.28.0-alpine	sha256:09ab424a8c788f8d0fe3a64429f6d19dfa526885c8609b748d0943a75dcb9f8c	sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284	external-nginx-1.28.0-alpine-linux-amd64.tar.gz
+ghcr.io/labring/fastgpt-code-sandbox:v4.15.0	sha256:33994c505f264bd3e9286d12345f607989317fb5eeaa7083921d407141c4a670	sha256:7ba01c22191d7bfc708c605c3870054113dcfe45b022237ed7d5af7d5f36e31c	external-fastgpt-code-sandbox-v4.15.0-linux-amd64.tar.gz
+ghcr.io/labring/fastgpt-plugin:v1.0.0	sha256:aa9a1c24071d3322e52c6486f59f53f7b8a290b12352bb8114c354f63784af91	sha256:33a42e908706aa91e5251b6d2c28deb3756797decb5d311b79d557fe05079e95	external-fastgpt-plugin-v1.0.0-linux-amd64.tar.gz
+ghcr.io/labring/aiproxy:v0.6.5	sha256:e96073363ac3e38fd0c28b7653aa18916e93c57a688452450c619023b7811e4d	sha256:9b2d9148c8d8a09d2e70577b492b7b32aab5877fe48c2c78a6d300005f4d42bb	external-aiproxy-v0.6.5-linux-amd64.tar.gz

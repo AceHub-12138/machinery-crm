@@ -1,0 +1,4 @@
+"use client";
+import { useEffect, useState } from "react";
+import { PageContainer } from "@/components/layout/page-container";
+export default function HealthPage() { const [data, setData] = useState<any>(); useEffect(() => { fetch("/api/system/health").then((res) => res.json()).then(setData); }, []); return <PageContainer variant="data" className="space-y-5"><h1 className="text-xl font-semibold">系统健康</h1><p className="text-sm text-gray-500">只读检查；不提供重启、部署、Shell 或密钥修改操作。</p><div className="grid gap-3 md:grid-cols-2">{data?.items?.map((item: any) => <section key={item.name} className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-solid)] p-4 shadow-[var(--shadow-card)]"><b>{item.name}</b><p className="mt-1 text-sm text-gray-600">{item.detail}</p><span className="text-xs text-gray-500">{item.status}</span></section>) || <p className="text-sm text-gray-500">正在检查…</p>}</div></PageContainer>; }

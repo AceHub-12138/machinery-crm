@@ -1,0 +1,50 @@
+# 本地 Docker Desktop 构建 standalone 成品包
+# （GitHub 账号被封后的替代流水线：禁止在服务器构建，改在本机 Linux 容器内构建）
+#
+# 用法（在项目根目录，Git Bash）：
+#   GIT_SHA=$(git rev-parse --short HEAD)
+#   docker build -f Dockerfile.standalone \
+#     --build-arg GIT_SHA="$GIT_SHA" \
+#     --build-arg GIT_REF="$(git rev-parse --abbrev-ref HEAD)" \
+#     --output dist .
+# 产物：dist/machinery-crm-<版本>-prebuilt-standalone-linux-x64-<时间戳>.tar.gz
+#
+# 注意：构建期 DATABASE_URL 仅为占位（不连库，与原 GitHub Actions 一致）；
+# 服务器运行时仍以 /opt/machinery-crm-v108-release/.env 为准。
+# NEXT_PUBLIC_XIAOCHUAN_URL：挂 ai.dachuan.pro 的包构建时传
+#   --build-arg NEXT_PUBLIC_XIAOCHUAN_URL=https://ai.dachuan.pro
+
+# 基础镜像可参数化：国内网络构建可传
+#   --build-arg NODE_IMAGE=docker.m.daocloud.io/library/node:22-bookworm
+ARG NODE_IMAGE=node:22-bookworm
+FROM ${NODE_IMAGE} AS build
+WORKDIR /repo
+
+# package.json 未锁 packageManager，corepack 会拉不兼容的 pnpm 11，固定本机同版
+RUN npm install -g pnpm@10.33.4
+
+# 先只拷依赖清单：依赖不变时命中 Docker 层缓存，跳过安装
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+# 防 Git Bash/编辑器引入 CRLF 弄坏 shell 脚本
+RUN sed -i 's/\r$//' scripts/package-standalone.sh
+
+# 与原 GitHub Actions 相同：占位库地址让 build 通过，不真实连接
+ENV DATABASE_URL="mysql://build_user:build_only@127.0.0.1:3306/build_only"
+# NEXT_PUBLIC_* 是构建期烘焙进前端包的：挂 ai.dachuan.pro 的包必须带
+# --build-arg NEXT_PUBLIC_XIAOCHUAN_URL=https://ai.dachuan.pro 构建
+ARG NEXT_PUBLIC_XIAOCHUAN_URL=""
+ENV NEXT_PUBLIC_XIAOCHUAN_URL=$NEXT_PUBLIC_XIAOCHUAN_URL
+ARG GIT_SHA=unknown
+ARG GIT_REF=unknown
+
+# 三步分层：任一步失败，重跑时前面成功的层走缓存
+RUN pnpm exec prisma generate
+RUN pnpm build
+RUN bash scripts/package-standalone.sh "$GIT_SHA" "$GIT_REF"
+
+# 只把 dist 内容（tar.gz + migration 清单）导出到宿主 --output 目录
+FROM scratch AS output
+COPY --from=build /repo/dist /

@@ -1,0 +1,45 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { PageContainer } from "@/components/layout/page-container";
+import { AFTER_SALES_ORDER_TYPE_LABELS, AFTER_SALES_STATUS_LABELS } from "@/lib/after-sales";
+
+const statusOptions = Object.entries(AFTER_SALES_STATUS_LABELS);
+const typeOptions = Object.entries(AFTER_SALES_ORDER_TYPE_LABELS);
+
+function formatDate(value?: string | Date | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+}
+
+export default function AfterSalesPage() {
+  const [items, setItems] = useState<any[]>([]); const [stats, setStats] = useState<any>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const [filters, setFilters] = useState({ status: "", orderType: "", urgency: "", dateFrom: "", dateTo: "", keyword: "", reminder: "" });
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+    const [listResponse, statsResponse] = await Promise.all([fetch(`/api/after-sales?${query.toString()}`, { cache: "no-store" }), fetch("/api/after-sales/stats", { cache: "no-store" })]);
+    const listData = await listResponse.json(); const statsData = await statsResponse.json();
+    if (!listResponse.ok) setError(listData.error || "售后工单加载失败"); else setItems(listData.items || []);
+    if (statsResponse.ok) setStats(statsData);
+    setLoading(false);
+  }, [filters]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { const params = new URLSearchParams(window.location.search); const reminder = params.get("reminder") || ""; const status = params.get("status") || ""; if (reminder || status) setFilters((current) => ({ ...current, reminder, status })); }, []);
+  const change = (field: string, value: string) => setFilters((current) => ({ ...current, [field]: value }));
+
+  return <PageContainer variant="data" className="space-y-5">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-semibold">售后调试</h1><p className="mt-1 text-sm text-gray-500">售后工单、现场回执、签字附件和故障统计闭环管理。</p></div><Link href="/after-sales/new" className="rounded-[var(--radius-md)] bg-[var(--brand-orange)] px-4 py-2 text-sm text-white hover:bg-[var(--brand-orange-hover)]">新建售后工单</Link></div>
+    {error && <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    <section className="grid gap-3 md:grid-cols-3"><Metric label="本周新增" value={stats?.summary?.weekNew ?? "—"} tone="info" /><Metric label="进行中" value={stats?.summary?.inProgress ?? "—"} tone="warning" /><Metric label="超时未回执" value={stats?.summary?.overdue ?? "—"} tone="danger" /></section>
+    <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-solid)] p-4 shadow-[var(--shadow-card)]"><div className="grid gap-3 md:grid-cols-3"><select value={filters.status} onChange={(event) => change("status", event.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"><option value="">全部状态</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><select value={filters.orderType} onChange={(event) => change("orderType", event.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"><option value="">全部类型</option>{typeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><select value={filters.urgency} onChange={(event) => change("urgency", event.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"><option value="">全部紧急程度</option><option value="NORMAL">一般</option><option value="URGENT">紧急</option></select><input value={filters.keyword} onChange={(event) => change("keyword", event.target.value)} placeholder="搜索编号、客户、机型、售后人员、合同号" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" /><DateFilter label="派发开始" value={filters.dateFrom} onChange={(value) => change("dateFrom", value)} /><DateFilter label="派发结束" value={filters.dateTo} onChange={(value) => change("dateTo", value)} /></div></section>
+      <section className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-solid)] shadow-[var(--shadow-card)]"><table className="w-full min-w-[900px] text-sm"><thead className="bg-[var(--surface-muted)] text-left text-gray-500"><tr><th className="p-3">工单编号</th><th className="p-3">客户 / 合同</th><th className="p-3">机型</th><th className="p-3">类型</th><th className="p-3">售后人员</th><th className="p-3">派发时间</th><th className="p-3">状态</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-t border-[var(--border)] hover:bg-[var(--surface-hover)]"><td className="p-3 font-medium text-[var(--brand-orange)]"><Link href={`/after-sales/${item.id}`}>{item.orderNo}</Link></td><td className="p-3"><div className="max-w-56 break-words">{item.customerNameSnapshot}</div><div className="mt-1 text-xs text-gray-500">{item.contractNoSnapshot}</div></td><td className="p-3">{item.equipmentModelSnapshot}</td><td className="p-3">{AFTER_SALES_ORDER_TYPE_LABELS[item.orderType as keyof typeof AFTER_SALES_ORDER_TYPE_LABELS] || item.orderType}</td><td className="p-3">{item.assigneeNames}</td><td className="p-3">{formatDate(item.dispatchDate)}</td><td className="p-3"><StatusBadge status={item.status} urgency={item.urgency} alertState={item.alertState} /></td></tr>)}{!loading && !items.length && <tr><td colSpan={7} className="p-8 text-center text-gray-500">暂无符合条件的售后工单</td></tr>}{loading && <tr><td colSpan={7} className="p-8 text-center text-gray-500">加载中...</td></tr>}</tbody></table></section>
+    <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-solid)] p-4 shadow-[var(--shadow-card)]"><h2 className="font-medium">统计报表</h2><div className="mt-4 grid gap-4 lg:grid-cols-2"><Ranking title="机型 × 配件故障排行" items={stats?.modelPartRanking} format={(row: any) => `${row.model} · ${row.partName}`} /><Ranking title="机型 × 问题分类" items={stats?.modelProblemDistribution} format={(row: any) => `${row.model} · ${row.problemCategory}`} /><Ranking title="按月趋势" items={stats?.monthlyTrend} format={(row: any) => row.key} /><Ranking title="故障率排行" items={stats?.failureRates} format={(row: any) => `${row.model} · ${row.orderCount}/${row.deviceCount} (${row.rate === null ? "—" : `${(row.rate * 100).toFixed(1)}%`})`} /></div></section>
+  </PageContainer>;
+}
+
+function Metric({ label, value, tone }: { label: string; value: string | number; tone: "info" | "warning" | "danger" }) { const color = { info: "text-[var(--info)]", warning: "text-[var(--warning)]", danger: "text-[var(--danger)]" }[tone]; return <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-solid)] p-4 shadow-[var(--shadow-card)]"><p className="text-sm text-gray-500">{label}</p><p className={`mt-2 text-2xl font-semibold ${color}`}>{value}</p></div>; }
+function StatusBadge({ status, urgency, alertState }: { status: string; urgency: string; alertState?: string }) { const color = alertState === "danger" ? "bg-red-100 text-red-700" : alertState === "warning" ? "bg-amber-100 text-amber-700" : status === "CLOSED" ? "bg-green-100 text-green-700" : status === "COMPLETED" ? "bg-blue-100 text-blue-700" : status === "IN_PROGRESS" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"; const alert = alertState === "danger" ? "已超时 · " : alertState === "warning" ? "接近超时 · " : ""; return <span className={`inline-flex rounded-full px-2 py-1 text-xs ${color}`}>{alert}{urgency === "URGENT" ? "紧急 · " : ""}{AFTER_SALES_STATUS_LABELS[status as keyof typeof AFTER_SALES_STATUS_LABELS] || status}</span>; }
+function Ranking({ title, items, format }: { title: string; items?: any[]; format: (row: any) => string }) { return <div className="rounded border p-3"><h3 className="text-sm font-medium">{title}</h3><div className="mt-2 max-h-52 space-y-1 overflow-y-auto text-sm">{items?.length ? items.slice(0, 12).map((row: any, index: number) => <div key={`${format(row)}-${index}`} className="flex justify-between gap-3 rounded bg-gray-50 px-2 py-1"><span className="min-w-0 break-words">{format(row)}</span>{row.count !== undefined && <strong className="shrink-0">{row.count}</strong>}</div>) : <p className="text-gray-500">暂无数据</p>}</div></div>; }
+function DateFilter({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) { return <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm"><span className="shrink-0 text-xs text-gray-500">{label}</span><input type="date" value={value} onChange={(event) => onChange(event.target.value)} className="min-w-0 flex-1 text-sm focus:outline-none" /></label>; }

@@ -1,0 +1,157 @@
+.petFloat {
+  animation: pet-float 3.8s ease-in-out infinite;
+}
+
+.draggablePet {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.petCard {
+  transform: perspective(900px) rotateX(2deg) rotateY(-6deg);
+  transform-style: preserve-3d;
+  transition: transform 200ms ease;
+}
+
+.petCard:hover,
+.petCard:focus-visible {
+  transform: perspective(900px) translateY(-4px) rotateX(0deg) rotateY(0deg) scale(1.02);
+}
+
+.petShadow {
+  position: absolute;
+  bottom: 4%;
+  left: 50%;
+  z-index: 0;
+  width: 58%;
+  height: 9px;
+  border-radius: 999px;
+  background: rgb(17 24 39 / 28%);
+  filter: blur(5px);
+  transform: translateX(-50%);
+  animation: pet-shadow 3.8s ease-in-out infinite;
+}
+
+.greetingPet {
+  animation: greeting-pet 2.4s ease-in-out infinite;
+}
+
+.greetingBubble {
+  position: absolute;
+  right: 62%;
+  bottom: 64%;
+  z-index: 1;
+  width: 214px;
+  max-width: calc(100vw - 24px);
+  border: 1px solid rgb(238 125 44 / 38%);
+  border-radius: 16px 16px 4px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 10px 22px rgb(17 24 39 / 14%);
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
+  opacity: 0;
+  padding: 9px 12px;
+  pointer-events: none;
+  transform: translate3d(6px, 8px, 0) scale(0.96);
+  transform-origin: right bottom;
+  transition: opacity 180ms ease, transform 220ms ease;
+  white-space: normal;
+}
+
+.greetingBubble::after {
+  position: absolute;
+  right: 12px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid rgb(238 125 44 / 38%);
+  border-bottom: 1px solid rgb(238 125 44 / 38%);
+  background: rgb(255 255 255 / 96%);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.greetingBubbleVisible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.greetingBubbleRight {
+  right: auto;
+  left: 58%;
+  transform: translate3d(-6px, 8px, 0) scale(0.96);
+  transform-origin: left bottom;
+}
+
+.greetingBubbleRight::after {
+  right: auto;
+  left: 12px;
+  border-right: 0;
+  border-bottom: 1px solid rgb(238 125 44 / 38%);
+  border-left: 1px solid rgb(238 125 44 / 38%);
+}
+
+.greetingBubbleRight.greetingBubbleVisible {
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.greetingBubbleTop {
+  right: auto;
+  bottom: 78%;
+  left: var(--bubble-left, 50%);
+  transform: translate3d(0, 8px, 0) scale(0.96);
+  transform-origin: center bottom;
+}
+
+.greetingBubbleTop::after {
+  right: calc(50% - 6px);
+}
+
+.greetingBubbleTop.greetingBubbleVisible {
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+@keyframes pet-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -8px;
+  }
+}
+
+@keyframes pet-shadow {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translateX(-50%) scaleX(1);
+  }
+
+  50% {
+    opacity: 0.18;
+    transform: translateX(-50%) scaleX(0.78);
+  }
+}
+
+@keyframes greeting-pet {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  50% {
+    transform: translate3d(0, -3px, 0) rotate(-0.7deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .petFloat,
+  .petShadow,
+  .greetingPet {
+    animation: none;
+  }
+}

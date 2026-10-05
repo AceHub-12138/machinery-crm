@@ -1,0 +1,30 @@
+FROM node:20-bookworm-slim AS dependencies
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack pnpm install --frozen-lockfile
+
+FROM dependencies AS build
+WORKDIR /app
+ARG DATABASE_URL=mysql://build_user:build_only@127.0.0.1:3306/build_only
+ENV DATABASE_URL=$DATABASE_URL
+COPY . .
+RUN corepack pnpm exec prisma generate
+RUN corepack pnpm build
+RUN mkdir -p /runtime-prisma && cp -aL node_modules/.prisma /runtime-prisma/.prisma && cp -aL node_modules/@prisma /runtime-prisma/@prisma
+
+FROM node:20-bookworm-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3010
+ENV HOSTNAME=0.0.0.0
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/public ./public
+COPY --from=build --chown=nextjs:nodejs /runtime-prisma/.prisma ./node_modules/.prisma
+COPY --from=build --chown=nextjs:nodejs /runtime-prisma/@prisma ./node_modules/@prisma
+USER nextjs
+EXPOSE 3010
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:3010/api/mcp/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+CMD ["node", "server.js"]

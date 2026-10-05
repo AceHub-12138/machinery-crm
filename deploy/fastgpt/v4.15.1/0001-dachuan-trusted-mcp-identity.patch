@@ -1,0 +1,700 @@
+diff --git a/packages/service/core/app/dachuanLeadServiceAssertion.ts b/packages/service/core/app/dachuanLeadServiceAssertion.ts
+new file mode 100644
+index 0000000..cd15464
+--- /dev/null
++++ b/packages/service/core/app/dachuanLeadServiceAssertion.ts
+@@ -0,0 +1,245 @@
++import { createHash, createPrivateKey, randomUUID, sign, type JsonWebKey } from 'node:crypto';
++import { readFileSync } from 'node:fs';
++import Redis from 'ioredis';
++
++type Environment = Record<string, string | undefined>;
++
++export type LeadServiceAssertionConfig = {
++  appIds: Set<string>;
++  issuer: string;
++  audience: string;
++  ttlSeconds: number;
++  activeKid: string;
++  privateJwk: JsonWebKey;
++  principalId: string;
++  redisUrl: string;
++  redisPrefix: string;
++  rateLimitPerMinute: number;
++};
++
++export type LeadServiceAssertionStateStore = {
++  consume(subject: string, limit: number, windowSeconds: number): Promise<boolean>;
++  register(jti: string, ttlSeconds: number): Promise<void>;
++};
++
++const required = (environment: Environment, name: string) => {
++  const value = String(environment[name] || '').trim();
++  if (!value) throw new Error(`${name} is required`);
++  return value;
++};
++
++const integer = (
++  environment: Environment,
++  name: string,
++  minimum: number,
++  maximum: number,
++  fallback: number
++) => {
++  const value = Number(environment[name] || fallback);
++  if (!Number.isInteger(value) || value < minimum || value > maximum) {
++    throw new Error(`${name} must be between ${minimum} and ${maximum}`);
++  }
++  return value;
++};
++
++const json = (value: string, name: string): unknown => {
++  try {
++    return JSON.parse(value);
++  } catch {
++    throw new Error(`${name} must be valid JSON`);
++  }
++};
++
++const normalizedPrefix = (value: string, name: string) => {
++  const normalized = value.trim().replace(/:+$/, '');
++  if (!normalized) throw new Error(`${name} is required`);
++  return normalized;
++};
++
++export const loadLeadServiceAssertionConfig = (
++  environment: Environment = process.env
++): LeadServiceAssertionConfig | undefined => {
++  if (String(environment.LEAD_SERVICE_ASSERTION_ENABLED || 'false').toLowerCase() !== 'true') {
++    return undefined;
++  }
++
++  const appIds = new Set(
++    required(environment, 'LEAD_SERVICE_ASSERTION_APP_IDS')
++      .split(',')
++      .map((item) => item.trim())
++      .filter(Boolean)
++  );
++  if (appIds.size === 0 || [...appIds].some((appId) => !/^[a-f\d]{24}$/i.test(appId))) {
++    throw new Error('LEAD_SERVICE_ASSERTION_APP_IDS must contain FastGPT application IDs');
++  }
++
++  const audience = required(environment, 'LEAD_SERVICE_ASSERTION_AUDIENCE');
++  if (audience === required(environment, 'AGENT_AUTH_AUDIENCE')) {
++    throw new Error('Lead SERVICE assertion audience must differ from human assertion audience');
++  }
++
++  const privateJwkInput = String(environment.LEAD_SERVICE_ASSERTION_PRIVATE_JWK_JSON || '').trim();
++  const privateJwkFile = String(environment.LEAD_SERVICE_ASSERTION_PRIVATE_JWK_FILE || '').trim();
++  if (!!privateJwkInput === !!privateJwkFile) {
++    throw new Error('Configure exactly one Lead SERVICE assertion private JWK source');
++  }
++  const privateJwk = json(
++    privateJwkInput || readFileSync(privateJwkFile, 'utf8'),
++    'LEAD_SERVICE_ASSERTION_PRIVATE_JWK_JSON'
++  ) as JsonWebKey;
++  if (
++    privateJwk.kty !== 'OKP' ||
++    privateJwk.crv !== 'Ed25519' ||
++    typeof privateJwk.x !== 'string' ||
++    typeof privateJwk.d !== 'string'
++  ) {
++    throw new Error('LEAD_SERVICE_ASSERTION_PRIVATE_JWK_JSON must be a private Ed25519 JWK');
++  }
++
++  const humanKeys = json(
++    required(environment, 'AGENT_AUTH_PUBLIC_KEYS_JSON'),
++    'AGENT_AUTH_PUBLIC_KEYS_JSON'
++  );
++  if (!Array.isArray(humanKeys) || humanKeys.length === 0) {
++    throw new Error('AGENT_AUTH_PUBLIC_KEYS_JSON must contain public Ed25519 keys');
++  }
++  if (
++    humanKeys.some(
++      (entry) =>
++        entry &&
++        typeof entry === 'object' &&
++        (entry as { publicJwk?: JsonWebKey }).publicJwk?.x === privateJwk.x
++    )
++  ) {
++    throw new Error('Lead SERVICE signing key must not reuse a human assertion key');
++  }
++
++  const redisPrefix = normalizedPrefix(
++    required(environment, 'LEAD_SERVICE_ASSERTION_REDIS_PREFIX'),
++    'LEAD_SERVICE_ASSERTION_REDIS_PREFIX'
++  );
++  if (
++    redisPrefix ===
++    normalizedPrefix(required(environment, 'AGENT_AUTH_REDIS_PREFIX'), 'AGENT_AUTH_REDIS_PREFIX')
++  ) {
++    throw new Error('Lead SERVICE assertion Redis prefix must differ from human assertion prefix');
++  }
++
++  const principalId = required(environment, 'LEAD_SERVICE_ASSERTION_PRINCIPAL_ID');
++  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{2,190}$/.test(principalId)) {
++    throw new Error('LEAD_SERVICE_ASSERTION_PRINCIPAL_ID must be a stable service identifier');
++  }
++
++  return {
++    appIds,
++    issuer: required(environment, 'LEAD_SERVICE_ASSERTION_ISSUER'),
++    audience,
++    ttlSeconds: integer(
++      environment,
++      'LEAD_SERVICE_ASSERTION_TOKEN_TTL_SECONDS',
++      300,
++      900,
++      300
++    ),
++    activeKid: required(environment, 'LEAD_SERVICE_ASSERTION_ACTIVE_KID'),
++    privateJwk,
++    principalId,
++    redisUrl: required(environment, 'LEAD_SERVICE_ASSERTION_REDIS_URL'),
++    redisPrefix,
++    rateLimitPerMinute: integer(
++      environment,
++      'LEAD_SERVICE_ASSERTION_RATE_LIMIT_PER_MINUTE',
++      1,
++      10000,
++      30
++    )
++  };
++};
++
++const digest = (value: string) => createHash('sha256').update(value).digest('hex');
++const base64url = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
++
++export const createRedisLeadServiceAssertionStateStore = (
++  redisUrl: string,
++  redisPrefix: string
++): LeadServiceAssertionStateStore => {
++  const redis = new Redis(redisUrl, {
++    lazyConnect: true,
++    maxRetriesPerRequest: 1,
++    enableReadyCheck: true
++  });
++  const ready = async () => {
++    if (redis.status === 'wait') await redis.connect();
++    return redis;
++  };
++
++  return {
++    async consume(subject, limit, windowSeconds) {
++      const client = await ready();
++      const count = await client.eval(
++        "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]); end; return n",
++        1,
++        `${redisPrefix}:rate:${digest(subject)}`,
++        String(windowSeconds)
++      );
++      return Number(count) <= limit;
++    },
++    async register(jti, ttlSeconds) {
++      const client = await ready();
++      await client.set(`${redisPrefix}:jti:${digest(jti)}`, 'active', 'EX', ttlSeconds);
++    }
++  };
++};
++
++export const createLeadServiceAssertionIssuer = (
++  config: LeadServiceAssertionConfig,
++  options: {
++    stateStore?: LeadServiceAssertionStateStore;
++    now?: () => Date;
++    createJti?: () => string;
++  } = {}
++) => {
++  const signingKey = createPrivateKey({ key: config.privateJwk, format: 'jwk' });
++  const stateStore =
++    options.stateStore ??
++    createRedisLeadServiceAssertionStateStore(config.redisUrl, config.redisPrefix);
++  const now = options.now ?? (() => new Date());
++  const createJti = options.createJti ?? randomUUID;
++
++  return {
++    async issue(appId: string) {
++      if (!config.appIds.has(appId)) return undefined;
++      if (!(await stateStore.consume(config.principalId, config.rateLimitPerMinute, 60))) {
++        throw new Error('Lead SERVICE assertion issuance rate limit exceeded');
++      }
++      const issuedAt = Math.floor(now().getTime() / 1000);
++      const expiresAt = issuedAt + config.ttlSeconds;
++      const jti = createJti();
++      const header = base64url({ alg: 'EdDSA', kid: config.activeKid, typ: 'JWT' });
++      const payload = base64url({
++        principalType: 'SERVICE',
++        scope: ['lead:create'],
++        iss: config.issuer,
++        sub: config.principalId,
++        aud: config.audience,
++        iat: issuedAt,
++        nbf: issuedAt,
++        exp: expiresAt,
++        jti
++      });
++      const signingInput = `${header}.${payload}`;
++      const signature = sign(null, Buffer.from(signingInput), signingKey).toString('base64url');
++      await stateStore.register(jti, config.ttlSeconds);
++      return `${signingInput}.${signature}`;
++    }
++  };
++};
++
++let issuer: ReturnType<typeof createLeadServiceAssertionIssuer> | undefined;
++
++export const issueLeadServiceAssertionForApp = async (appId: string) => {
++  const config = loadLeadServiceAssertionConfig();
++  if (!config) return undefined;
++  issuer ??= createLeadServiceAssertionIssuer(config);
++  return issuer.issue(appId);
++};
+diff --git a/packages/service/core/app/mcp.ts b/packages/service/core/app/mcp.ts
+index f896e37..00c8b16 100644
+--- a/packages/service/core/app/mcp.ts
++++ b/packages/service/core/app/mcp.ts
+@@ -14,6 +14,8 @@ import { UserError } from '@fastgpt/global/common/error/utils';
+ import $RefParser from '@apidevtools/json-schema-ref-parser';
+ import { getLogger, LogCategories } from '../../common/logger';
+ import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
++import { getTrustedMcpHeaders } from '../workflow/utils/context';
++import { randomUUID } from 'node:crypto';
+ 
+ const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+ 
+@@ -212,6 +214,22 @@ const getErrorMessage = (error: unknown) => {
+   return String(error);
+ };
+ 
++export const createMcpRequestHeaders = (
++  configuredHeaders: Record<string, any>,
++  createRequestId: () => string = randomUUID
++) => {
++  const requestHeaders = Object.fromEntries(
++    Object.entries(configuredHeaders).filter(
++      ([name]) => !name.toLowerCase().startsWith('x-dachuan-')
++    )
++  );
++  const trustedHeaders = getTrustedMcpHeaders();
++  requestHeaders['x-dachuan-request-id'] =
++    trustedHeaders['x-dachuan-request-id'] || createRequestId();
++  Object.assign(requestHeaders, trustedHeaders);
++  return requestHeaders;
++};
++
+ export class MCPClient {
+   private client: Client;
+   private url: string;
+@@ -244,6 +262,7 @@ export class MCPClient {
+   private async doConnect(): Promise<Client> {
+     await assertMCPUrlNotInternal(this.url);
+     const safeFetch = createMcpSafeFetch();
++    const requestHeaders = createMcpRequestHeaders(this.headers);
+ 
+     // 避免连接重复，强制关闭一次
+     await this.client.close().catch(() => {});
+@@ -253,7 +272,7 @@ export class MCPClient {
+       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
+         fetch: safeFetch,
+         requestInit: {
+-          headers: this.headers
++          headers: requestHeaders
+         }
+       });
+       await this.client.connect(transport);
+@@ -268,12 +287,12 @@ export class MCPClient {
+           new SSEClientTransport(new URL(this.url), {
+             fetch: safeFetch,
+             requestInit: {
+-              headers: this.headers
++              headers: requestHeaders
+             },
+             eventSourceInit: {
+               fetch: (url, init) => {
+                 const mergedHeaders = {
+-                  ...this.headers
++                  ...requestHeaders
+                 };
+ 
+                 Object.assign(mergedHeaders, headersInitToRecord(init?.headers));
+diff --git a/packages/service/core/workflow/dispatch/index.ts b/packages/service/core/workflow/dispatch/index.ts
+index f5700e6..23ef334 100644
+--- a/packages/service/core/workflow/dispatch/index.ts
++++ b/packages/service/core/workflow/dispatch/index.ts
+@@ -66,6 +66,7 @@ import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
+ import { runWithContext } from '../utils/context';
+ import { createClientAbortTracker } from './utils/clientAbort';
+ import type { IncomingMessage } from 'node:http';
++import { randomUUID } from 'node:crypto';
+ import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
+ import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
+ import {
+@@ -83,6 +84,7 @@ import {
+ import { getWorkflowNodeRunParams } from './utils/runtime';
+ import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
+ import { getWorkflowSource } from './utils/source';
++import { issueLeadServiceAssertionForApp } from '../../app/dachuanLeadServiceAssertion';
+ 
+ const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
+ 
+@@ -103,6 +105,11 @@ type Props = Omit<
+   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
+   nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
+   agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
++  trustedMcpIdentity?: {
++    assertion: string;
++    requestId: string;
++  };
++  trustedMcpRequestId?: string;
+ };
+ type NodeResponseType = DispatchNodeResultType<{
+   [key: string]: any;
+@@ -256,12 +263,24 @@ export async function dispatchWorkFlow({
+     nodeResponseWriteConfig: data.nodeResponseWriteConfig
+   });
+ 
++  const leadServiceAssertion =
++    runningAppInfo.sourceType === ChatSourceTypeEnum.app
++      ? await issueLeadServiceAssertionForApp(String(runningAppInfo.sourceId))
++      : undefined;
++
+   // Init some props
+   return new Promise((resolve, reject) => {
+     runWithContext(
+       {
+         queryUrlTypeMap: {},
+-        mcpClientMemory: {}
++        mcpClientMemory: {},
++        trustedMcpIdentity: leadServiceAssertion ? undefined : data.trustedMcpIdentity,
++        trustedMcpServiceIdentity: leadServiceAssertion
++          ? {
++              assertion: leadServiceAssertion,
++              requestId: data.trustedMcpRequestId || randomUUID()
++            }
++          : undefined
+       },
+       (ctx) => {
+         runWorkflow({
+diff --git a/packages/service/core/workflow/utils/context.ts b/packages/service/core/workflow/utils/context.ts
+index ded706c..d05b1db 100644
+--- a/packages/service/core/workflow/utils/context.ts
++++ b/packages/service/core/workflow/utils/context.ts
+@@ -9,6 +9,14 @@ import type { MCPClient } from '../../app/mcp';
+ type ContextType = {
+   queryUrlTypeMap: Record<string, ChatFileTypeEnum>;
+   mcpClientMemory: Record<string, MCPClient>;
++  trustedMcpIdentity?: {
++    assertion: string;
++    requestId: string;
++  };
++  trustedMcpServiceIdentity?: {
++    assertion: string;
++    requestId: string;
++  };
+ };
+ 
+ export const WorkflowContext = new AsyncLocalStorage<ContextType>();
+@@ -24,6 +32,23 @@ export const getWorkflowContext = (): ContextType => {
+   return WorkflowContext.getStore()!;
+ };
+ 
++export const getTrustedMcpHeaders = (): Record<string, string> => {
++  const context = WorkflowContext.getStore();
++  const serviceIdentity = context?.trustedMcpServiceIdentity;
++  if (serviceIdentity) {
++    return {
++      'x-dachuan-service-assertion': serviceIdentity.assertion,
++      'x-dachuan-request-id': serviceIdentity.requestId
++    };
++  }
++  const identity = context?.trustedMcpIdentity;
++  if (!identity) return {};
++  return {
++    'x-dachuan-user-assertion': identity.assertion,
++    'x-dachuan-request-id': identity.requestId
++  };
++};
++
+ export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
+   const context = getWorkflowContext();
+   if (context) {
+diff --git a/packages/service/test/core/app/dachuanLeadServiceAssertion.test.ts b/packages/service/test/core/app/dachuanLeadServiceAssertion.test.ts
+new file mode 100644
+index 0000000..fb8f33c
+--- /dev/null
++++ b/packages/service/test/core/app/dachuanLeadServiceAssertion.test.ts
+@@ -0,0 +1,129 @@
++import { generateKeyPairSync, verify } from 'node:crypto';
++import { describe, expect, it, vi } from 'vitest';
++import {
++  createLeadServiceAssertionIssuer,
++  loadLeadServiceAssertionConfig
++} from '../../../core/app/dachuanLeadServiceAssertion';
++
++const createEnvironment = () => {
++  const serviceKeys = generateKeyPairSync('ed25519');
++  const humanKeys = generateKeyPairSync('ed25519');
++  const privateJwk = serviceKeys.privateKey.export({ format: 'jwk' });
++  const publicJwk = serviceKeys.publicKey.export({ format: 'jwk' });
++  const humanPublicJwk = humanKeys.publicKey.export({ format: 'jwk' });
++  return {
++    serviceKeys,
++    publicJwk,
++    environment: {
++      LEAD_SERVICE_ASSERTION_ENABLED: 'true',
++      LEAD_SERVICE_ASSERTION_APP_IDS: '0123456789abcdef01234567',
++      LEAD_SERVICE_ASSERTION_ISSUER: 'https://fastgpt.internal',
++      LEAD_SERVICE_ASSERTION_AUDIENCE: 'dachuanpro-lead-writer',
++      LEAD_SERVICE_ASSERTION_TOKEN_TTL_SECONDS: '300',
++      LEAD_SERVICE_ASSERTION_ACTIVE_KID: 'lead-service-2026-08',
++      LEAD_SERVICE_ASSERTION_PRIVATE_JWK_JSON: JSON.stringify(privateJwk),
++      LEAD_SERVICE_ASSERTION_PRINCIPAL_ID: 'fastgpt-lead-agent',
++      LEAD_SERVICE_ASSERTION_REDIS_URL: 'redis://lead-assertion.invalid:6379',
++      LEAD_SERVICE_ASSERTION_REDIS_PREFIX: 'dachuan:lead-service-assertion',
++      LEAD_SERVICE_ASSERTION_RATE_LIMIT_PER_MINUTE: '30',
++      AGENT_AUTH_AUDIENCE: 'dachuanpro-human-agent',
++      AGENT_AUTH_REDIS_PREFIX: 'dachuan:human-agent-auth',
++      AGENT_AUTH_PUBLIC_KEYS_JSON: JSON.stringify([
++        { kid: 'human-1', publicJwk: humanPublicJwk }
++      ])
++    }
++  };
++};
++
++describe('Dachuan Lead SERVICE assertion', () => {
++  it('does nothing when the feature is disabled or the application is not allowlisted', async () => {
++    expect(loadLeadServiceAssertionConfig({})).toBeUndefined();
++    const { environment } = createEnvironment();
++    const config = loadLeadServiceAssertionConfig(environment)!;
++    const stateStore = { consume: vi.fn(), register: vi.fn() };
++    const issuer = createLeadServiceAssertionIssuer(config, { stateStore });
++    await expect(issuer.issue('ffffffffffffffffffffffff')).resolves.toBeUndefined();
++    expect(stateStore.consume).not.toHaveBeenCalled();
++  });
++
++  it('issues only SERVICE lead:create claims and registers the jti before returning', async () => {
++    const { environment, serviceKeys } = createEnvironment();
++    const config = loadLeadServiceAssertionConfig(environment)!;
++    const stateStore = {
++      consume: vi.fn().mockResolvedValue(true),
++      register: vi.fn().mockResolvedValue(undefined)
++    };
++    const issuer = createLeadServiceAssertionIssuer(config, {
++      stateStore,
++      now: () => new Date('2026-08-17T00:00:00.000Z'),
++      createJti: () => 'lead-service-jti-0001'
++    });
++
++    const token = await issuer.issue('0123456789abcdef01234567');
++    const [encodedHeader, encodedPayload, encodedSignature] = token!.split('.');
++    const header = JSON.parse(Buffer.from(encodedHeader, 'base64url').toString('utf8'));
++    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
++
++    expect(header).toEqual({ alg: 'EdDSA', kid: 'lead-service-2026-08', typ: 'JWT' });
++    expect(payload).toMatchObject({
++      principalType: 'SERVICE',
++      scope: ['lead:create'],
++      iss: 'https://fastgpt.internal',
++      sub: 'fastgpt-lead-agent',
++      aud: 'dachuanpro-lead-writer',
++      jti: 'lead-service-jti-0001'
++    });
++    expect(payload.exp - payload.iat).toBe(300);
++    expect(
++      verify(
++        null,
++        Buffer.from(`${encodedHeader}.${encodedPayload}`),
++        serviceKeys.publicKey,
++        Buffer.from(encodedSignature, 'base64url')
++      )
++    ).toBe(true);
++    expect(stateStore.consume).toHaveBeenCalledWith('fastgpt-lead-agent', 30, 60);
++    expect(stateStore.register).toHaveBeenCalledWith('lead-service-jti-0001', 300);
++  });
++
++  it('rejects shared audience, signing key, Redis namespace and invalid TTL', () => {
++    const { environment, publicJwk } = createEnvironment();
++    expect(() =>
++      loadLeadServiceAssertionConfig({
++        ...environment,
++        LEAD_SERVICE_ASSERTION_AUDIENCE: environment.AGENT_AUTH_AUDIENCE
++      })
++    ).toThrow(/audience must differ/i);
++    expect(() =>
++      loadLeadServiceAssertionConfig({
++        ...environment,
++        AGENT_AUTH_PUBLIC_KEYS_JSON: JSON.stringify([{ kid: 'human-1', publicJwk }])
++      })
++    ).toThrow(/must not reuse/i);
++    expect(() =>
++      loadLeadServiceAssertionConfig({
++        ...environment,
++        LEAD_SERVICE_ASSERTION_REDIS_PREFIX: environment.AGENT_AUTH_REDIS_PREFIX
++      })
++    ).toThrow(/prefix must differ/i);
++    expect(() =>
++      loadLeadServiceAssertionConfig({
++        ...environment,
++        LEAD_SERVICE_ASSERTION_TOKEN_TTL_SECONDS: '901'
++      })
++    ).toThrow(/between 300 and 900/i);
++  });
++
++  it('refuses to issue when the dedicated issuer limit is exhausted', async () => {
++    const { environment } = createEnvironment();
++    const issuer = createLeadServiceAssertionIssuer(loadLeadServiceAssertionConfig(environment)!, {
++      stateStore: {
++        consume: vi.fn().mockResolvedValue(false),
++        register: vi.fn()
++      }
++    });
++    await expect(issuer.issue('0123456789abcdef01234567')).rejects.toThrow(
++      /rate limit exceeded/i
++    );
++  });
++});
+diff --git a/packages/service/test/core/app/mcp.test.ts b/packages/service/test/core/app/mcp.test.ts
+index b93be41..f399acd 100644
+--- a/packages/service/test/core/app/mcp.test.ts
++++ b/packages/service/test/core/app/mcp.test.ts
+@@ -24,6 +24,7 @@ import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamable
+ import {
+   MCPClient,
+   assertMCPUrlNotInternal,
++  createMcpRequestHeaders,
+   createMcpSafeFetch,
+   getMCPChildren
+ } from '../../../core/app/mcp';
+@@ -90,6 +91,23 @@ const getReachablePrivateHost = () => {
+ describe('MCPClient', () => {
+   const config = { url: 'https://example.com/mcp', headers: { Authorization: 'Bearer test' } };
+ 
++  it('creates a request id for admin discovery without accepting configured user identity', () => {
++    const headers = createMcpRequestHeaders(
++      {
++        Authorization: 'Bearer service-key',
++        'X-Dachuan-User-Assertion': 'untrusted-static-assertion',
++        'X-Dachuan-Service-Assertion': 'untrusted-static-service-assertion',
++        'X-Dachuan-Request-Id': 'untrusted-static-request'
++      },
++      () => 'admin-discovery-request'
++    );
++
++    expect(headers).toEqual({
++      Authorization: 'Bearer service-key',
++      'x-dachuan-request-id': 'admin-discovery-request'
++    });
++  });
++
+   describe('assertMCPUrlNotInternal', () => {
+     it('should reject localhost MCP endpoints', async () => {
+       await expect(assertMCPUrlNotInternal('http://localhost:3000/mcp')).rejects.toBe(
+diff --git a/packages/service/test/core/workflow/utils/context.test.ts b/packages/service/test/core/workflow/utils/context.test.ts
+index c94f22c..92c2df2 100644
+--- a/packages/service/test/core/workflow/utils/context.test.ts
++++ b/packages/service/test/core/workflow/utils/context.test.ts
+@@ -3,6 +3,7 @@ import {
+   parseUrlToFileType,
+   runWithContext,
+   getWorkflowContext,
++  getTrustedMcpHeaders,
+   updateWorkflowContextVal
+ } from '../../../../core/workflow/utils/context';
+ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+@@ -57,6 +58,60 @@ describe('WorkflowContext', () => {
+         });
+       });
+     });
++
++    it('keeps trusted MCP identity headers isolated across concurrent workflows', async () => {
++      const run = (assertion: string, requestId: string, delay: number) =>
++        new Promise<Record<string, string>>((resolve) => {
++          runWithContext(
++            {
++              ...createWorkflowContext({}),
++              trustedMcpIdentity: { assertion, requestId }
++            },
++            async () => {
++              await new Promise((done) => setTimeout(done, delay));
++              resolve(getTrustedMcpHeaders());
++            }
++          );
++        });
++
++      const expected = Array.from({ length: 48 }, (_, index) => ({
++        assertion: `assertion-user-${index % 4}-tab-${index % 3}`,
++        requestId: `request-user-${index % 4}-tab-${index % 3}-call-${index}`,
++        delay: (47 - index) % 7
++      }));
++      const actual = await Promise.all(
++        expected.map((item) => run(item.assertion, item.requestId, item.delay))
++      );
++
++      actual.forEach((headers, index) => {
++        expect(headers).toEqual({
++          'x-dachuan-user-assertion': expected[index].assertion,
++          'x-dachuan-request-id': expected[index].requestId
++        });
++      });
++    });
++
++    it('uses the SERVICE assertion exclusively for an allowlisted Lead workflow', () => {
++      runWithContext(
++        {
++          ...createWorkflowContext({}),
++          trustedMcpIdentity: {
++            assertion: 'human-assertion-must-not-leak',
++            requestId: 'human-request-id'
++          },
++          trustedMcpServiceIdentity: {
++            assertion: 'service-assertion',
++            requestId: 'lead-request-id'
++          }
++        },
++        () => {
++          expect(getTrustedMcpHeaders()).toEqual({
++            'x-dachuan-service-assertion': 'service-assertion',
++            'x-dachuan-request-id': 'lead-request-id'
++          });
++        }
++      );
++    });
+   });
+ 
+   describe('updateWorkflowContextVal', () => {
+diff --git a/projects/app/src/pages/api/v1/chat/completions.ts b/projects/app/src/pages/api/v1/chat/completions.ts
+index a91f5c4..fbfb2e1 100644
+--- a/projects/app/src/pages/api/v1/chat/completions.ts
++++ b/projects/app/src/pages/api/v1/chat/completions.ts
+@@ -318,6 +318,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
+       void titleSender.start();
+     }
+ 
++    const trustedMcpRequestId = (() => {
++      const requestId = req.headers['x-dachuan-request-id'];
++      return typeof requestId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(requestId)
++        ? requestId
++        : undefined;
++    })();
++    const trustedMcpIdentity = (() => {
++      const assertion = req.headers['x-dachuan-user-assertion'];
++      if (typeof assertion !== 'string' || !trustedMcpRequestId) {
++        return undefined;
++      }
++      return { assertion, requestId: trustedMcpRequestId };
++    })();
++
+     /* start flow controller */
+     const {
+       flowUsages,
+@@ -364,7 +378,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
+       nodeResponseWriteConfig: {
+         persistToDb: preparedRound.shouldPersistChatRound,
+         retainInMemory: shouldCollectFinalResponseData
+-      }
++      },
++      trustedMcpIdentity,
++      trustedMcpRequestId
+     });
+ 
+     const aiResponse: AIChatItemType & { dataId?: string } = {

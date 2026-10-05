@@ -1,0 +1,533 @@
+{
+  "name": "百度获客-PoC",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1c4bbc63-1ab1-41ae-939d-175cc238754e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://qianfan.baidubce.com/v2/ai_search/web_search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $('Search Config').item.json.search_keyword }}\"\n    }\n  ],\n  \"search_source\": \"baidu_search_v2\",\n  \"resource_type_filter\": [\n    {\n      \"type\": \"web\",\n      \"top_k\": 10\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        304,
+        -80
+      ],
+      "id": "87a9fa77-fd90-4adb-97c4-705b5142a113",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_BAIDU_SEARCH_CREDENTIAL",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "references",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        432,
+        160
+      ],
+      "id": "9aefc5ba-c487-45e1-9573-48dd480def00",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d9f5fd1d-b434-4f41-a9e5-1dc25d6d2543",
+              "name": "=search_keyword",
+              "value": "={{ $('Search Config').first().json.search_keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "369873f8-44ef-4dad-a69c-d8f90c3a44a8",
+              "name": "=title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "68bcacd5-a0e8-4834-b1fc-02d15fa98760",
+              "name": "=url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "a75f9f92-72c5-4a32-8cd7-74daafb4c652",
+              "name": "date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "ee7773d9-7f50-4675-9c15-a557c02a808d",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "df2b670a-0d42-4457-8593-0db9445d664d",
+              "name": "=source_site",
+              "value": "={{ $json.website }}",
+              "type": "string"
+            },
+            {
+              "id": "fd3fef08-3c98-42e7-aec4-b23f05865735",
+              "name": "source_type",
+              "value": "={{ $json.type }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        560,
+        -80
+      ],
+      "id": "33dd154d-5bbd-4ba0-a7cb-1698335b3d69",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const seen = new Set();\n\nreturn items.filter(item => {\n  const data = item.json;\n\n  const title = (data.title || '').trim();\n  const url = (data.url || '').trim();\n  const content = (data.content || '').trim();\n\n  // 删除明显无效结果\n  if (!title || !url || !content) {\n    return false;\n  }\n\n  // URL 去重，仅用于判断，不修改原始 URL\n  const normalizedUrl = url\n    .replace(/#.*$/, '')\n    .replace(/\\/$/, '');\n\n  if (seen.has(normalizedUrl)) {\n    return false;\n  }\n\n  seen.add(normalizedUrl);\n\n  return true;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        160
+      ],
+      "id": "c607151a-0a9d-4bfb-b190-32f17cc7a159",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastgpt-app:3000/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"appId\": \"6a85262812a4dee356cf78d7\",\n  \"chatId\": \"{{ 'N8N-E2E-' + $execution.id + '-' + $itemIndex }}\",\n  \"stream\": false,\n  \"detail\": false,\n  \"variables\": {\n    \"companyName\": \"\",\n    \"searchKeyword\": \"{{ $json.search_keyword }}\",\n    \"searchTitle\": \"{{ $json.title }}\",\n    \"sourceUrl\": \"{{ $json.url }}\",\n    \"sourceDate\": \"{{ $json.date }}\",\n    \"rawContent\": \"{{ $json.content }}\",\n    \"sourceSite\": \"{{ $json.source_site }}\",\n    \"sourceType\": \"{{ $json.source_type }}\"\n  },\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"分析当前搜索线索并输出最终 validatedLead。\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        784,
+        -80
+      ],
+      "id": "816d17e7-a67d-4309-909c-8ae501e4d61e",
+      "name": "HTTP Request1",
+      "executeOnce": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_FASTGPT_LEAD_AGENT_CREDENTIAL",
+          "name": "FastGPT Lead Agent"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((item, index) => {\n  const content = item.json?.choices?.[0]?.message?.content;\n\n  if (typeof content !== 'string' || !content.trim()) {\n    throw new Error(`FASTGPT_EMPTY_CONTENT item=${index}`);\n  }\n\n  let validatedLead;\n\n  try {\n    validatedLead = JSON.parse(content.trim());\n  } catch (error) {\n    throw new Error(\n      `FASTGPT_INVALID_JSON item=${index}: ${error.message}`\n    );\n  }\n\n  return {\n    json: {\n      fastgptChatId: item.json.id ?? null,\n      validatedLead\n    },\n    pairedItem: {\n      item: index\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        160
+      ],
+      "id": "5df7e36d-f367-4c5c-915d-13e2f4229828",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bb74c9cc-a662-407f-bb7b-d8ebf4fcd9bd",
+              "name": "companyName",
+              "value": "={{ $json.validatedLead.companyName }}",
+              "type": "string"
+            },
+            {
+              "id": "6df3b777-d6eb-4853-943b-c9aece056706",
+              "name": "source",
+              "value": "BAIDU_SEARCH",
+              "type": "string"
+            },
+            {
+              "id": "c56434fb-d1ad-4d55-b920-1198647396d3",
+              "name": "sourceUrl",
+              "value": "={{ $('Code in JavaScript').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "98d0ecd4-016f-493d-9b9f-4be9a6d92509",
+              "name": "searchKeyword",
+              "value": "={{ $('Code in JavaScript').item.json.search_keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "1f353ac9-38ae-4666-9d5d-3e652b6a17f1",
+              "name": "aiScore",
+              "value": "={{ $json.validatedLead.aiScore }}",
+              "type": "number"
+            },
+            {
+              "id": "f7c399a6-b841-4bd4-9af6-0ae5e3f64bab",
+              "name": "profile",
+              "value": "={{ $json.validatedLead.profile }}",
+              "type": "object"
+            },
+            {
+              "id": "2023ad4c-9dff-4f99-b082-bb78a809a023",
+              "name": "sourceModelVersion",
+              "value": "kimi-k2.6",
+              "type": "string"
+            },
+            {
+              "id": "4a6176d8-666d-40b1-ae39-76471dc8b384",
+              "name": "sourceSystem",
+              "value": "n8n-baidu-poc",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1024,
+        -80
+      ],
+      "id": "7cb3a98b-73bd-4220-ac9e-46d7b30fc327",
+      "name": "Lead MCP Payload"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction stableJsonValue(value) {\n  if (Array.isArray(value)) {\n    return value.map(stableJsonValue);\n  }\n\n  if (!value || typeof value !== 'object') {\n    return value;\n  }\n\n  return Object.fromEntries(\n    Object.entries(value)\n      .sort(([left], [right]) => left.localeCompare(right))\n      .map(([key, nested]) => [key, stableJsonValue(nested)])\n  );\n}\n\nfunction normalizedPayload(payload) {\n  return Object.fromEntries(\n    Object.entries(payload)\n      .filter(([, value]) => value !== undefined)\n      .sort(([left], [right]) => left.localeCompare(right))\n      .map(([key, value]) => [key, stableJsonValue(value)])\n  );\n}\n\nreturn items.map((item, index) => {\n  const payload = Object.fromEntries(\n    Object.entries(item.json)\n      .filter(([key]) => !['idempotencyKey', 'payloadHash'].includes(key))\n  );\n\n  const canonicalPayload = normalizedPayload(payload);\n  const canonicalJson = JSON.stringify(canonicalPayload);\n\n  return {\n    json: {\n      canonicalPayload,\n      canonicalJson\n    },\n    pairedItem: {\n      item: index\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        160
+      ],
+      "id": "9ecec12b-372c-4fdd-974f-807ccb94b344",
+      "name": "Canonical Lead Payload"
+    },
+    {
+      "parameters": {
+        "value": "={{ $json.canonicalJson }}",
+        "dataPropertyName": "payloadHash"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        -64
+      ],
+      "id": "53578390-eebe-4510-88d6-9440800ae9cb",
+      "name": "Lead Payload SHA256"
+    },
+    {
+      "parameters": {
+        "value": "={{ 'lead-idempotency-v2|' + $execution.id + '|' + $json.canonicalPayload.sourceSystem + '|' + $json.canonicalPayload.sourceUrl }}",
+        "dataPropertyName": "idempotencyDigest"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        160
+      ],
+      "id": "dfcc1460-13da-49ee-a617-54328446194f",
+      "name": "Lead Idempotency SHA256"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst allowedBusinessFields = [\n  'companyName',\n  'contactName',\n  'phone',\n  'email',\n  'source',\n  'sourceUrl',\n  'searchKeyword',\n  'aiScore',\n  'profile',\n  'sourceModelVersion',\n  'extractorVersion',\n  'sourceSystem',\n  'externalLeadId',\n];\n\nreturn items.map((item, index) => {\n  const {\n    canonicalPayload,\n    payloadHash,\n    idempotencyDigest,\n  } = item.json;\n\n  if (\n    !canonicalPayload ||\n    typeof canonicalPayload !== 'object' ||\n    Array.isArray(canonicalPayload)\n  ) {\n    throw new Error(`LEAD_CANONICAL_PAYLOAD_INVALID item=${index}`);\n  }\n\n  if (!/^[a-f0-9]{64}$/.test(String(payloadHash ?? ''))) {\n    throw new Error(`LEAD_PAYLOAD_HASH_INVALID item=${index}`);\n  }\n\n  if (!/^[a-f0-9]{64}$/.test(String(idempotencyDigest ?? ''))) {\n    throw new Error(`LEAD_IDEMPOTENCY_DIGEST_INVALID item=${index}`);\n  }\n\n  const idempotencyKey = `lead-v2-${idempotencyDigest}`;\n\n  const finalItem = {\n    idempotencyKey,\n    payloadHash,\n  };\n\n  for (const key of allowedBusinessFields) {\n    const value = canonicalPayload[key];\n\n    // undefined 不进入 3012。\n    if (value === undefined) continue;\n\n    // 3012 的 optional string 不接受 null。\n    if (\n      value === null &&\n      ['contactName', 'phone', 'email'].includes(key)\n    ) {\n      continue;\n    }\n\n    finalItem[key] = value;\n  }\n\n  if (\n    typeof finalItem.companyName !== 'string' ||\n    !finalItem.companyName.trim()\n  ) {\n    throw new Error(`LEAD_COMPANY_NAME_INVALID item=${index}`);\n  }\n\n  if (!['BAIDU_SEARCH', 'MANUAL', 'OTHER'].includes(finalItem.source)) {\n    throw new Error(`LEAD_SOURCE_INVALID item=${index}`);\n  }\n\n  if (\n    idempotencyKey.length < 16 ||\n    idempotencyKey.length > 191 ||\n    !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(idempotencyKey)\n  ) {\n    throw new Error(`LEAD_IDEMPOTENCY_KEY_INVALID item=${index}`);\n  }\n\n  return {\n    json: finalItem,\n    pairedItem: {\n      item: index,\n    },\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        -64
+      ],
+      "id": "e2caef40-c23f-42ff-8107-e00b10e560df",
+      "name": "Finalize Lead MCP Item"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length < 1 || items.length > 20) {\n  throw new Error(`LEAD_UPSERT_ITEMS_COUNT_INVALID count=${items.length}`);\n}\n\nreturn [\n  {\n    json: {\n      items: items.map((item) => item.json),\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        160
+      ],
+      "id": "61e11a06-9036-469c-b0f1-b1f7526d3d14",
+      "name": "Build Lead Upsert Args"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.29.0.1:3013/lead-upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1808,
+        32
+      ],
+      "id": "1825ac88-1e97-4345-a035-193734db20e4",
+      "name": "Lead MCP Upsert",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_LEAD_INGESTOR_CREDENTIAL",
+          "name": "Dachuan Lead Ingestor"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d680e52a-2e36-4933-9b4b-e104cbd7af7b",
+              "name": "search_keyword",
+              "value": "江苏国茂减速机股份有限公司 齿轮柔性生产线 技改",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        176,
+        160
+      ],
+      "id": "3c21acc1-ba71-403c-b551-9324ef21208e",
+      "name": "Search Config"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Search Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Lead MCP Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead MCP Payload": {
+      "main": [
+        [
+          {
+            "node": "Canonical Lead Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Canonical Lead Payload": {
+      "main": [
+        [
+          {
+            "node": "Lead Payload SHA256",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Payload SHA256": {
+      "main": [
+        [
+          {
+            "node": "Lead Idempotency SHA256",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Idempotency SHA256": {
+      "main": [
+        [
+          {
+            "node": "Finalize Lead MCP Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Lead MCP Item": {
+      "main": [
+        [
+          {
+            "node": "Build Lead Upsert Args",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Lead Upsert Args": {
+      "main": [
+        [
+          {
+            "node": "Lead MCP Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Config": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead MCP Upsert": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "630ce4c6-5a17-413e-b91f-8093c60d89b0",
+  "meta": {
+    "instanceId": "9858f115ab6f75e2024aacfec86950f9b02c965a8caac6a2f295dfb2e28ce72e"
+  },
+  "nodeGroups": [],
+  "id": "fnGok7xQF9tYB7WQ",
+  "tags": []
+}

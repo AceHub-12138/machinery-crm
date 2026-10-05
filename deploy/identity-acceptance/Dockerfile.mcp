@@ -1,0 +1,54 @@
+FROM node:20.20.2-bookworm-slim AS pnpm-toolchain
+WORKDIR /app
+ARG PNPM_VERSION=10.33.4
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates openssl \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    rm -rf /usr/local/lib/node_modules/pnpm; \
+    rm -f /usr/local/bin/pnpm /usr/local/bin/pnpx; \
+    corepack enable --install-directory /usr/local/bin; \
+    corepack prepare "pnpm@${PNPM_VERSION}" --activate; \
+    actual_version="$(pnpm --version)"; \
+    test "$actual_version" = "$PNPM_VERSION"; \
+    echo "PNPM_VERSION_GATE=PASS path=$(command -v pnpm) resolved=$(readlink -f "$(command -v pnpm)") version=$actual_version"
+
+FROM pnpm-toolchain AS dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+FROM dependencies AS build
+WORKDIR /app
+ARG DATABASE_URL=mysql://build_user:build_only@127.0.0.1:3306/build_only
+ENV DATABASE_URL=$DATABASE_URL
+COPY . .
+RUN pnpm exec prisma generate
+RUN pnpm build
+RUN set -eux; \
+    prisma_generated="$(find node_modules/.pnpm -type d -path '*/node_modules/.prisma' -print -quit)"; \
+    test -n "$prisma_generated"; \
+    test -d node_modules/@prisma; \
+    echo "PRISMA_GENERATED_PATH=$prisma_generated"; \
+    mkdir -p /runtime-prisma; \
+    cp -aL "$prisma_generated" /runtime-prisma/.prisma; \
+    cp -aL node_modules/@prisma /runtime-prisma/@prisma
+
+FROM node:20.20.2-bookworm-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3010
+ENV HOSTNAME=0.0.0.0
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates openssl \
+    && rm -rf /var/lib/apt/lists/*
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/public ./public
+RUN rm -rf ./node_modules/@prisma
+COPY --from=build --chown=nextjs:nodejs /runtime-prisma/.prisma ./node_modules/.prisma
+COPY --from=build --chown=nextjs:nodejs /runtime-prisma/@prisma ./node_modules/@prisma
+USER nextjs
+EXPOSE 3010
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:3010/api/mcp/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+CMD ["node", "server.js"]

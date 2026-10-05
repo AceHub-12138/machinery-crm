@@ -1,0 +1,1038 @@
+name: 验证 ERP 第四期候选 Artifact（Linux + MySQL 5.7）
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: "成功的 standalone 构建 Run ID"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: validate-phase4-artifact-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ format('ci-{0}-{1}', github.run_id, github.run_attempt) }}
+          MYSQL_DATABASE: machinery_crm_phase4_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-${{ github.run_id }}-${{ github.run_attempt }}"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      EXPECTED_ARTIFACT_NAME: machinery-crm-prebuilt-standalone
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      SMOKE_DB_PASSWORD: ${{ format('ci-{0}-{1}', github.run_id, github.run_attempt) }}
+      AUTH_SECRET: ${{ format('auth-{0}-{1}-{2}', github.run_id, github.run_attempt, github.sha) }}
+      AUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      PORT: "3000"
+      HOSTNAME: 127.0.0.1
+      ERP_CRON_SECRET: ${{ format('cron-{0}-{1}-{2}', github.run_id, github.run_attempt, github.sha) }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: 检出临时验证分支
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 锁定当前提交和成功的构建 Run
+        run: |
+          set -Eeuo pipefail
+          echo "DATABASE_URL=mysql://root:${SMOKE_DB_PASSWORD}@127.0.0.1:3306/machinery_crm_phase4_test" >> "$GITHUB_ENV"
+          upload_dir="$RUNNER_TEMP/phase4-persistent-uploads"
+          mkdir -p "$upload_dir"
+          echo "UPLOAD_DIR=$upload_dir" >> "$GITHUB_ENV"
+          run_json="$RUNNER_TEMP/build-run.json"
+          curl -fsSL --retry 3 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" \
+            -o "$run_json"
+          jq -e --arg sha "$GITHUB_SHA" '.head_sha == $sha and .status == "completed" and .conclusion == "success"' "$run_json" >/dev/null
+          echo "EXPECTED_SOURCE_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
+
+      - name: 安装 Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 下载并锁定精确 Artifact
+        run: |
+          set -Eeuo pipefail
+          smoke_dir="$RUNNER_TEMP/phase4-artifact-smoke"
+          download_dir="$smoke_dir/download"
+          extract_dir="$smoke_dir/extracted"
+          mkdir -p "$download_dir" "$extract_dir"
+
+          artifacts_json="$smoke_dir/artifacts.json"
+          curl -fsSL --retry 3 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID/artifacts" \
+            -o "$artifacts_json"
+          artifact_id="$(jq -er --arg name "$EXPECTED_ARTIFACT_NAME" '[.artifacts[] | select(.name == $name and .expired == false)] | if length == 1 then .[0].id else error("artifact count must be one") end' "$artifacts_json")"
+
+          artifact_zip="$download_dir/machinery-crm-prebuilt-standalone.zip"
+          curl -fsSL --retry 3 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" \
+            -o "$artifact_zip"
+          zip_sha256="$(sha256sum "$artifact_zip" | awk '{print $1}')"
+
+          unzip -q "$artifact_zip" -d "$download_dir/artifact"
+          mapfile -t tarballs < <(find "$download_dir/artifact" -maxdepth 1 -type f -name '*.tar.gz' -print)
+          test "${#tarballs[@]}" -eq 1
+          candidate_tar="${tarballs[0]}"
+          tar_sha256="$(sha256sum "$candidate_tar" | awk '{print $1}')"
+
+          tar -xzf "$candidate_tar" -C "$extract_dir"
+          mapfile -t app_dirs < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d -print)
+          test "${#app_dirs[@]}" -eq 1
+          app_dir="${app_dirs[0]}"
+
+          echo "SMOKE_DIR=$smoke_dir" >> "$GITHUB_ENV"
+          echo "APP_DIR=$app_dir" >> "$GITHUB_ENV"
+          echo "SEED_JSON=$smoke_dir/seed.json" >> "$GITHUB_ENV"
+          echo "APP_LOG=$smoke_dir/application.log" >> "$GITHUB_ENV"
+          echo "SMOKE_RESULT=$smoke_dir/smoke-result.json" >> "$GITHUB_ENV"
+          echo "ARTIFACT_ZIP=$artifact_zip" >> "$GITHUB_ENV"
+          echo "CANDIDATE_TAR=$candidate_tar" >> "$GITHUB_ENV"
+          echo "ARTIFACT_ID=$artifact_id" >> "$GITHUB_ENV"
+          echo "ZIP_SHA256=$zip_sha256" >> "$GITHUB_ENV"
+          echo "TAR_SHA256=$tar_sha256" >> "$GITHUB_ENV"
+          echo "TAR_NAME=$(basename "$candidate_tar")" >> "$GITHUB_ENV"
+
+          printf 'Artifact %s (%s) from run %s and commit %s verified.\n' \
+            "$EXPECTED_ARTIFACT_NAME" "$artifact_id" "$BUILD_RUN_ID" "$EXPECTED_SOURCE_SHA"
+          printf 'ZIP SHA256: %s\ntar.gz SHA256: %s\n' "$zip_sha256" "$tar_sha256"
+
+      - name: 检查候选包独立运行结构
+        run: |
+          set -Eeuo pipefail
+          test -f "$APP_DIR/server.js"
+          test -f "$APP_DIR/start-standalone.cjs"
+          test -f "$APP_DIR/package.json"
+          test -f "$APP_DIR/prisma/schema.prisma"
+          test -d "$APP_DIR/prisma/migrations"
+          test -d "$APP_DIR/.next/static"
+          find "$APP_DIR/.next/static" -type f -name '*.css' -print -quit | grep -q .
+          find "$APP_DIR/.next/static" -type f -name '*.js' -print -quit | grep -q .
+          test -d "$APP_DIR/node_modules/.prisma/client"
+          test -f "$APP_DIR/node_modules/prisma/build/index.js"
+          find "$APP_DIR/node_modules/.prisma/client" -type f -name 'libquery_engine-*.so.node' -print -quit | grep -q .
+          test -z "$(find "$APP_DIR" -type f \( -name '*windows*' -o -name 'query_engine*.dll.node' \) -print -quit)"
+          test ! -d "$APP_DIR/prisma/migrations/migrations"
+          test ! -e "$APP_DIR/.env"
+          test ! -d "$APP_DIR/src/app/uploads"
+          mapfile -t migration_dirs < <(find "$APP_DIR/prisma/migrations" -mindepth 1 -maxdepth 1 -type d -print)
+          mapfile -t source_migration_dirs < <(find "$GITHUB_WORKSPACE/prisma/migrations" -mindepth 1 -maxdepth 1 -type d -print)
+          test "${#migration_dirs[@]}" -eq "${#source_migration_dirs[@]}"
+          for migration_dir in "${migration_dirs[@]}"; do
+            test -f "$migration_dir/migration.sql"
+          done
+          migration_manifest() {
+            local root="$1"
+            while IFS= read -r relative_path; do
+              printf '%s  %s\n' "$(sha256sum "$root/$relative_path" | awk '{print $1}')" "$relative_path"
+            done < <(find "$root" -mindepth 2 -maxdepth 2 -type f -name migration.sql -printf '%P\n' | sort)
+          }
+          migration_manifest "$GITHUB_WORKSPACE/prisma/migrations" > "$SMOKE_DIR/source-migrations.sha256"
+          migration_manifest "$APP_DIR/prisma/migrations" > "$SMOKE_DIR/artifact-migrations.sha256"
+          diff -u "$SMOKE_DIR/source-migrations.sha256" "$SMOKE_DIR/artifact-migrations.sha256"
+          echo "EXPECTED_MIGRATION_COUNT=${#source_migration_dirs[@]}" >> "$GITHUB_ENV"
+
+          if find "$APP_DIR" -type l -print -quit | grep -q .; then
+            echo "Candidate package contains symbolic links" >&2
+            exit 1
+          fi
+
+          printf 'Candidate root: %s\n' "$APP_DIR"
+          find "$APP_DIR/node_modules/.prisma/client" -type f -name 'libquery_engine-*.so.node' -printf '%f\n' | sort -u
+
+      - name: 使用候选包 Prisma CLI 执行 MySQL 5.7 migration
+        run: |
+          set -Eeuo pipefail
+          cd "$APP_DIR"
+          node node_modules/prisma/build/index.js -v | tee "$SMOKE_DIR/prisma-version.log"
+          node node_modules/prisma/build/index.js migrate deploy \
+            --schema=prisma/schema.prisma | tee "$SMOKE_DIR/migrate-deploy.log"
+          node node_modules/prisma/build/index.js migrate status \
+            --schema=prisma/schema.prisma | tee "$SMOKE_DIR/migrate-status.log"
+          grep -q 'Database schema is up to date' "$SMOKE_DIR/migrate-status.log"
+
+      - name: 验证带历史采购库存工单数据的增量升级
+        run: |
+          set -Eeuo pipefail
+          upgrade_url="mysql://root:${SMOKE_DB_PASSWORD}@127.0.0.1:3306/machinery_crm_phase4_upgrade"
+          create_script="$SMOKE_DIR/create-upgrade-db.mjs"
+          cat > "$create_script" <<'NODE'
+          import path from "node:path";
+          import { createRequire } from "node:module";
+          const require = createRequire(path.join(process.env.APP_DIR, "package.json"));
+          const { PrismaClient } = require("@prisma/client");
+          const admin = new PrismaClient();
+          try { await admin.$executeRawUnsafe("CREATE DATABASE machinery_crm_phase4_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } finally { await admin.$disconnect(); }
+          NODE
+          node "$create_script"
+
+          upgrade_prisma="$SMOKE_DIR/upgrade-prisma"
+          cp -a "$APP_DIR/prisma" "$upgrade_prisma"
+          rm -rf "$upgrade_prisma/migrations/20260715100000_erp_phase4_procurement_delivery"
+          DATABASE_URL="$upgrade_url" node "$APP_DIR/node_modules/prisma/build/index.js" migrate deploy --schema="$upgrade_prisma/schema.prisma"
+
+          seed_upgrade="$SMOKE_DIR/seed-upgrade.mjs"
+          cat > "$seed_upgrade" <<'NODE'
+          import path from "node:path";
+          import { createRequire } from "node:module";
+          const require = createRequire(path.join(process.env.APP_DIR, "package.json"));
+          const { PrismaClient } = require("@prisma/client");
+          const prisma = new PrismaClient({ datasources: { db: { url: process.env.UPGRADE_DATABASE_URL } } });
+          try {
+            await prisma.$executeRawUnsafe("INSERT INTO erp_material_categories (id,name,code,createdAt) VALUES ('legacy-cat','历史分类','LEGACY-CAT',NOW(3))");
+            await prisma.$executeRawUnsafe("INSERT INTO erp_warehouses (id,name,code,isActive,createdAt) VALUES ('legacy-wh','历史仓库','LEGACY-WH',1,NOW(3))");
+            await prisma.$executeRawUnsafe("INSERT INTO erp_materials (id,code,name,categoryId,unit,standardPrice,safetyStock,isActive,createdAt,updatedAt) VALUES ('legacy-mat','LEGACY-MAT','历史采购物料','legacy-cat','件',10,5,1,NOW(3),NOW(3))");
+            await prisma.$executeRawUnsafe("INSERT INTO erp_inventories (id,warehouseId,materialId,quantity,totalAmount,avgPrice,createdAt,updatedAt) VALUES ('legacy-inv','legacy-wh','legacy-mat',7,70,10,NOW(3),NOW(3))");
+            await prisma.$executeRawUnsafe("INSERT INTO erp_suppliers (id,name,isActive,createdAt,updatedAt) VALUES ('legacy-supplier','历史供应商',1,NOW(3),NOW(3))");
+            await prisma.$executeRawUnsafe("INSERT INTO erp_purchase_orders (id,orderNo,supplierId,supplierNameSnapshot,orderDate,status,createdById,createdAt,updatedAt) VALUES ('legacy-po','LEGACY-PO','legacy-supplier','历史供应商',NOW(3),'PARTIAL_RECEIVED','legacy-user',NOW(3),NOW(3))");
+            await prisma.$executeRawUnsafe("INSERT INTO erp_purchase_order_items (id,purchaseOrderId,materialId,materialCodeSnapshot,materialNameSnapshot,quantity,unitPrice,amount,receivedQuantity,sortOrder,createdAt) VALUES ('legacy-po-item','legacy-po','legacy-mat','LEGACY-MAT','历史采购物料',10,10,100,3,0,NOW(3))");
+            await prisma.$executeRawUnsafe("INSERT INTO erp_production_orders (id,orderNo,isStockOrder,productId,productModelSnapshot,productNameSnapshot,quantity,bomId,bomVersionSnapshot,warehouseId,plannedDate,status,version,isCurrent,createdById,createdAt,updatedAt) VALUES ('legacy-prod','LEGACY-PROD',1,'legacy-product','LEGACY-MODEL','历史备货工单',1,'legacy-bom','v1','legacy-wh',CURRENT_DATE,'ISSUED',1,1,'legacy-user',NOW(3),NOW(3))");
+          } finally { await prisma.$disconnect(); }
+          NODE
+          UPGRADE_DATABASE_URL="$upgrade_url" node "$seed_upgrade"
+
+          DATABASE_URL="$upgrade_url" node "$APP_DIR/node_modules/prisma/build/index.js" migrate deploy --schema="$APP_DIR/prisma/schema.prisma" | tee "$SMOKE_DIR/upgrade-migrate.log"
+          verify_upgrade="$SMOKE_DIR/verify-upgrade.mjs"
+          cat > "$verify_upgrade" <<'NODE'
+          import path from "node:path";
+          import { createRequire } from "node:module";
+          const require = createRequire(path.join(process.env.APP_DIR, "package.json"));
+          const { PrismaClient } = require("@prisma/client");
+          const prisma = new PrismaClient({ datasources: { db: { url: process.env.UPGRADE_DATABASE_URL } } });
+          const assert = (condition, message) => { if (!condition) throw new Error(message); };
+          try {
+            const material = await prisma.material.findUnique({ where: { id: "legacy-mat" } });
+            const inventory = await prisma.inventory.findUnique({ where: { id: "legacy-inv" } });
+            const order = await prisma.purchaseOrder.findUnique({ where: { id: "legacy-po" } });
+            const item = await prisma.purchaseOrderItem.findUnique({ where: { id: "legacy-po-item" } });
+            const production = await prisma.productionOrder.findUnique({ where: { id: "legacy-prod" } });
+            assert(material && Number(material.safetyStock) === 5 && material.safetyStockEnabled === false && material.autoPurchaseDraftEnabled === false, "Material defaults or legacy safety stock changed");
+            assert(inventory && Number(inventory.quantity) === 7, "Historical inventory changed during migration");
+            assert(order?.status === "PARTIAL_RECEIVED" && Number(item?.receivedQuantity) === 3 && item?.deliveryStatus === "NOT_DELIVERED", "Historical purchase data or new defaults are incorrect");
+            assert(production?.status === "ISSUED" && production.kitCheckRequired === true && production.kitCheckStatus === "NOT_CHECKED", "Historical production order or kit defaults are incorrect");
+            const migrations = await prisma.$queryRawUnsafe("SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL");
+            assert(migrations.length === Number(process.env.EXPECTED_MIGRATION_COUNT), "Upgrade database migration count mismatch");
+            console.log(JSON.stringify({ historicalInventory: Number(inventory.quantity), historicalReceived: Number(item.receivedQuantity), materialSafetyStock: Number(material.safetyStock), migrationCount: migrations.length }));
+          } finally { await prisma.$disconnect(); }
+          NODE
+          UPGRADE_DATABASE_URL="$upgrade_url" node "$verify_upgrade" | tee "$SMOKE_DIR/upgrade-result.json"
+
+      - name: 生成临时账号密码
+        run: |
+          set -Eeuo pipefail
+          smoke_password="$(openssl rand -hex 24)"
+          echo "::add-mask::$smoke_password"
+          if ! command -v htpasswd >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq apache2-utils
+          fi
+          smoke_password_hash="$(htpasswd -bnBC 12 '' "$smoke_password" | tr -d ':\n')"
+          smoke_password_hash="${smoke_password_hash/\$2y\$/\$2b\$}"
+          echo "::add-mask::$smoke_password_hash"
+          echo "SMOKE_PASSWORD=$smoke_password" >> "$GITHUB_ENV"
+          echo "SMOKE_PASSWORD_HASH=$smoke_password_hash" >> "$GITHUB_ENV"
+
+      - name: 使用候选包 Prisma Client 建立最小测试数据
+        run: |
+          set -Eeuo pipefail
+          seed_script="$SMOKE_DIR/seed.mjs"
+          cat > "$seed_script" <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+          import { createRequire } from "node:module";
+
+          const candidateRequire = createRequire(path.join(process.env.APP_DIR, "package.json"));
+          const { PrismaClient, Prisma } = candidateRequire("@prisma/client");
+          const prisma = new PrismaClient();
+
+          const assert = (condition, message) => {
+            if (!condition) throw new Error(message);
+          };
+
+          try {
+            const versionRows = await prisma.$queryRawUnsafe("SELECT VERSION() AS version");
+            const mysqlVersion = String(versionRows[0]?.version || "");
+            assert(mysqlVersion.startsWith("5.7."), `Expected MySQL 5.7, received ${mysqlVersion}`);
+
+            const migrations = await prisma.$queryRawUnsafe(
+              "SELECT migration_name, finished_at, rolled_back_at FROM _prisma_migrations ORDER BY started_at"
+            );
+            const expectedMigrationCount = Number(process.env.EXPECTED_MIGRATION_COUNT);
+            assert(migrations.length === expectedMigrationCount, `Expected ${expectedMigrationCount} migrations, received ${migrations.length}`);
+            assert(migrations.every((row) => row.finished_at && !row.rolled_back_at), "Found failed or rolled-back migration");
+            const migrationNames = new Set(migrations.map((row) => row.migration_name));
+            assert(migrationNames.has("20260714100000_erp_phase4_round1_roles_contract_item"), "Round 1 migration is missing");
+            assert(migrationNames.has("20260714130000_reconcile_legacy_schema_history"), "Reconcile migration is missing");
+            assert(migrationNames.has("20260715100000_erp_phase4_procurement_delivery"), "Procurement delivery migration is missing");
+
+            const indexRows = await prisma.$queryRawUnsafe(
+              "SELECT MAX(CHAR_LENGTH(INDEX_NAME)) AS max_length FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()"
+            );
+            const constraintRows = await prisma.$queryRawUnsafe(
+              "SELECT MAX(CHAR_LENGTH(CONSTRAINT_NAME)) AS max_length FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE()"
+            );
+            const maxIndexLength = Number(indexRows[0]?.max_length || 0);
+            const maxConstraintLength = Number(constraintRows[0]?.max_length || 0);
+            assert(maxIndexLength <= 64, `Index name exceeds 64 characters: ${maxIndexLength}`);
+            assert(maxConstraintLength <= 64, `Constraint name exceeds 64 characters: ${maxConstraintLength}`);
+
+            const suffix = process.env.GITHUB_RUN_ID;
+            const commonUser = {
+              password: process.env.SMOKE_PASSWORD_HASH,
+              region: "其他",
+              territories: [],
+              viewScope: "TERRITORY",
+              isActive: true,
+            };
+            const superAdmin = await prisma.user.create({
+              data: { ...commonUser, email: `phase4.super.${suffix}@test.invalid`, name: "Phase4 Super", role: "SUPER_ADMIN", viewScope: "ALL" },
+            });
+            const purchaseUser = await prisma.user.create({
+              data: { ...commonUser, email: `phase4.purchase.${suffix}@test.invalid`, name: "Phase4 Purchase", role: "PURCHASE" },
+            });
+            const warehouseUser = await prisma.user.create({
+              data: { ...commonUser, email: `phase4.warehouse.${suffix}@test.invalid`, name: "Phase4 Warehouse", role: "WAREHOUSE" },
+            });
+            const salesUser = await prisma.user.create({
+              data: {
+                ...commonUser,
+                email: `phase4.sales.${suffix}@test.invalid`,
+                name: "Phase4 Sales",
+                role: "SALES",
+                region: "山东省",
+                territories: [{ province: "山东省", cities: ["滕州市"] }],
+              },
+            });
+            const foreignTradeUser = await prisma.user.create({
+              data: {
+                ...commonUser,
+                email: `phase4.foreign.${suffix}@test.invalid`,
+                name: "Phase4 Foreign",
+                role: "FOREIGN_TRADE",
+                region: "国外",
+                territories: [{ province: "国外", cities: [] }],
+              },
+            });
+
+            const product = await prisma.product.create({
+              data: {
+                model: `PH4-CLOUD-${suffix}`,
+                category: "隔离验证设备",
+                productType: "MAIN",
+                translations: { create: { language: "ZH", name: "第四期云端隔离验证设备" } },
+              },
+            });
+            const warehouse = await prisma.warehouse.create({
+              data: { name: "Dachuan", code: `PH4-WH-${suffix}`, isActive: true },
+            });
+            const normalCategory = await prisma.materialCategory.create({
+              data: { name: "普通物料", code: `PH4-NORMAL-${suffix}` },
+            });
+            const packageCategory = await prisma.materialCategory.create({
+              data: { name: "零件包", code: `PH4-PACKAGE-${suffix}` },
+            });
+            const level1 = await prisma.material.create({
+              data: { code: `PH4-L1-${suffix}`, name: "一级零件包", categoryId: packageCategory.id, unit: "件" },
+            });
+            const level2 = await prisma.material.create({
+              data: { code: `PH4-L2-${suffix}`, name: "二级零件包", categoryId: packageCategory.id, unit: "件" },
+            });
+            const leaf = await prisma.material.create({
+              data: { code: `PH4-LEAF-${suffix}`, name: "汇总叶子物料", categoryId: normalCategory.id, unit: "件", standardPrice: new Prisma.Decimal(10), autoPurchaseDraftEnabled: true },
+            });
+            const bom = await prisma.bomHeader.create({
+              data: { productId: product.id, version: `v-cloud-${suffix}`, isActive: true },
+            });
+            const rootPackage = await prisma.bomItem.create({
+              data: { bomId: bom.id, materialId: level1.id, quantity: new Prisma.Decimal(2), level: 1, sortOrder: 0 },
+            });
+            const childPackage = await prisma.bomItem.create({
+              data: { bomId: bom.id, materialId: level2.id, quantity: new Prisma.Decimal(3), level: 2, parentItemId: rootPackage.id, sortOrder: 1 },
+            });
+            await prisma.bomItem.create({
+              data: { bomId: bom.id, materialId: leaf.id, quantity: new Prisma.Decimal(4), level: 3, parentItemId: childPackage.id, sortOrder: 2 },
+            });
+            await prisma.bomItem.create({
+              data: { bomId: bom.id, materialId: leaf.id, quantity: new Prisma.Decimal(5), level: 2, parentItemId: rootPackage.id, sortOrder: 3 },
+            });
+            await prisma.inventory.create({
+              data: {
+                warehouseId: warehouse.id,
+                materialId: leaf.id,
+                quantity: new Prisma.Decimal(10),
+                totalAmount: new Prisma.Decimal(100),
+                avgPrice: new Prisma.Decimal(10),
+              },
+            });
+            const supplier = await prisma.supplier.create({
+              data: { name: `Phase4 Supplier ${suffix}`, isActive: true },
+            });
+            const customer = await prisma.customer.create({
+              data: {
+                companyName: `Phase4 Customer ${suffix}`,
+                contactName: "Sensitive Contact",
+                phone: "13800000000",
+                province: "山东省",
+                city: "滕州市",
+                region: "山东省",
+                businessLine: "国内销售",
+                address: "SMOKE-SECRET-ADDRESS",
+                customerSource: "隔离验证",
+                customerType: "END_USER",
+                customerLevel: "A",
+                assignedUserId: salesUser.id,
+              },
+            });
+            const deliveryDate = new Date();
+            deliveryDate.setUTCDate(deliveryDate.getUTCDate() + 30);
+            const contract = await prisma.contract.create({
+              data: {
+                contractNo: `PH4-CLOUD-CONTRACT-${suffix}`,
+                signedDate: new Date(),
+                estimatedShipmentDate: deliveryDate,
+                customerId: customer.id,
+                salesUserId: salesUser.id,
+                productId: product.id,
+                equipmentName: "第四期云端隔离验证设备",
+                equipmentModel: product.model,
+                amount: new Prisma.Decimal(100000),
+                contractStatus: "SIGNED",
+                createdById: superAdmin.id,
+              },
+            });
+            const contractItem = await prisma.contractItem.create({
+              data: {
+                contractId: contract.id,
+                productId: product.id,
+                itemType: "MAIN",
+                productNameSnapshot: "第四期云端隔离验证设备",
+                productModelSnapshot: product.model,
+                contractPrice: new Prisma.Decimal(100000),
+                quantity: 2,
+                sortOrder: 0,
+              },
+            });
+
+            const seed = {
+              mysqlVersion,
+              migrationCount: migrations.length,
+              maxIndexLength,
+              maxConstraintLength,
+              accounts: {
+                superAdmin: { email: superAdmin.email, role: "SUPER_ADMIN" },
+                purchase: { email: purchaseUser.email, role: "PURCHASE" },
+                warehouse: { email: warehouseUser.email, role: "WAREHOUSE" },
+                sales: { email: salesUser.email, role: "SALES" },
+                foreignTrade: { email: foreignTradeUser.email, role: "FOREIGN_TRADE" },
+              },
+              ids: {
+                superAdminId: superAdmin.id,
+                purchaseUserId: purchaseUser.id,
+                productId: product.id,
+                warehouseId: warehouse.id,
+                normalCategoryId: normalCategory.id,
+                leafMaterialId: leaf.id,
+                bomId: bom.id,
+                supplierId: supplier.id,
+                contractId: contract.id,
+                contractItemId: contractItem.id,
+                warehouseUserId: warehouseUser.id,
+              },
+              plannedDate: deliveryDate.toISOString().slice(0, 10),
+              expected: { requiredQuantity: 34, inventoryQuantity: 10, shortageQuantity: 24 },
+            };
+            fs.writeFileSync(process.env.SEED_JSON, JSON.stringify(seed, null, 2));
+            console.log(JSON.stringify({ mysqlVersion, migrationCount: migrations.length, maxIndexLength, maxConstraintLength }));
+          } finally {
+            await prisma.$disconnect();
+          }
+          NODE
+          node "$seed_script"
+
+      - name: 从候选包启动 Standalone 应用
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$UPLOAD_DIR"
+          printf 'persistent upload marker\n' > "$UPLOAD_DIR/restart-marker.txt"
+          test "$(readlink -f "$UPLOAD_DIR")" != "$(readlink -f "$APP_DIR")"
+          cd "$APP_DIR"
+          node start-standalone.cjs > "$APP_LOG" 2>&1 &
+          app_pid=$!
+          echo "APP_PID=$app_pid" >> "$GITHUB_ENV"
+
+          status=""
+          for _ in {1..30}; do
+            status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/login || true)"
+            if [[ "$status" == "200" || "$status" == "302" || "$status" == "307" ]]; then
+              break
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              cat "$APP_LOG"
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$status" = "200"
+          printf 'Standalone ready with /login HTTP %s\n' "$status"
+
+      - name: 真实登录、页面、业务和权限烟测
+        run: |
+          set -Eeuo pipefail
+          smoke_script="$SMOKE_DIR/http-smoke.mjs"
+          cat > "$smoke_script" <<'NODE'
+          import fs from "node:fs";
+
+          const baseUrl = "http://127.0.0.1:3000";
+          const seed = JSON.parse(fs.readFileSync(process.env.SEED_JSON, "utf8"));
+
+          const assert = (condition, message) => {
+            if (!condition) throw new Error(message);
+          };
+
+          class CookieJar {
+            constructor() { this.cookies = new Map(); }
+            absorb(headers) {
+              const values = typeof headers.getSetCookie === "function"
+                ? headers.getSetCookie()
+                : [headers.get("set-cookie")].filter(Boolean);
+              for (const value of values) {
+                const pair = value.split(";", 1)[0];
+                const index = pair.indexOf("=");
+                if (index > 0) this.cookies.set(pair.slice(0, index), pair.slice(index + 1));
+              }
+            }
+            header() { return [...this.cookies.entries()].map(([key, value]) => `${key}=${value}`).join("; "); }
+          }
+
+          async function rawRequest(jar, pathname, options = {}) {
+            const headers = new Headers(options.headers || {});
+            if (jar?.header()) headers.set("cookie", jar.header());
+            const response = await fetch(`${baseUrl}${pathname}`, { ...options, headers, redirect: "manual" });
+            jar?.absorb(response.headers);
+            const text = await response.text();
+            let data = null;
+            if (text) {
+              try { data = JSON.parse(text); } catch { data = null; }
+            }
+            return { response, status: response.status, text, data };
+          }
+
+          async function expectRequest(jar, pathname, options, expectedStatuses) {
+            const result = await rawRequest(jar, pathname, options);
+            const allowed = Array.isArray(expectedStatuses) ? expectedStatuses : [expectedStatuses];
+            if (!allowed.includes(result.status)) {
+              throw new Error(`${options?.method || "GET"} ${pathname} returned ${result.status}: ${result.text.slice(0, 500)}`);
+            }
+            return result;
+          }
+
+          async function login(account) {
+            const jar = new CookieJar();
+            const csrf = await expectRequest(jar, "/api/auth/csrf", {}, 200);
+            assert(csrf.data?.csrfToken, `CSRF token missing for ${account.role}`);
+            const form = new URLSearchParams({
+              csrfToken: csrf.data.csrfToken,
+              email: account.email,
+              password: process.env.SMOKE_PASSWORD,
+              callbackUrl: `${baseUrl}/dashboard`,
+              redirect: "false",
+            });
+            await expectRequest(jar, "/api/auth/callback/credentials", {
+              method: "POST",
+              headers: { "content-type": "application/x-www-form-urlencoded" },
+              body: form,
+            }, [200, 302, 303]);
+            const session = await expectRequest(jar, "/api/auth/session", {}, 200);
+            assert(session.data?.user?.role === account.role, `Real login failed for ${account.role}`);
+            return jar;
+          }
+
+          function findForbiddenKey(value, path = "root") {
+            if (!value || typeof value !== "object") return null;
+            if (Array.isArray(value)) {
+              for (let index = 0; index < value.length; index += 1) {
+                const found = findForbiddenKey(value[index], `${path}[${index}]`);
+                if (found) return found;
+              }
+              return null;
+            }
+            for (const [key, child] of Object.entries(value)) {
+              if (/customer|phone|address|invoice|tax/i.test(key)) return `${path}.${key}`;
+              const found = findForbiddenKey(child, `${path}.${key}`);
+              if (found) return found;
+            }
+            return null;
+          }
+
+          const unauthenticated = await expectRequest(null, "/api/erp/materials", {}, [401, 302, 307]);
+          if (unauthenticated.status === 401) {
+            assert(unauthenticated.data?.error, "Protected API did not return an authentication error");
+          } else {
+            const location = unauthenticated.response.headers.get("location") || "";
+            assert(location.includes("/login"), `Protected API redirected to unexpected location: ${location}`);
+          }
+
+          const loginPage = await expectRequest(null, "/login", {}, 200);
+          const staticAssets = [...new Set(
+            [...loginPage.text.matchAll(/(?:src|href)="(\/_next\/static\/[^"?]+)(?:\?[^\"]*)?"/g)]
+              .map((match) => match[1])
+          )];
+          assert(staticAssets.length > 0, "No static asset found in login HTML");
+          for (const asset of staticAssets) {
+            await expectRequest(null, asset, {}, 200);
+          }
+
+          const superJar = await login(seed.accounts.superAdmin);
+          const purchaseJar = await login(seed.accounts.purchase);
+          const warehouseJar = await login(seed.accounts.warehouse);
+          const salesJar = await login(seed.accounts.sales);
+          const foreignJar = await login(seed.accounts.foreignTrade);
+
+          const pages = [
+            "/dashboard",
+            "/users",
+            "/erp/materials",
+            "/erp/bom",
+            "/erp/production-orders",
+            "/erp/kit-check-results",
+            "/erp/purchase-orders",
+          ];
+          for (const page of pages) {
+            const result = await expectRequest(superJar, page, { headers: { accept: "text/html" } }, 200);
+            assert(!/Internal Server Error/i.test(result.text), `${page} contains a server error`);
+          }
+
+          const contractResult = await expectRequest(
+            superJar,
+            `/api/erp/production-contracts?contractId=${encodeURIComponent(seed.ids.contractId)}`,
+            {},
+            200
+          );
+          assert(Array.isArray(contractResult.data) && contractResult.data.length === 1, "Contract production source missing");
+          const forbiddenPath = findForbiddenKey(contractResult.data);
+          assert(!forbiddenPath, `Contract production source leaked sensitive key ${forbiddenPath}`);
+          const contractText = JSON.stringify(contractResult.data);
+          assert(!contractText.includes("13800000000") && !contractText.includes("SMOKE-SECRET-ADDRESS"), "Contract source leaked sensitive values");
+
+          const requestKey = `phase4-smoke-${process.env.GITHUB_RUN_ID}`;
+          const createPayload = {
+            contractId: seed.ids.contractId,
+            requestKey,
+            lines: [{
+              contractItemId: seed.ids.contractItemId,
+              productId: seed.ids.productId,
+              quantity: 1,
+              bomId: seed.ids.bomId,
+            }],
+            warehouseId: seed.ids.warehouseId,
+            plannedDate: seed.plannedDate,
+            responsibleId: seed.ids.warehouseUserId,
+            specialRequirements: "Cloud artifact smoke test",
+            remark: "Temporary runner data",
+          };
+          const firstCreate = await expectRequest(superJar, "/api/erp/production-orders/from-contract", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(createPayload),
+          }, 201);
+          const order = firstCreate.data?.items?.[0];
+          assert(order?.id && order.status === "DRAFT", "Contract-to-order draft creation failed");
+
+          const replay = await expectRequest(superJar, "/api/erp/production-orders/from-contract", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(createPayload),
+          }, 200);
+          assert(replay.data?.items?.[0]?.id === order.id, "Idempotent replay returned a different order");
+          const orderList = await expectRequest(superJar, "/api/erp/production-orders?pageSize=100", {}, 200);
+          const duplicateCount = orderList.data.items.filter((item) => item.sourceRequestKey === `${requestKey}:0`).length;
+          assert(duplicateCount === 1, `Idempotent request created ${duplicateCount} orders`);
+
+          const inventoryBeforeResult = await expectRequest(
+            superJar,
+            `/api/erp/inventory?warehouseId=${encodeURIComponent(seed.ids.warehouseId)}&pageSize=100`,
+            {},
+            200
+          );
+          const inventoryBefore = Number(inventoryBeforeResult.data.items.find((item) => item.materialId === seed.ids.leafMaterialId)?.quantity);
+          assert(inventoryBefore === seed.expected.inventoryQuantity, `Unexpected initial inventory ${inventoryBefore}`);
+
+          const issued = await expectRequest(superJar, `/api/erp/production-orders/${order.id}/issue`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: "{}",
+          }, 200);
+          assert(issued.data.status === "ISSUED", "Issued order is not in pending-kit-check state");
+          assert(Array.isArray(issued.data.materials) && issued.data.materials.length === 1, "BOM leaves were not aggregated");
+          assert(Number(issued.data.materials[0].requiredQuantity) === seed.expected.requiredQuantity, "Multi-level BOM multiplication is incorrect");
+
+          const firstKit = await expectRequest(superJar, `/api/erp/production-orders/${order.id}/kit-check`, { method: "POST" }, 201);
+          const secondKit = await expectRequest(superJar, `/api/erp/production-orders/${order.id}/kit-check`, { method: "POST" }, 201);
+          for (const result of [firstKit.data, secondKit.data]) {
+            assert(result.status === "SHORTAGE", "Kit check status should be shortage");
+            assert(Array.isArray(result.detail) && result.detail.length === 1, "Kit check did not aggregate the leaf material");
+            assert(Number(result.detail[0].totalRequiredQty) === seed.expected.requiredQuantity, "Kit check required quantity is incorrect");
+            assert(Number(result.detail[0].shortageQty) === seed.expected.shortageQuantity, "Kit check shortage quantity is incorrect");
+          }
+
+          const kitHistory = await expectRequest(
+            superJar,
+            `/api/erp/kit-check-results?orderNo=${encodeURIComponent(issued.data.orderNo)}`,
+            {},
+            200
+          );
+          const orderKitHistory = kitHistory.data.items.filter((item) => item.productionOrderId === order.id);
+          assert(firstKit.data.id !== secondKit.data.id, "Manual kit-check requests returned the same history record");
+          assert(orderKitHistory.some((item) => item.id === firstKit.data.id) && orderKitHistory.some((item) => item.id === secondKit.data.id), "Independent manual kit-check history records were not retained");
+          const inventoryAfterResult = await expectRequest(
+            superJar,
+            `/api/erp/inventory?warehouseId=${encodeURIComponent(seed.ids.warehouseId)}&pageSize=100`,
+            {},
+            200
+          );
+          const inventoryAfter = Number(inventoryAfterResult.data.items.find((item) => item.materialId === seed.ids.leafMaterialId)?.quantity);
+          assert(inventoryAfter === inventoryBefore, "Kit check changed inventory quantity");
+
+          await expectRequest(purchaseJar, "/api/erp/purchase-orders", {}, 200);
+          await expectRequest(purchaseJar, "/api/erp/production-orders", {}, 200);
+          await expectRequest(purchaseJar, "/api/erp/kit-check-results", {}, 200);
+          const procurementView = await expectRequest(purchaseJar, `/api/erp/production-orders/${order.id}`, {}, 200);
+          assert(!findForbiddenKey(procurementView.data), "Purchase production view leaked customer data");
+          await expectRequest(purchaseJar, "/api/erp/stock-in", {
+            method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+          }, 403);
+          await expectRequest(purchaseJar, "/api/erp/boms", {
+            method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+          }, 403);
+          await expectRequest(purchaseJar, "/api/users", {}, 403);
+
+          const purchasePayload = {
+            supplierId: seed.ids.supplierId,
+            orderDate: new Date().toISOString(),
+            items: [{ materialId: seed.ids.leafMaterialId, quantity: 1, unitPrice: 10 }],
+          };
+          const createdPurchase = await expectRequest(purchaseJar, "/api/erp/purchase-orders", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(purchasePayload),
+          }, 201);
+
+          await expectRequest(warehouseJar, "/api/erp/purchase-orders", {}, 200);
+          await expectRequest(warehouseJar, "/api/erp/purchase-orders", {
+            method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(purchasePayload),
+          }, 403);
+          await expectRequest(warehouseJar, `/api/erp/purchase-orders/${createdPurchase.data.id}`, {
+            method: "PUT", headers: { "content-type": "application/json" }, body: "{}",
+          }, 403);
+          for (const endpoint of ["/api/erp/inventory", "/api/erp/stock-in", "/api/erp/stock-out", "/api/erp/stock-checks"]) {
+            await expectRequest(warehouseJar, endpoint, {}, 200);
+          }
+
+          await expectRequest(salesJar, "/api/erp/materials", {}, 403);
+          await expectRequest(foreignJar, "/api/erp/materials", {}, 403);
+
+          const summary = {
+            login: ["SUPER_ADMIN", "PURCHASE", "WAREHOUSE", "SALES", "FOREIGN_TRADE"],
+            pages,
+            contractOrder: { id: order.id, orderNo: issued.data.orderNo, duplicateCount },
+            bom: { requiredQuantity: seed.expected.requiredQuantity, aggregatedLeafCount: issued.data.materials.length },
+            kitCheck: { historyCount: orderKitHistory.length, shortageQuantity: seed.expected.shortageQuantity, inventoryBefore, inventoryAfter },
+            permissions: {
+              purchase: "read allowed; inventory/BOM/users writes denied",
+              warehouse: "purchase read allowed; purchase create/edit denied; inventory endpoints allowed",
+              sales: "ERP denied",
+              foreignTrade: "ERP denied",
+            },
+          };
+          fs.writeFileSync(process.env.SMOKE_RESULT, JSON.stringify(summary, null, 2));
+          console.log(JSON.stringify(summary));
+          NODE
+          node "$smoke_script"
+
+      - name: 验证采购数量、月度计划、权限、附件、提醒和齐套队列
+        run: |
+          set -Eeuo pipefail
+          audit_script="$SMOKE_DIR/release-audit.mjs"
+          cat > "$audit_script" <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+          import { createRequire } from "node:module";
+
+          const baseUrl = "http://127.0.0.1:3000";
+          const seed = JSON.parse(fs.readFileSync(process.env.SEED_JSON, "utf8"));
+          const priorSmoke = JSON.parse(fs.readFileSync(process.env.SMOKE_RESULT, "utf8"));
+          const candidateRequire = createRequire(path.join(process.env.APP_DIR, "package.json"));
+          const { PrismaClient, Prisma } = candidateRequire("@prisma/client");
+          const prisma = new PrismaClient();
+          const assert = (condition, message) => { if (!condition) throw new Error(message); };
+
+          class CookieJar {
+            constructor() { this.cookies = new Map(); }
+            absorb(headers) {
+              const values = typeof headers.getSetCookie === "function" ? headers.getSetCookie() : [headers.get("set-cookie")].filter(Boolean);
+              for (const value of values) { const pair = value.split(";", 1)[0]; const index = pair.indexOf("="); if (index > 0) this.cookies.set(pair.slice(0, index), pair.slice(index + 1)); }
+            }
+            header() { return [...this.cookies.entries()].map(([key, value]) => `${key}=${value}`).join("; "); }
+          }
+          async function request(jar, pathname, options = {}, expected = 200) {
+            const headers = new Headers(options.headers || {});
+            if (jar?.header()) headers.set("cookie", jar.header());
+            const response = await fetch(`${baseUrl}${pathname}`, { ...options, headers, redirect: "manual" });
+            jar?.absorb(response.headers);
+            const text = await response.text();
+            let data = null; try { data = text ? JSON.parse(text) : null; } catch {}
+            const statuses = Array.isArray(expected) ? expected : [expected];
+            if (!statuses.includes(response.status)) throw new Error(`${options.method || "GET"} ${pathname} -> ${response.status}: ${text.slice(0, 500)}`);
+            return { status: response.status, data, text };
+          }
+          async function jsonRequest(jar, pathname, method, body, expected = 200, headers = {}) {
+            return request(jar, pathname, { method, headers: { "content-type": "application/json", ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }, expected);
+          }
+          async function login(account) {
+            const jar = new CookieJar();
+            const csrf = await request(jar, "/api/auth/csrf");
+            const form = new URLSearchParams({ csrfToken: csrf.data.csrfToken, email: account.email, password: process.env.SMOKE_PASSWORD, callbackUrl: `${baseUrl}/dashboard`, redirect: "false" });
+            await request(jar, "/api/auth/callback/credentials", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form }, [200, 302, 303]);
+            return jar;
+          }
+          const dateOnly = (offsetDays) => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offsetDays); return date.toISOString().slice(0, 10); };
+
+          try {
+            const suffix = process.env.GITHUB_RUN_ID;
+            const superJar = await login(seed.accounts.superAdmin);
+            const purchaseJar = await login(seed.accounts.purchase);
+            const warehouseJar = await login(seed.accounts.warehouse);
+            const supplyMaterial = await prisma.material.create({ data: { code: `PH4-SUPPLY-${suffix}`, name: "采购防重复验证物料", categoryId: seed.ids.normalCategoryId, unit: "件", standardPrice: new Prisma.Decimal(10), autoPurchaseDraftEnabled: true } });
+            await prisma.inventory.create({ data: { warehouseId: seed.ids.warehouseId, materialId: supplyMaterial.id, quantity: new Prisma.Decimal(10), totalAmount: new Prisma.Decimal(100), avgPrice: new Prisma.Decimal(10) } });
+
+            const createDemand = async (sourceRecordId, quantity) => (await jsonRequest(purchaseJar, "/api/erp/purchase-demands", "POST", { sourceType: "STOCK_REPLENISHMENT", sourceRecordId, materialId: supplyMaterial.id, quantity, needByDate: dateOnly(20), stockPurpose: "隔离验证" }, 201)).data;
+            const demandA = await createDemand(`SUPPLY-A-${suffix}`, 20);
+            assert(Number(demandA.suggestedQuantity) === 10, "Initial stock demand suggestion should be 10");
+            const converted = await jsonRequest(purchaseJar, "/api/erp/purchase-demands/convert", "POST", { supplierId: seed.ids.supplierId, allocations: [{ purchaseDemandId: demandA.id, quantity: 10 }], unitPrices: { [supplyMaterial.id]: 10 } }, 201);
+            const supplyOrderId = converted.data.id;
+            let supplyOrder = (await request(purchaseJar, `/api/erp/purchase-orders/${supplyOrderId}`)).data;
+            const supplyItem = supplyOrder.items[0];
+            const convertedDemand = await prisma.purchaseDemand.findUnique({ where: { id: demandA.id } });
+            assert(convertedDemand.status === "CONVERTED" && convertedDemand.activeSlot === null, "Fully converted demand must leave the active calculation set");
+
+            const demandB = await createDemand(`SUPPLY-B-${suffix}`, 25);
+            assert(Number(demandB.suggestedQuantity) === 5, "Draft PO allocation must replace, not duplicate, effective demand");
+            await jsonRequest(superJar, `/api/erp/purchase-demands/${demandB.id}`, "PATCH", { action: "CANCEL" });
+            await jsonRequest(purchaseJar, `/api/erp/purchase-orders/${supplyOrderId}/status`, "POST", { status: "ORDERED" });
+            const demandC = await createDemand(`SUPPLY-C-${suffix}`, 25);
+            assert(Number(demandC.suggestedQuantity) === 5, "Confirmed inbound must replace converted demand exactly once");
+            await jsonRequest(superJar, `/api/erp/purchase-demands/${demandC.id}`, "PATCH", { action: "CANCEL" });
+
+            const stockIn = (await jsonRequest(warehouseJar, "/api/erp/stock-in", "POST", { warehouseId: seed.ids.warehouseId, purchaseOrderId: supplyOrderId, type: "PURCHASE", items: [{ materialId: supplyMaterial.id, purchaseOrderItemId: supplyItem.id, quantity: 4, unitPrice: 10 }] }, 201)).data;
+            supplyOrder = (await request(purchaseJar, `/api/erp/purchase-orders/${supplyOrderId}`)).data;
+            assert(supplyOrder.status === "PARTIAL_RECEIVED" && Number(supplyOrder.items[0].receivedQuantity) === 4, "Partial receipt must only recognize the actual quantity 4");
+            const demandD = await createDemand(`SUPPLY-D-${suffix}`, 25);
+            assert(Number(demandD.suggestedQuantity) === 5, "Partial receipt must reduce inbound while increasing inventory without double counting");
+            await jsonRequest(superJar, `/api/erp/purchase-demands/${demandD.id}`, "PATCH", { action: "CANCEL" });
+            const supplyAllocation = await prisma.purchaseOrderItemSource.findFirst({ where: { purchaseOrderItemId: supplyItem.id } });
+            assert(Number(supplyAllocation.fulfilledQuantity) === 4, "Source fulfillment must equal the actual receipt quantity");
+
+            for (const promisedDate of [dateOnly(2), dateOnly(4), dateOnly(6)]) await jsonRequest(purchaseJar, `/api/erp/supplier-deliveries/${supplyItem.id}/promise-date`, "POST", { promisedDate, supplierReason: "隔离验证" });
+            const promiseItem = await prisma.purchaseOrderItem.findUnique({ where: { id: supplyItem.id }, include: { promiseHistory: true } });
+            assert(promiseItem.firstPromisedDate.toISOString().slice(0, 10) === dateOnly(2), "First promise date was overwritten");
+            assert(promiseItem.latestPromisedDate.toISOString().slice(0, 10) === dateOnly(6) && promiseItem.promiseHistory.length === 3, "Promise history is incomplete");
+            await jsonRequest(warehouseJar, `/api/erp/supplier-deliveries/${supplyItem.id}/promise-date`, "POST", { promisedDate: dateOnly(7) }, 403);
+
+            const otherPurchase = await prisma.user.create({ data: { email: `phase4.other.purchase.${suffix}@test.invalid`, name: "Other Purchase", password: process.env.SMOKE_PASSWORD_HASH, role: "PURCHASE", region: "其他", territories: [], viewScope: "TERRITORY", isActive: true } });
+            const otherPurchaseJar = await login({ email: otherPurchase.email });
+            await jsonRequest(otherPurchaseJar, `/api/erp/supplier-deliveries/${supplyItem.id}/promise-date`, "POST", { promisedDate: dateOnly(7) }, 403);
+
+            const form = new FormData(); form.set("entityType", "STOCK_IN"); form.set("entityId", stockIn.id); form.set("file", new File(["phase4 attachment"], "receipt.pdf", { type: "application/pdf" }));
+            const attachment = (await request(warehouseJar, "/api/erp/attachments", { method: "POST", body: form }, 201)).data;
+            await request(warehouseJar, `/api/erp/attachments/${attachment.id}`, { method: "DELETE" }, 403);
+            const attachmentPath = path.join(process.env.UPLOAD_DIR, "erp", "stock_in", attachment.storedName);
+            assert(fs.existsSync(attachmentPath), "Uploaded attachment is not in external UPLOAD_DIR");
+
+            await prisma.purchaseOrderItem.update({ where: { id: supplyItem.id }, data: { latestPromisedDate: new Date(`${dateOnly(0)}T00:00:00.000Z`) } });
+            await request(null, "/api/erp/delivery-reminders/run", { method: "POST", headers: { "x-cron-secret": "wrong" } }, 401);
+            const reminderFirst = await request(null, "/api/erp/delivery-reminders/run", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET } });
+            const reminderSecond = await request(null, "/api/erp/delivery-reminders/run", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET } });
+            assert(reminderFirst.data.created > 0 && reminderSecond.data.created === 0, "Delivery reminder idempotency failed");
+
+            const productionOrderId = priorSmoke.contractOrder.id;
+            const queueRequestedAt = new Date();
+            await prisma.kitRecheckQueue.upsert({ where: { productionOrderId }, create: { productionOrderId, reason: "stale lease verification", materialIds: [seed.ids.leafMaterialId], requestedById: seed.ids.superAdminId, requestedAt: queueRequestedAt, processingAt: new Date(Date.now() - 20 * 60 * 1000) }, update: { reason: "stale lease verification", materialIds: [seed.ids.leafMaterialId], requestedById: seed.ids.superAdminId, requestedAt: queueRequestedAt, processedAt: null, processingAt: new Date(Date.now() - 20 * 60 * 1000), lastError: null } });
+            await request(null, "/api/erp/kit-rechecks/process", { method: "POST" }, 401);
+            await request(null, "/api/erp/kit-rechecks/process", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET, "x-system-user-id": "invalid" } }, 400);
+            const queueRun = await request(null, "/api/erp/kit-rechecks/process", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET, "x-system-user-id": seed.ids.superAdminId } });
+            assert(queueRun.data.processed === 1, "Stale queue lease was not reclaimed");
+            const queue = await prisma.kitRecheckQueue.findUnique({ where: { productionOrderId } });
+            assert(queue.processedAt && !queue.processingAt && !queue.lastError && queue.attemptCount > 0, "Queue state did not close cleanly");
+            const queueReplay = await request(null, "/api/erp/kit-rechecks/process", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET, "x-system-user-id": seed.ids.superAdminId } });
+            assert(queueReplay.data.processed === 0, "Processed queue was executed twice");
+            await prisma.productionOrder.update({ where: { id: productionOrderId }, data: { status: "DRAFT" } });
+            await prisma.kitRecheckQueue.update({ where: { productionOrderId }, data: { requestedAt: new Date(), processedAt: null, processingAt: null, lastError: null } });
+            const failedQueueRun = await request(null, "/api/erp/kit-rechecks/process", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET, "x-system-user-id": seed.ids.superAdminId } });
+            assert(failedQueueRun.data.results[0]?.status === "FAILED", "Invalid work order did not produce a retryable queue failure");
+            const failedQueue = await prisma.kitRecheckQueue.findUnique({ where: { productionOrderId } });
+            assert(failedQueue.lastError && !failedQueue.processingAt && !failedQueue.processedAt, "Queue failure reason or retry state is missing");
+            await prisma.productionOrder.update({ where: { id: productionOrderId }, data: { status: "ISSUED" } });
+            const recoveredQueueRun = await request(null, "/api/erp/kit-rechecks/process", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET, "x-system-user-id": seed.ids.superAdminId } });
+            assert(recoveredQueueRun.data.results[0]?.status !== "FAILED", "Failed queue job did not recover after the cause was fixed");
+
+            const stockDemand = await jsonRequest(purchaseJar, "/api/erp/purchase-demands", "POST", { sourceType: "STOCK_REPLENISHMENT", sourceRecordId: `MERGE-STOCK-${suffix}`, materialId: seed.ids.leafMaterialId, quantity: 5, needByDate: dateOnly(20), stockPurpose: "合并来源验证" }, 201);
+            const productionOrderForDemand = await prisma.productionOrder.findUnique({ where: { id: productionOrderId }, select: { latestKitCheckId: true } });
+            assert(productionOrderForDemand?.latestKitCheckId, "Production order latest kit check is missing");
+            await jsonRequest(purchaseJar, `/api/erp/production-orders/${productionOrderId}/purchase-demands`, "POST", { kitCheckId: productionOrderForDemand.latestKitCheckId }, 201);
+            const productionDemand = await prisma.purchaseDemand.findFirst({ where: { sourceType: "PRODUCTION_ORDER", sourceRecordId: productionOrderId, materialId: seed.ids.leafMaterialId, activeSlot: true } });
+            assert(productionDemand, "Confirmed production shortage did not generate a purchase demand");
+            const mergedOrder = await jsonRequest(purchaseJar, "/api/erp/purchase-demands/convert", "POST", { supplierId: seed.ids.supplierId, allocations: [{ purchaseDemandId: productionDemand.id, quantity: Number(productionDemand.suggestedQuantity) }, { purchaseDemandId: stockDemand.data.id, quantity: Number(stockDemand.data.suggestedQuantity) }] }, 201);
+            const mergedItems = await prisma.purchaseOrderItem.findMany({ where: { purchaseOrderId: mergedOrder.data.id }, include: { demandSources: true } });
+            assert(mergedItems.length === 1 && mergedItems[0].demandSources.length === 2, "Production and stock demand were not merged with two source allocations");
+
+            const monthlyMaterial = await prisma.material.create({ data: { code: `PH4-MONTHLY-${suffix}`, name: "月度计划验证物料", categoryId: seed.ids.normalCategoryId, unit: "件", standardPrice: new Prisma.Decimal(8), autoPurchaseDraftEnabled: true } });
+            const monthlyProduct = await prisma.product.create({ data: { model: `PH4-MONTHLY-PRODUCT-${suffix}`, category: "隔离验证设备", productType: "MAIN", translations: { create: { language: "ZH", name: "月度计划验证设备" } } } });
+            const monthlyBom = await prisma.bomHeader.create({ data: { productId: monthlyProduct.id, version: `monthly-${suffix}`, isActive: true, items: { create: { materialId: monthlyMaterial.id, quantity: new Prisma.Decimal(2), level: 1, sortOrder: 0 } } } });
+            const plan = (await jsonRequest(superJar, "/api/erp/monthly-production-plans", "POST", { planMonth: `${dateOnly(30).slice(0, 7)}-01`, name: "月度部分转换验证", items: [{ productId: monthlyProduct.id, bomId: monthlyBom.id, plannedQuantity: 10, plannedStartDate: dateOnly(30), plannedCompletionDate: dateOnly(50) }] }, 201)).data;
+            await jsonRequest(superJar, `/api/erp/monthly-production-plans/${plan.id}`, "PUT", { status: "PENDING_APPROVAL" });
+            await jsonRequest(superJar, `/api/erp/monthly-production-plans/${plan.id}/approve`, "POST", {});
+            const monthlyRequirement = await prisma.monthlyMaterialRequirement.findUnique({ where: { planItemId_materialId: { planItemId: plan.items[0].id, materialId: monthlyMaterial.id } } });
+            assert(Number(monthlyRequirement.requiredQuantity) === 20, "Monthly material requirement snapshot should be 20");
+            const automaticMonthlyDemand = await prisma.purchaseDemand.count({ where: { sourceType: "MONTHLY_PRODUCTION_PLAN", sourceRecordId: plan.items[0].id, materialId: monthlyMaterial.id } });
+            assert(automaticMonthlyDemand === 0, "Monthly production plan must not automatically create purchase demand");
+            const monthlyOrder = (await jsonRequest(superJar, `/api/erp/monthly-production-plans/${plan.id}/convert`, "POST", { planItemId: plan.items[0].id, quantity: 3, warehouseId: seed.ids.warehouseId, requestKey: `monthly-${suffix}-part-001` }, 201)).data;
+            await jsonRequest(superJar, `/api/erp/production-orders/${monthlyOrder.id}/issue`, "POST", { confirmStockOrder: true });
+            const issuedMonthlyOrder = await prisma.productionOrder.findUnique({ where: { id: monthlyOrder.id }, select: { latestKitCheckId: true } });
+            assert(issuedMonthlyOrder?.latestKitCheckId, "Converted monthly work order latest kit check is missing");
+            await jsonRequest(purchaseJar, `/api/erp/production-orders/${monthlyOrder.id}/purchase-demands`, "POST", { kitCheckId: issuedMonthlyOrder.latestKitCheckId }, 201);
+            await jsonRequest(purchaseJar, `/api/erp/production-orders/${monthlyOrder.id}/purchase-demands`, "POST", { kitCheckId: issuedMonthlyOrder.latestKitCheckId }, 201);
+            const monthlyProductionDemands = await prisma.purchaseDemand.findMany({ where: { sourceType: "PRODUCTION_ORDER", sourceRecordId: monthlyOrder.id, materialId: monthlyMaterial.id, activeSlot: true } });
+            assert(monthlyProductionDemands.length === 1 && Number(monthlyProductionDemands[0].suggestedQuantity) === 6, "Confirmed work-order shortage demand should be idempotent and equal 6");
+
+            const kitHistoryBeforeTopUp = await prisma.kitCheckResult.findMany({ where: { productionOrderId }, orderBy: { createdAt: "asc" } });
+            assert(kitHistoryBeforeTopUp.some((row) => row.status === "SHORTAGE"), "Historical shortage snapshot is missing before inventory top-up");
+            await jsonRequest(warehouseJar, "/api/erp/stock-in", "POST", { warehouseId: seed.ids.warehouseId, type: "OTHER", remark: "齐套自动复检库存补足", items: [{ materialId: seed.ids.leafMaterialId, quantity: priorSmoke.kitCheck.shortageQuantity, unitPrice: 10 }] }, 201);
+            const queuedByStockIn = await prisma.kitRecheckQueue.findUnique({ where: { productionOrderId } });
+            assert(queuedByStockIn && !queuedByStockIn.processedAt && !queuedByStockIn.processingAt, "Inventory top-up did not create one active kit-recheck job");
+            const topUpQueueRun = await request(null, "/api/erp/kit-rechecks/process", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET, "x-system-user-id": seed.ids.superAdminId } });
+            assert(topUpQueueRun.data.processed === 1, "Inventory top-up queue was not processed exactly once");
+            const kitHistoryAfterTopUp = await prisma.kitCheckResult.findMany({ where: { productionOrderId }, orderBy: { createdAt: "asc" } });
+            assert(kitHistoryAfterTopUp.length === kitHistoryBeforeTopUp.length + 1 && kitHistoryAfterTopUp.at(-1)?.status === "SUFFICIENT", "Inventory top-up did not append a sufficient kit-check snapshot");
+            assert(kitHistoryAfterTopUp.some((row) => row.status === "SHORTAGE"), "Inventory top-up overwrote historical shortage snapshots");
+            const topUpReplay = await request(null, "/api/erp/kit-rechecks/process", { method: "POST", headers: { "x-cron-secret": process.env.ERP_CRON_SECRET, "x-system-user-id": seed.ids.superAdminId } });
+            assert(topUpReplay.data.processed === 0, "Inventory top-up queue generated a duplicate kit-check result");
+
+            const queueLogs = await prisma.operationLog.count({ where: { entityType: "KitRecheckQueue", action: { in: ["PROCESS_KIT_RECHECK_QUEUE", "REPLAY_KIT_RECHECK_QUEUE"] } } });
+            assert(queueLogs > 0, "Queue execution operation log is missing");
+            const result = { supply: { initialSuggestion: 10, draftReplacementSuggestion: 5, orderedReplacementSuggestion: 5, partialReceiptSuggestion: 5, receivedQuantity: 4 }, sources: { mergedSourceCount: 2 }, monthly: { plannedRequirement: 20, automaticDemand: 0, convertedQuantity: 3, confirmedProductionDemand: 6, idempotentDemandCount: 1 }, promise: { historyCount: 3, firstPreserved: true }, reminders: { firstCreated: reminderFirst.data.created, replayCreated: reminderSecond.data.created }, queue: { reclaimedStaleLease: true, replayProcessed: queueReplay.data.processed, failureRecorded: true, recoveredAfterFailure: true, inventoryTopUpAppended: 1, inventoryTopUpStatus: kitHistoryAfterTopUp.at(-1)?.status, inventoryTopUpReplayProcessed: topUpReplay.data.processed, operationLogs: queueLogs }, permissions: { warehousePromise: 403, otherPurchasePromise: 403, warehouseFormalAttachmentDelete: 403 }, persistentAttachmentPath: attachmentPath };
+            fs.writeFileSync(path.join(process.env.SMOKE_DIR, "release-audit.json"), JSON.stringify(result, null, 2));
+            console.log(JSON.stringify(result));
+          } finally {
+            await prisma.$disconnect();
+          }
+          NODE
+          node "$audit_script"
+
+      - name: 重启 standalone 并验证外置附件保留
+        run: |
+          set -Eeuo pipefail
+          attachment_path="$(jq -r '.persistentAttachmentPath' "$SMOKE_DIR/release-audit.json")"
+          test -f "$attachment_path"
+          test -f "$UPLOAD_DIR/restart-marker.txt"
+          kill "$APP_PID"
+          wait "$APP_PID" || true
+          cd "$APP_DIR"
+          node server.js >> "$APP_LOG" 2>&1 &
+          app_pid=$!
+          echo "APP_PID=$app_pid" >> "$GITHUB_ENV"
+          for _ in {1..30}; do
+            status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/login || true)"
+            [[ "$status" == "200" ]] && break
+            kill -0 "$app_pid" 2>/dev/null || { cat "$APP_LOG"; exit 1; }
+            sleep 1
+          done
+          test "$status" = "200"
+          test -f "$attachment_path"
+          test -f "$UPLOAD_DIR/restart-marker.txt"
+
+      - name: 检查应用日志和独立运行边界
+        run: |
+          set -Eeuo pipefail
+          test -f "$SMOKE_RESULT"
+          test -f "$APP_LOG"
+          if grep -E 'PrismaClientInitializationError|Cannot find module|MODULE_NOT_FOUND|Unknown column|does not exist|unhandledRejection' "$APP_LOG"; then
+            echo "Fatal runtime error found in application log" >&2
+            exit 1
+          fi
+          test "$(readlink -f "$APP_DIR")" != "$(readlink -f "$GITHUB_WORKSPACE")"
+          test ! -e "$GITHUB_WORKSPACE/node_modules"
+          printf 'Candidate package ran independently from %s\n' "$APP_DIR"
+          cat "$SMOKE_RESULT"
+
+      - name: 写入验证摘要
+        if: success()
+        run: |
+          {
+            echo '## ERP 第四期候选 Artifact 云端隔离验证'
+            echo
+            echo "- Artifact: $EXPECTED_ARTIFACT_NAME ($ARTIFACT_ID)"
+            echo "- Source run: $BUILD_RUN_ID"
+            echo "- Source commit: $EXPECTED_SOURCE_SHA"
+            echo "- ZIP SHA256: $ZIP_SHA256"
+            echo "- tar.gz: $TAR_NAME"
+            echo "- tar.gz SHA256: $TAR_SHA256"
+            echo '- Runtime: Ubuntu latest + MySQL 5.7 service'
+            echo '- Result: migration manifest, migrate deploy/status, direct server.js start, real login, procurement deduplication, partial receipt, monthly conversion, queue, cron, permissions and external upload persistence all passed'
+            echo
+            echo '```json'
+            cat "$SMOKE_DIR/release-audit.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 失败时输出诊断日志
+        if: failure()
+        run: |
+          echo '=== migrate deploy ==='
+          test -f "$SMOKE_DIR/migrate-deploy.log" && cat "$SMOKE_DIR/migrate-deploy.log" || true
+          echo '=== migrate status ==='
+          test -f "$SMOKE_DIR/migrate-status.log" && cat "$SMOKE_DIR/migrate-status.log" || true
+          echo '=== application ==='
+          test -f "$APP_LOG" && cat "$APP_LOG" || true
+          echo '=== mysql service ==='
+          mysql_container="$(docker ps --filter ancestor=mysql:5.7 --format '{{.ID}}' | head -n 1)"
+          test -n "$mysql_container" && docker logs "$mysql_container" || true
+
+      - name: 停止候选应用
+        if: always()
+        run: |
+          if [[ -n "${APP_PID:-}" ]] && kill -0 "$APP_PID" 2>/dev/null; then
+            kill "$APP_PID" || true
+            wait "$APP_PID" || true
+          fi

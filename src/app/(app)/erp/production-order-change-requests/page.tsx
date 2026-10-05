@@ -1,0 +1,10 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
+export default function ProductionOrderChangeRequestsPage() {
+  const [items, setItems] = useState<any[]>([]); const load = async () => { const response = await fetch("/api/erp/production-order-change-requests"); const data = await response.json(); setItems(Array.isArray(data) ? data : []); }; useEffect(() => { void load(); }, []);
+  const process = async (id: string, action: "approve" | "reject") => { const remark = action === "reject" ? window.prompt("请填写驳回原因") : window.prompt("审批说明（可选）"); if (action === "reject" && !remark) return; const response = await fetch(`/api/erp/production-order-change-requests/${id}/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ remark: remark || "" }) }); const data = await response.json(); if (!response.ok) return alert(data.error || "审批失败"); await load(); };
+  return <div className="space-y-4"><div><h1 className="text-xl font-semibold">工单变更审批</h1><p className="mt-1 text-sm text-gray-500">审批通过会保留旧版本和旧快照，并生成新版本及新的齐套检查记录。</p></div><div className="space-y-3">{items.map((item) => { const diff = item.proposedDiff || {}; return <section key={item.id} className="rounded-xl border bg-white p-4"><div className="flex flex-wrap justify-between gap-2"><Link href={`/erp/production-orders/${item.productionOrder.id}`} className="font-medium text-blue-700">{item.productionOrder.orderNo} · V{item.productionOrder.version}</Link><span>{item.status}</span></div><p className="mt-2 text-sm">变更原因：{item.reason}</p><pre className="mt-2 max-h-48 overflow-auto rounded bg-gray-50 p-2 text-xs">{JSON.stringify(diff, null, 2)}</pre>{item.status === "PENDING" && <div className="mt-3 flex gap-2"><button onClick={() => process(item.id, "approve")} className="rounded bg-gray-900 px-3 py-2 text-sm text-white">批准</button><button onClick={() => process(item.id, "reject")} className="rounded border px-3 py-2 text-sm text-red-700">驳回</button></div>}</section>; })}</div></div>;
+}

@@ -1,0 +1,14 @@
+.git
+.github
+.next
+node_modules
+coverage
+dist
+*.log
+*.tar.gz
+*.zip
+.env
+.env.*
+!.env.mcp.example
+_erp-inputs
+deploy/identity-acceptance/.build

@@ -1,0 +1,696 @@
+/* ==========================================================================
+   展厅经营大屏 — 独立样式（冻结 Rev 5 等价迁移）
+   所有运行时选择器以 .sales-screen-root 作用域开始；
+   设计令牌定义在大屏根节点，不写入平台 :root，离开大屏路由零污染。
+   目标观看条件：55–86 吋屏，4–8 m 视距，1920×1080 等比缩放。
+   ========================================================================== */
+
+.sales-screen-root {
+  /* ---- 品牌 ---- */
+  --brand-orange: #ee7d2c;
+  --brand-orange-hot: #ff9d55;
+  --brand-orange-deep: #c25a15;
+
+  /* ---- 底色 / 表面（暖中性，非纯蓝黑） ---- */
+  --stage-0: #03060a;
+  --stage-1: #07101a;
+  --panel: rgba(10, 16, 25, 0.9);
+  --panel-solid: #0b121c;
+  --panel-raise: rgba(126, 151, 184, 0.055);
+  --panel-border: rgba(148, 176, 211, 0.16);
+  --panel-border-strong: rgba(238, 125, 44, 0.44);
+  --hairline: rgba(148, 176, 211, 0.11);
+
+  /* ---- 文字（全部 ≥4.5:1 对比于 --stage-1） ---- */
+  --ink: #eef3fb;
+  --ink-2: #b6c2d4;
+  --ink-3: #8a94a6;
+  --ink-4: #5d6779;
+
+  /* ---- 语义色：一色一义，六个色相统一明度 ---- */
+  --c-contract: #ee7d2c;
+  --c-collect: #45d8ee;
+  --c-received: #46d39a;
+  --c-pending: #e8a33d;
+  --c-growth: #8f8bf0;
+  --c-overdue: #f2555a;
+  --c-live: #2fd48f;
+
+  /* ---- 地图 ---- */
+  --c-neutral-fill: #16202f;
+  --c-neighbor-0: #33465f;
+  --c-neighbor-1: #2b3b53;
+  --c-neighbor-2: #1f2b3d;
+  --c-graticule: rgba(120, 156, 196, 0.14);
+
+  /* ---- 地图高度色阶（无数据 → 最高） ---- */
+  --heat-0: #16202f;
+  --heat-1: #2b3040;
+  --heat-2: #57402c;
+  --heat-3: #8f5620;
+  --heat-4: #cc7a20;
+  --heat-5: #ffa451;
+
+  /* ---- 中国边缘光的两个端点色 ---- */
+  --edge-warm: rgba(255, 206, 150, 0.8);
+  --edge-core: #b8f4ff;
+
+  /* ---- 字号标尺：7 级，全部 ≥18px（kicker 为纯英文装饰字例外） ---- */
+  --fs-display: 56px;
+  --fs-hero: 44px;
+  --fs-metric: 28px;
+  --fs-label: 22px;
+  --fs-caption: 20px;
+  --fs-micro: 18px;
+  --fs-brand: 32px;
+  --fs-brand-sm: 24px;
+  --fs-kicker: 14px;
+  --fs-hero-lg: 50px;
+
+  /* ---- 栅格 ---- */
+  --gutter: 14px;
+  --panel-pad: 18px;
+  --panel-head: 56px;
+  --radius: 10px;
+
+  /* ---- 动效预算：同时运行的无限动画 ≤8 ---- */
+  --t-fast: 160ms;
+  --t-base: 280ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--stage-0);
+  color: var(--ink);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.sales-screen-root *,
+.sales-screen-root *::before,
+.sales-screen-root *::after {
+  box-sizing: border-box;
+}
+
+/* 英文装饰字（本地回退栈，不加载远程字体） */
+.sales-screen-root .screen-hud-en {
+  font-family: Rajdhani, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 数字统一：表格数字 + 紧凑字距，避免动画时宽度抖动 */
+.sales-screen-root .num {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.005em;
+}
+
+/* ---- 字号工具类（大屏专用命名，:root 令牌是唯一真源） ----
+   不要把字号令牌写成任意值：Tailwind 4 会把「text + 方括号 + var(--fs-x)」
+   判成颜色，字号静默失效（整屏 65 处失效的教训）。 */
+
+.sales-screen-root .screen-text-display { font-size: var(--fs-display); }
+.sales-screen-root .screen-text-hero-lg { font-size: var(--fs-hero-lg); }
+.sales-screen-root .screen-text-hero { font-size: var(--fs-hero); }
+.sales-screen-root .screen-text-brand { font-size: var(--fs-brand); }
+.sales-screen-root .screen-text-brand-sm { font-size: var(--fs-brand-sm); }
+.sales-screen-root .screen-text-metric { font-size: var(--fs-metric); }
+.sales-screen-root .screen-text-label { font-size: var(--fs-label); }
+.sales-screen-root .screen-text-caption { font-size: var(--fs-caption); }
+.sales-screen-root .screen-text-micro { font-size: var(--fs-micro); }
+.sales-screen-root .screen-text-kicker { font-size: var(--fs-kicker); }
+
+/* ==========================================================================
+   舞台
+   ========================================================================== */
+
+.sales-screen-root .screen-frame {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+}
+
+.sales-screen-root .screen-stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1000px 520px at 18% -12%, rgba(238, 125, 44, 0.12), transparent 64%),
+    radial-gradient(920px 620px at 68% 108%, rgba(69, 216, 238, 0.075), transparent 62%),
+    linear-gradient(135deg, #0a1019 0%, #060b12 44%, #03070c 100%);
+  color: var(--ink);
+}
+
+/* 极淡技术网格，只在中部可见，不抢内容 */
+.sales-screen-root .screen-stage::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(150, 168, 196, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(150, 168, 196, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  -webkit-mask-image: radial-gradient(ellipse 76% 66% at 50% 46%, #000 30%, transparent 78%);
+  mask-image: radial-gradient(ellipse 76% 66% at 50% 46%, #000 30%, transparent 78%);
+  opacity: 0.42;
+}
+
+/* 顶部品牌渐隐线 */
+.sales-screen-root .screen-stage::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(238, 125, 44, 0.05) 0%, transparent 18%);
+}
+
+/* 行区栅格：轨道由布局计划以内联样式给出，这里只固定间距 */
+.sales-screen-root .screen-stage-grid {
+  display: grid;
+  gap: var(--gutter);
+  padding: var(--gutter);
+  min-height: 0;
+  flex: 1;
+}
+
+.sales-screen-root .screen-cell {
+  min-height: 0;
+  min-width: 0;
+}
+
+/* 右列内部栅格：子行由布局计划以内联样式给出 */
+.sales-screen-root .screen-right-col {
+  display: grid;
+  gap: var(--gutter);
+  min-height: 0;
+}
+
+/* ==========================================================================
+   面板材质
+   ========================================================================== */
+
+.sales-screen-root .panel {
+  position: relative;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 28%),
+    linear-gradient(180deg, rgba(11, 19, 30, 0.94), rgba(7, 13, 21, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 18px 46px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+/* 顶部短光轨 */
+.sales-screen-root .panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 22px;
+  width: 76px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-orange), transparent);
+  box-shadow: 0 0 14px rgba(238, 125, 44, 0.42);
+}
+
+.sales-screen-root .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--panel-head);
+  padding: 0 var(--panel-pad);
+  border-bottom: 1px solid rgba(148, 176, 211, 0.1);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.018), transparent 58%);
+}
+
+.sales-screen-root .status-pill {
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: rgba(7, 13, 21, 0.66);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.sales-screen-root .status-pill-sample {
+  border-color: rgba(232, 163, 61, 0.25);
+  background: rgba(232, 163, 61, 0.065);
+}
+
+.sales-screen-root .status-pill-live {
+  border-color: rgba(47, 212, 143, 0.25);
+  background: rgba(47, 212, 143, 0.06);
+}
+
+.sales-screen-root .map-panel {
+  position: relative;
+  border: 1px solid rgba(112, 157, 199, 0.18);
+  background:
+    radial-gradient(ellipse 70% 60% at 55% 55%, rgba(27, 52, 76, 0.26), transparent 72%),
+    #050b12;
+  box-shadow:
+    inset 0 0 70px rgba(35, 93, 128, 0.08),
+    0 20px 50px rgba(0, 0, 0, 0.24);
+}
+
+.sales-screen-root .map-panel::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(69, 216, 238, 0.025);
+}
+
+.sales-screen-root .map-titlebar {
+  min-height: 78px;
+  border-bottom: 1px solid rgba(148, 176, 211, 0.1);
+  background: linear-gradient(180deg, rgba(4, 9, 15, 0.94), rgba(4, 9, 15, 0.62) 72%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.sales-screen-root .map-titlebar::after {
+  content: "";
+  position: absolute;
+  right: 20px;
+  bottom: -1px;
+  left: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(69, 216, 238, 0.24), transparent);
+}
+
+.sales-screen-root .map-hud {
+  border: 1px solid rgba(123, 157, 194, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(10, 20, 32, 0.86), rgba(4, 9, 15, 0.78));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 12px 30px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.sales-screen-root .panel-eyebrow {
+  font-family: Rajdhani, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--brand-orange);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.sales-screen-root .panel-title {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+/* ==========================================================================
+   地图材质：平面 + 边缘光 + 球面网格
+   ========================================================================== */
+
+/* --inv-k = 1/缩放倍率，--inv-sk = 1/√k，由 ShipmentMap 挂在缩放层 svg 根上：
+   辉光/圆点/航线按 --inv-k 补偿（视觉恒定）；
+   省界/经纬网/邻国描边等细节线按 --inv-sk 补偿（放大时适度变粗，见细节）。 */
+.sales-screen-root .map-province {
+  /* 暗底上的「亮刻线」：黑线与深色填充亮度太近，读不出来 */
+  stroke: rgba(154, 180, 209, 0.24);
+  stroke-width: calc(1.1 * var(--inv-sk, 1));
+  stroke-linejoin: round;
+  transition: fill var(--t-base) var(--ease-out);
+}
+
+.sales-screen-root .map-graticule {
+  opacity: 0.72;
+}
+
+.sales-screen-root .map-neighbor {
+  stroke: rgba(120, 150, 185, 0.25);
+  stroke-width: calc(0.8 * var(--inv-sk, 1));
+  opacity: 0.72;
+}
+
+.sales-screen-root .map-neighbor-admin {
+  fill: none;
+  stroke: rgba(152, 180, 210, 0.11);
+  stroke-width: calc(0.7 * var(--inv-sk, 1));
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.sales-screen-root .map-graticule-emphasis {
+  stroke: rgba(120, 170, 220, 0.26);
+  stroke-width: calc(1.3 * var(--inv-sk, 1));
+}
+
+/* 拖拽平移时不许选中地图文字 */
+.sales-screen-root .map-svg {
+  user-select: none;
+}
+
+.sales-screen-root .map-sphere-ring {
+  fill: none;
+  stroke: rgba(96, 142, 190, 0.5);
+  opacity: 0.64;
+}
+
+.sales-screen-root .map-sphere-ring-glow {
+  filter: url(#edge-glow);
+  stroke: rgba(110, 190, 230, 0.6);
+}
+
+.sales-screen-root .map-china-edge-core {
+  fill: none;
+  stroke: #b8f4ff;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+
+.sales-screen-root .map-china-edge-warm {
+  fill: none;
+  stroke: var(--brand-orange-hot);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.3;
+  filter: url(#edge-glow);
+}
+
+.sales-screen-root .map-arc {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.sales-screen-root .map-flow {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 6 22;
+  animation: screen-flow-dash 4.1s linear infinite;
+}
+
+.sales-screen-root .map-node {
+  transition: r var(--t-fast) var(--ease-out), fill var(--t-fast) var(--ease-out);
+}
+
+.sales-screen-root .map-label {
+  paint-order: stroke;
+  stroke: rgba(5, 7, 12, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  font-weight: 600;
+}
+
+.sales-screen-root .map-label-city {
+  paint-order: stroke;
+  stroke: rgba(5, 7, 12, 0.92);
+  stroke-width: 3.4px;
+  stroke-linejoin: round;
+  font-weight: 700;
+}
+
+.sales-screen-root .map-label-neighbor {
+  paint-order: stroke;
+  stroke: rgba(5, 7, 12, 0.8);
+  stroke-width: 2.6px;
+  stroke-linejoin: round;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   KPI 元素
+   ========================================================================== */
+
+.sales-screen-root .kpi-hero {
+  color: #fff6ec;
+  text-shadow: 0 0 24px rgba(238, 125, 44, 0.24);
+}
+
+.sales-screen-root .kpi-primary {
+  border: 1px solid rgba(238, 125, 44, 0.3);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(118deg, rgba(238, 125, 44, 0.14), rgba(17, 24, 35, 0.42) 48%, transparent),
+    rgba(126, 151, 184, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.sales-screen-root .kpi-settlement {
+  border-top: 1px solid rgba(69, 216, 238, 0.18);
+  border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(90deg, rgba(69, 216, 238, 0.055), transparent 72%);
+}
+
+.sales-screen-root .metric-tile {
+  border-top: 1px solid rgba(148, 176, 211, 0.15);
+  border-radius: 6px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+}
+
+.sales-screen-root .attention-strip {
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: rgba(3, 8, 14, 0.38);
+}
+
+.sales-screen-root .attention-cell + .attention-cell {
+  border-left: 1px solid var(--hairline);
+}
+
+.sales-screen-root .attention-cell-risk {
+  background: linear-gradient(180deg, rgba(242, 85, 90, 0.06), transparent);
+}
+
+.sales-screen-root .reminder-group {
+  border-top: 1px solid rgba(148, 176, 211, 0.14);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.025), transparent 72%);
+}
+
+.sales-screen-root .reminder-overdue {
+  border-top-color: rgba(242, 85, 90, 0.34);
+  background: linear-gradient(90deg, rgba(242, 85, 90, 0.085), rgba(242, 85, 90, 0.01) 74%);
+}
+
+.sales-screen-root .collection-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.sales-screen-root .collection-overview {
+  min-height: 188px;
+}
+
+.sales-screen-root .collection-numbers {
+  display: grid;
+  gap: 12px;
+}
+
+.sales-screen-root .collection-number {
+  position: relative;
+  padding: 13px 16px 14px 18px;
+  border-left: 2px solid var(--hairline);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent 78%);
+}
+
+.sales-screen-root .collection-number-received {
+  border-left-color: var(--c-received);
+}
+
+.sales-screen-root .collection-number-pending {
+  border-left-color: var(--c-pending);
+}
+
+.sales-screen-root .collection-summary {
+  min-height: 132px;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: rgba(3, 8, 14, 0.34);
+}
+
+.sales-screen-root .collection-track {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 176, 211, 0.1);
+  box-shadow: 0 0 16px rgba(69, 216, 238, 0.08);
+}
+
+.sales-screen-root .collection-track > span:first-child {
+  box-shadow: 0 0 12px rgba(70, 211, 154, 0.3);
+}
+
+.sales-screen-root .milestone-grid {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.012), transparent);
+}
+
+.sales-screen-root .milestone-item + .milestone-item {
+  border-left: 1px solid var(--hairline);
+}
+
+/* --------------------------------------------------------------------------
+   金额不许换行：金额是一个不可分割的读数，宽度不够时整体缩放/截断。
+   -------------------------------------------------------------------------- */
+.sales-screen-root .nowrap-num {
+  white-space: nowrap;
+}
+
+.sales-screen-root .money {
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   回款率环（192×192 固定正方形，避免 SVG meet 产生视觉偏心）
+   ========================================================================== */
+
+.sales-screen-root .ring-box {
+  flex: 0 0 auto;
+  width: 192px;
+  height: 192px;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.sales-screen-root .seg-bar {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(150, 168, 196, 0.1);
+}
+
+/* 等宽刻度条：比渐变进度条更像仪表 */
+.sales-screen-root .gauge {
+  display: flex;
+  gap: 3px;
+  height: 12px;
+}
+
+.sales-screen-root .gauge span {
+  flex: 1;
+  border-radius: 1px;
+  background: rgba(150, 168, 196, 0.13);
+  transition: background var(--t-base) var(--ease-out);
+}
+
+.sales-screen-root .gauge span.on-brand {
+  background: linear-gradient(180deg, var(--brand-orange-hot), var(--brand-orange));
+  box-shadow: 0 0 7px rgba(238, 125, 44, 0.5);
+}
+
+.sales-screen-root .gauge span.on-collect {
+  background: linear-gradient(180deg, #8ceaf8, var(--c-collect));
+  box-shadow: 0 0 7px rgba(69, 216, 238, 0.45);
+}
+
+.sales-screen-root .gauge span.on-overdue {
+  background: linear-gradient(180deg, #ff9ba0, var(--c-overdue));
+  box-shadow: 0 0 7px rgba(242, 85, 90, 0.42);
+}
+
+/* ==========================================================================
+   动效（keyframes 以 screen- 前缀命名，避免与平台冲突）
+   ========================================================================== */
+
+@keyframes screen-flow-dash {
+  to {
+    stroke-dashoffset: -224;
+  }
+}
+
+@keyframes screen-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(47, 212, 143, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(47, 212, 143, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(47, 212, 143, 0);
+  }
+}
+
+@keyframes screen-factory-core {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.78);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.sales-screen-root .live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--c-live);
+  animation: screen-live-pulse 2.4s ease-out infinite;
+}
+
+.sales-screen-root .factory-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: screen-factory-core 3.2s ease-in-out infinite;
+}
+
+/* kiosk：光标闲置自动隐藏（指针一动即显，静置 3 秒后隐）。
+   data-cursor-idle 由 SalesScreenBoard 的事件监听切换，只作用于大屏根节点子树。 */
+.sales-screen-root[data-kiosk="1"][data-cursor-idle="1"],
+.sales-screen-root[data-kiosk="1"][data-cursor-idle="1"] * {
+  cursor: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sales-screen-root .live-dot,
+  .sales-screen-root .map-flow,
+  .sales-screen-root .factory-core {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   「大屏不可用」安全降级页（同样脱离平台布局）
+   ========================================================================== */
+
+.sales-screen-root.sales-screen-unavailable {
+  place-items: center;
+}
+
+.sales-screen-root .screen-unavailable-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 56px 72px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(11, 19, 30, 0.94), rgba(7, 13, 21, 0.92));
+}
+
+.sales-screen-root .screen-unavailable-title {
+  font-size: var(--fs-brand);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.sales-screen-root .screen-unavailable-hint {
+  font-size: var(--fs-micro);
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  line-height: 1;
+}

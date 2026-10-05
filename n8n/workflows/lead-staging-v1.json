@@ -1,0 +1,143 @@
+{
+  "name": "Dachuan Lead Staging v1",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "dachuan-lead-staging-v1", "authentication": "headerAuth", "responseMode": "responseNode", "options": {} },
+      "id": "lead-webhook",
+      "name": "Lead Staging Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "replace-after-import",
+      "credentials": { "httpHeaderAuth": { "id": "REPLACE_N8N_INGRESS_CREDENTIAL", "name": "Lead Staging Ingress Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const stableDigest = (input) => {\n  const fnv64 = (offset) => {\n    let hash = offset;\n    for (let index = 0; index < input.length; index += 1) { hash ^= BigInt(input.charCodeAt(index)); hash = BigInt.asUintN(64, hash * 1099511628211n); }\n    return hash.toString(16).padStart(16, '0');\n  };\n  return [14695981039346656037n, 7809847782465536322n, 9650029242287828579n, 1234567890123456789n].map(fnv64).join('');\n};\nconst incoming = $input.first().json.body?.items ?? $input.first().json.items ?? $input.all().map((item) => item.json);\nif (!Array.isArray(incoming) || incoming.length === 0) throw new Error('LEAD_STAGING_ITEMS_REQUIRED');\nreturn incoming.map((lead, index) => {\n  const sourceSystem = String(lead.sourceSystem || 'n8n-baidu-lead-staging').trim();\n  const externalLeadId = String(lead.externalLeadId || '').trim();\n  const companyName = String(lead.companyName || '').trim();\n  if (!externalLeadId || !companyName) throw new Error(`LEAD_SOURCE_INVALID_${index}`);\n  const idempotencyKey = String(lead.idempotencyKey || `lead-v1-${stableDigest(`lead-idempotency-v1|${sourceSystem}|${externalLeadId}`)}`).trim();\n  if (idempotencyKey.length < 16 || idempotencyKey.length > 191 || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(idempotencyKey)) throw new Error(`LEAD_IDEMPOTENCY_INVALID_${index}`);\n  if (lead.requestId !== undefined && String(lead.requestId).trim() === idempotencyKey) throw new Error(`LEAD_IDEMPOTENCY_INVALID_${index}`);\n  return { json: { ...lead, companyName, source: lead.source || 'BAIDU_SEARCH', sourceSystem, externalLeadId, idempotencyKey } };\n});"
+      },
+      "id": "normalize-leads",
+      "name": "Normalize and Lock Idempotency",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "onError": "stopWorkflow",
+      "position": [260, 300]
+    },
+    {
+      "parameters": { "batchSize": 20, "options": { "reset": false } },
+      "id": "batch-leads",
+      "name": "Loop in Pages of 20",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://REPLACE_FASTGPT_HOST/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "X-Dachuan-Request-Id", "value": "={{ 'n8n-score-' + $execution.id + '-' + $itemIndex }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { chatId: 'lead-score-' + $json.idempotencyKey, stream: false, detail: false, messages: [{ role: 'user', content: JSON.stringify($json) }] } }}",
+        "options": { "response": { "response": { "neverError": false, "responseFormat": "json" } }, "timeout": 120000 }
+      },
+      "id": "call-score-agent",
+      "name": "Call FastGPT Score Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "stopWorkflow",
+      "position": [780, 440],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": { "httpHeaderAuth": { "id": "REPLACE_SCORE_AGENT_CREDENTIAL", "name": "FastGPT Lead Score Agent API" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const response = $json;\nlet parsed = response.choices?.[0]?.message?.content ?? response.data ?? response;\nfor (let depth = 0; depth < 4 && typeof parsed === 'string'; depth += 1) {\n  try { parsed = JSON.parse(parsed); } catch { break; }\n}\nconst locked = parsed?.data ?? parsed;\nconst score = locked?.score;\nconst profileKeys = ['industry','intent','scale','contactability','confidence','reason'];\nconst exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every((key) => keys.includes(key));\nif (!exact(locked, ['score','sourceModelVersion','extractorVersion']) || !exact(score, ['aiScore','profile','contactName','phone','email']) || !Number.isInteger(score.aiScore) || score.aiScore < 0 || score.aiScore > 100 || !exact(score.profile, profileKeys) || !profileKeys.every((key) => typeof score.profile[key] === 'string' && score.profile[key].trim()) || typeof locked.sourceModelVersion !== 'string' || !locked.sourceModelVersion.trim() || typeof locked.extractorVersion !== 'string' || !locked.extractorVersion.trim()) throw new Error('LEAD_SCORE_PAGE_INVALID');\nconst sourceLead = $('Loop in Pages of 20').item.json;\nreturn { json: { sourceLead, score, sourceModelVersion: locked.sourceModelVersion.trim(), extractorVersion: locked.extractorVersion.trim() } };"
+      },
+      "id": "validate-locked-score",
+      "name": "Validate and Lock Score Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "onError": "stopWorkflow",
+      "position": [1040, 440]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const stableDigest = (input) => {\n  const fnv64 = (offset) => {\n    let hash = offset;\n    for (let index = 0; index < input.length; index += 1) { hash ^= BigInt(input.charCodeAt(index)); hash = BigInt.asUintN(64, hash * 1099511628211n); }\n    return hash.toString(16).padStart(16, '0');\n  };\n  return [14695981039346656037n, 7809847782465536322n, 9650029242287828579n, 1234567890123456789n].map(fnv64).join('');\n};\nconst page = $input.all().map((item) => item.json);\nif (page.length < 1 || page.length > 20) throw new Error('LEAD_SCORE_PAGE_INVALID');\nfor (let index = 0; index < page.length; index += 1) {\n  const entry = page[index];\n  if (!entry?.sourceLead?.idempotencyKey || entry.sourceLead.idempotencyKey === entry.sourceLead.requestId || !Number.isInteger(entry?.score?.aiScore) || entry.score.aiScore < 0 || entry.score.aiScore > 100) throw new Error(`LEAD_SCORE_PAGE_INVALID_${index}`);\n}\nconst lockedPageJson = JSON.stringify(page);\nconst pageId = stableDigest(page.map((entry) => entry.sourceLead.idempotencyKey).join('|')).slice(0, 24);\nreturn [{ json: { lockedPageJson, pageId, expectedCount: page.length } }];"
+      },
+      "id": "lock-scored-page",
+      "name": "Lock Scored Page Before Write",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "onError": "stopWorkflow",
+      "position": [1300, 440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://REPLACE_FASTGPT_HOST/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "X-Dachuan-Request-Id", "value": "={{ 'n8n-write-' + $execution.id + '-' + $json.pageId }}" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { chatId: 'lead-write-' + $json.pageId, stream: false, detail: false, messages: [{ role: 'user', content: $json.lockedPageJson }] } }}",
+        "options": { "response": { "response": { "neverError": false, "responseFormat": "json" } }, "timeout": 120000 }
+      },
+      "id": "call-write-agent",
+      "name": "Call FastGPT Write Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "stopWorkflow",
+      "position": [1560, 440],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": { "httpHeaderAuth": { "id": "REPLACE_WRITE_AGENT_CREDENTIAL", "name": "FastGPT Lead Write Agent API" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const parseString = (value) => {\n  if (typeof value !== 'string') return null;\n  try { return JSON.parse(value); } catch { return null; }\n};\nconst findEnvelope = (value, seen = new Set()) => {\n  if (typeof value === 'string') { const parsed = parseString(value); return parsed === null ? null : findEnvelope(parsed, seen); }\n  if (!value || typeof value !== 'object' || seen.has(value)) return null;\n  seen.add(value);\n  if (value.ok === true && Array.isArray(value.data?.items)) return value;\n  for (const nested of Object.values(value)) { const found = findEnvelope(nested, seen); if (found) return found; }\n  return null;\n};\nconst envelope = findEnvelope($input.first().json);\nconst lockedPage = JSON.parse($('Lock Scored Page Before Write').first().json.lockedPageJson);\nif (!envelope || envelope.data.items.length !== lockedPage.length) throw new Error('LEAD_WRITE_PAGE_RESULT_INVALID');\nreturn envelope.data.items.map((result, index) => {\n  if (typeof result.id !== 'string' || typeof result.replay !== 'boolean' || !['UNIQUE','PENDING_REVIEW','CONFIRMED_DUPLICATE','CONFIRMED_UNIQUE'].includes(result.dedupStatus) || (result.duplicateOfLeadId !== null && result.duplicateOfLeadId !== undefined && typeof result.duplicateOfLeadId !== 'string')) throw new Error(`LEAD_WRITE_PAGE_RESULT_INVALID_${index}`);\n  return { json: { leadId: result.id, idempotencyKey: lockedPage[index].sourceLead.idempotencyKey, externalLeadId: lockedPage[index].sourceLead.externalLeadId, dedupStatus: result.dedupStatus, duplicateOfLeadId: result.duplicateOfLeadId ?? null, replay: result.replay, requestId: envelope.meta?.requestId ?? null } };\n});"
+      },
+      "id": "map-write-results",
+      "name": "Validate and Map Batched Write Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "onError": "stopWorkflow",
+      "position": [1820, 440]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ { ok: true, count: $input.all().length, results: $input.all().map((item) => item.json) } }}", "options": { "responseCode": 200 } },
+      "id": "respond",
+      "name": "Return Lead Write Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [780, 140]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Lead Staging Webhook": { "main": [[{ "node": "Normalize and Lock Idempotency", "type": "main", "index": 0 }]] },
+    "Normalize and Lock Idempotency": { "main": [[{ "node": "Loop in Pages of 20", "type": "main", "index": 0 }]] },
+    "Loop in Pages of 20": { "main": [[{ "node": "Return Lead Write Results", "type": "main", "index": 0 }], [{ "node": "Call FastGPT Score Agent", "type": "main", "index": 0 }]] },
+    "Call FastGPT Score Agent": { "main": [[{ "node": "Validate and Lock Score Result", "type": "main", "index": 0 }]] },
+    "Validate and Lock Score Result": { "main": [[{ "node": "Lock Scored Page Before Write", "type": "main", "index": 0 }]] },
+    "Lock Scored Page Before Write": { "main": [[{ "node": "Call FastGPT Write Agent", "type": "main", "index": 0 }]] },
+    "Call FastGPT Write Agent": { "main": [[{ "node": "Validate and Map Batched Write Results", "type": "main", "index": 0 }]] },
+    "Validate and Map Batched Write Results": { "main": [[{ "node": "Loop in Pages of 20", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "saveManualExecutions": false, "saveExecutionProgress": false, "saveDataErrorExecution": "none", "saveDataSuccessExecution": "none", "executionTimeout": 900 },
+  "versionId": "00000000-0000-4000-8000-000000000001",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": [{ "name": "Dachuan Lead", "id": "replace-after-import" }]
+}

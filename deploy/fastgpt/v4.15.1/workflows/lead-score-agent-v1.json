@@ -1,0 +1,81 @@
+{
+  "name": "Dachuan Lead Score Agent v1",
+  "intro": "对单条清洗线索评分并返回锁定的严格 JSON；无 MCP 写权限。",
+  "type": "advanced",
+  "modules": [
+    {
+      "flowNodeType": "workflowStart",
+      "name": "Lead input",
+      "version": "481",
+      "nodeId": "scoreStart",
+      "inputs": [{ "key": "userChatInput", "label": "Lead JSON", "valueType": "string", "required": true, "renderTypeList": ["reference", "textarea"] }],
+      "outputs": [{ "id": "userChatInput", "key": "userChatInput", "type": "static", "valueType": "string", "label": "Lead JSON" }],
+      "position": { "x": 80, "y": 160 }
+    },
+    {
+      "flowNodeType": "chatNode",
+      "name": "Score lead as strict JSON",
+      "intro": "Select any compatible model; the provider is not hard-coded.",
+      "version": "4.9.7",
+      "nodeId": "leadScore",
+      "inputs": [
+        { "key": "model", "label": "AI model", "valueType": "string", "renderTypeList": ["settingLLMModel", "reference"], "value": "REPLACE_IN_FASTGPT_UI" },
+        { "key": "temperature", "label": "", "valueType": "number", "renderTypeList": ["hidden"], "value": 0 },
+        { "key": "maxToken", "label": "", "valueType": "number", "renderTypeList": ["hidden"], "value": 600 },
+        { "key": "isResponseAnswerText", "label": "", "valueType": "boolean", "renderTypeList": ["hidden"], "value": false },
+        { "key": "aiChatReasoning", "label": "", "valueType": "boolean", "renderTypeList": ["hidden"], "value": false },
+        { "key": "aiChatVision", "label": "", "valueType": "boolean", "renderTypeList": ["hidden"], "value": false },
+        { "key": "aiChatAudio", "label": "", "valueType": "boolean", "renderTypeList": ["hidden"], "value": false },
+        { "key": "aiChatVideo", "label": "", "valueType": "boolean", "renderTypeList": ["hidden"], "value": false },
+        { "key": "aiChatExtractFiles", "label": "", "valueType": "boolean", "renderTypeList": ["hidden"], "value": false },
+        { "key": "aiChatResponseFormat", "label": "", "valueType": "string", "renderTypeList": ["hidden"], "value": "json_schema" },
+        { "key": "aiChatJsonSchema", "label": "", "valueType": "string", "renderTypeList": ["hidden"], "value": "{\"name\":\"lead_score_v1\",\"strict\":true,\"schema\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"aiScore\",\"profile\"],\"properties\":{\"aiScore\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100},\"profile\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"industry\",\"intent\",\"scale\",\"contactability\",\"confidence\",\"reason\"],\"properties\":{\"industry\":{\"type\":\"string\"},\"intent\":{\"type\":\"string\"},\"scale\":{\"type\":\"string\"},\"contactability\":{\"type\":\"string\"},\"confidence\":{\"type\":\"string\"},\"reason\":{\"type\":\"string\"}}},\"contactName\":{\"type\":\"string\"},\"phone\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"}}}}" },
+        { "key": "systemPrompt", "label": "Prompt", "valueType": "string", "renderTypeList": ["textarea", "reference"], "value": "你是大川机床线索评分器。只评估输入的一条线索，禁止输出解释、Markdown 或代码围栏。必须返回符合 lead-score-v1 的单个 JSON 对象。总分为 0-100 整数：行业匹配 0-30、需求信号 0-30、企业规模 0-20、可联系性 0-20。profile 必须包含 industry、intent、scale、contactability、confidence、reason 六个非空字符串；reason 简洁说明四维依据。仅在输入能可靠提取时输出 contactName、phone、email，不猜测。" },
+        { "key": "history", "label": "History", "valueType": "chatHistory", "renderTypeList": ["numberInput", "reference"], "value": 0, "required": true },
+        { "key": "quoteQA", "label": "", "valueType": "datasetQuote", "renderTypeList": ["settingDatasetQuotePrompt"], "value": [] },
+        { "key": "userChatInput", "label": "Lead JSON", "valueType": "string", "renderTypeList": ["reference", "textarea"], "value": ["scoreStart", "userChatInput"], "required": true }
+      ],
+      "outputs": [
+        { "id": "history", "key": "history", "required": true, "label": "New context", "valueType": "chatHistory", "type": "static" },
+        { "id": "answerText", "key": "answerText", "required": true, "label": "Strict score JSON", "valueType": "string", "type": "static" },
+        { "id": "system_error", "key": "system_error", "label": "Error", "valueType": "string", "type": "error" }
+      ],
+      "position": { "x": 440, "y": 160 }
+    },
+    {
+      "flowNodeType": "code",
+      "name": "Validate and lock score",
+      "version": "1",
+      "nodeId": "lockScore",
+      "inputs": [
+        { "key": "system_addInputParam", "label": "", "valueType": "dynamic", "renderTypeList": ["addInputParam"], "required": false },
+        { "key": "scoreJson", "label": "Score JSON", "valueType": "string", "renderTypeList": ["reference"], "value": ["leadScore", "answerText"], "required": true, "canEdit": true },
+        { "key": "sourceModelVersion", "label": "Model version", "valueType": "string", "renderTypeList": ["input"], "value": "REPLACE_MODEL_VERSION", "required": true, "canEdit": true },
+        { "key": "extractorVersion", "label": "Extractor version", "valueType": "string", "renderTypeList": ["input"], "value": "lead-score-v1", "required": true, "canEdit": true },
+        { "key": "codeType", "label": "", "valueType": "string", "renderTypeList": ["hidden"], "value": "js" },
+        { "key": "code", "label": "", "valueType": "string", "renderTypeList": ["custom"], "value": "async function main({scoreJson, sourceModelVersion, extractorVersion}) {\n  const score = JSON.parse(scoreJson);\n  const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every((key) => keys.includes(key));\n  const profileKeys = ['industry','intent','scale','contactability','confidence','reason'];\n  const optionalStringsValid = ['contactName','phone','email'].every((key) => score[key] === undefined || (typeof score[key] === 'string' && score[key].trim()));\n  if (!exact(score, ['aiScore','profile','contactName','phone','email']) || !Number.isInteger(score.aiScore) || score.aiScore < 0 || score.aiScore > 100 || !exact(score.profile, profileKeys) || !profileKeys.every((key) => typeof score.profile[key] === 'string' && score.profile[key].trim()) || !optionalStringsValid) throw new Error('LEAD_SCORE_JSON_INVALID');\n  if (!sourceModelVersion || sourceModelVersion.startsWith('REPLACE_') || !extractorVersion) throw new Error('LEAD_SCORING_VERSION_NOT_CONFIGURED');\n  return { lockedScoreJson: JSON.stringify({ score, sourceModelVersion, extractorVersion }) };\n}" }
+      ],
+      "outputs": [
+        { "id": "system_addOutputParam", "key": "system_addOutputParam", "label": "", "valueType": "dynamic", "type": "dynamic" },
+        { "id": "lockedScoreJson", "key": "lockedScoreJson", "label": "Locked score", "valueType": "string", "type": "dynamic" },
+        { "id": "system_error", "key": "system_error", "label": "Error", "valueType": "string", "type": "error" }
+      ],
+      "position": { "x": 820, "y": 160 }
+    },
+    {
+      "flowNodeType": "answerNode",
+      "name": "Return locked score",
+      "version": "481",
+      "nodeId": "scoreAnswer",
+      "inputs": [{ "key": "text", "label": "Response", "valueType": "string", "required": true, "renderTypeList": ["reference"], "value": ["lockScore", "lockedScoreJson"] }],
+      "outputs": [],
+      "position": { "x": 1180, "y": 160 }
+    }
+  ],
+  "edges": [
+    { "source": "scoreStart", "sourceHandle": "scoreStart-source-right", "target": "leadScore", "targetHandle": "leadScore-target-left" },
+    { "source": "leadScore", "sourceHandle": "leadScore-source-right", "target": "lockScore", "targetHandle": "lockScore-target-left" },
+    { "source": "lockScore", "sourceHandle": "lockScore-source-right", "target": "scoreAnswer", "targetHandle": "scoreAnswer-target-left" }
+  ],
+  "chatConfig": { "variables": [] }
+}

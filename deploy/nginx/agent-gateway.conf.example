@@ -1,0 +1,16 @@
+# 把本 location 合并到现有 CRM HTTPS server 块；不要新建第二个同名 server。
+# 浏览器保持访问 CRM 同源地址，Session Cookie 才不会交给 FastGPT 或 MCP 域名。
+location = /api/agent-gateway/chat {
+    proxy_pass http://127.0.0.1:3010/api/agent-gateway/chat;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_buffering off;
+    proxy_read_timeout 300s;
+}
+
+# Nginx access_log 格式不得包含 Authorization、Cookie、
+# X-Dachuan-User-Assertion 或请求正文。

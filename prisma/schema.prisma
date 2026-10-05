@@ -1,0 +1,2123 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "rhel-openssl-1.0.x", "rhel-openssl-1.1.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 枚举定义 ====================
+
+enum Role {
+  SUPER_ADMIN
+  SALES
+  FOREIGN_TRADE
+  PURCHASE
+  WAREHOUSE
+}
+
+enum CustomerStatus {
+  NEW_LEAD
+  CONTACTED
+  QUOTED
+  NEGOTIATING
+  WON
+  LOST
+  INACTIVE
+}
+
+enum CustomerType {
+  NEW
+  OLD
+  AGENT
+  END_USER
+  DISTRIBUTOR
+}
+
+enum CustomerLevel {
+  A
+  B
+  C
+  D
+}
+
+enum FollowType {
+  PHONE
+  WECHAT
+  EMAIL
+  WHATSAPP
+  VIDEO
+  VISIT
+  EXHIBITION
+  OTHER
+}
+
+enum Language {
+  ZH
+  EN
+  ES
+  RU
+}
+
+enum ProductType {
+  MAIN
+  OPTIONAL
+}
+
+enum QuoteItemType {
+  MAIN
+  OPTIONAL
+}
+
+enum ContractItemType {
+  MAIN
+  OPTIONAL
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL_PAID
+  PAID
+}
+
+enum ContractStatus {
+  DRAFT
+  SIGNED
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ShipmentStatus {
+  NOT_SHIPPED
+  PARTIAL_SHIPPED
+  SHIPPED
+}
+
+enum PaymentRecordStatus {
+  ACTIVE
+  VOIDED
+}
+
+enum ContractUnlockStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  USED
+}
+
+enum ContractDeleteStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeadSource {
+  BAIDU_SEARCH
+  MANUAL
+  OTHER
+}
+
+enum LeadReviewStatus {
+  PENDING
+  HIGH_INTENT
+  MID_INTENT
+  LOW_INTENT
+  INVALID
+}
+
+enum LeadDedupStatus {
+  UNIQUE
+  PENDING_REVIEW
+  CONFIRMED_DUPLICATE
+  CONFIRMED_UNIQUE
+}
+
+enum LeadWritePrincipalType {
+  SERVICE
+  USER
+}
+
+enum LeadWriteOutcome {
+  CREATED
+  REPLAY
+  CONFLICT
+}
+
+enum LeadRoutingOutcome {
+  ASSIGNED
+  REGION_UNRESOLVED
+  NO_MATCHING_ASSIGNEE
+  MULTIPLE_MATCHING_ASSIGNEES
+  ROUTING_UNAVAILABLE
+}
+
+enum ErpDeleteRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ==================== 用户模型 ====================
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  avatarPath  String?
+  role        Role
+  region      String   @default("其他")
+  territories Json     @default("[]")
+  viewScope   String   @default("TERRITORY")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customers                     Customer[]
+  followRecords                 FollowRecord[]
+  auditLogs                     AuditLog[]
+  contracts                     Contract[]                   @relation("SalesUser")
+  createdContracts              Contract[]                   @relation("ContractCreator")
+  customerQuotes                CustomerQuote[]
+  contractPayments              ContractPayment[]
+  shipments                     Shipment[]
+  operationLogs                 OperationLog[]
+  requestedUnlocks              ContractUnlockRequest[]      @relation("ContractUnlockRequester")
+  approvedUnlocks               ContractUnlockRequest[]      @relation("ContractUnlockApprover")
+  requestedDeletes              ContractDeleteRequest[]      @relation("ContractDeleteRequester")
+  approvedDeletes               ContractDeleteRequest[]      @relation("ContractDeleteApprover")
+  taskStates                    SystemUserTaskState[]
+  updatedSettings               SystemSetting[]              @relation("SystemSettingUpdater")
+  createdSalesTargets           SalesTarget[]                @relation("SalesTargetCreator")
+  updatedSalesTargets           SalesTarget[]                @relation("SalesTargetUpdater")
+  requestedPurchaseOrderDeletes PurchaseOrderDeleteRequest[] @relation("PurchaseOrderDeleteRequester")
+  approvedPurchaseOrderDeletes  PurchaseOrderDeleteRequest[] @relation("PurchaseOrderDeleteApprover")
+  requestedKitCheckDeletes      KitCheckDeleteRequest[]      @relation("KitCheckDeleteRequester")
+  approvedKitCheckDeletes       KitCheckDeleteRequest[]      @relation("KitCheckDeleteApprover")
+  createdAfterSalesOrders       AfterSalesOrder[]            @relation("AfterSalesOrderCreator")
+  createdAfterSalesSupplementParts AfterSalesSupplementPart[] @relation("AfterSalesSupplementPartCreator")
+  agentConversations           AgentConversation[]
+  leadHuntTasks                LeadHuntTask[]
+
+  @@map("users")
+}
+
+// ==================== 客户模型 ====================
+
+model Customer {
+  id             String         @id @default(uuid())
+  companyName    String
+  contactName    String
+  phone          String?
+  wechat         String?
+  whatsapp       String?
+  email          String?
+  country        String?        @default("中国")
+  province       String?
+  city           String?
+  region         String         @default("")
+  businessLine   String         @default("国内销售")
+  address        String?        @db.Text
+  customerSource String
+  customerType   CustomerType
+  customerLevel  CustomerLevel
+  status         CustomerStatus @default(NEW_LEAD)
+  interestTags   Json           @default("[]")
+  assignedUserId String?
+  assignedUser   User?          @relation(fields: [assignedUserId], references: [id])
+  remark         String?        @db.Text
+  lastFollowDate DateTime?
+  nextFollowDate DateTime?      @db.Date
+  duplicateKey   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  followRecords  FollowRecord[]
+  contracts      Contract[]
+  customerQuotes CustomerQuote[]
+  afterSalesOrders AfterSalesOrder[]
+
+  @@index([region])
+  @@index([province])
+  @@index([city])
+  @@index([businessLine])
+  @@index([status])
+  @@index([assignedUserId])
+  @@index([nextFollowDate])
+  @@index([deletedAt])
+  @@map("customers")
+}
+
+// ==================== 跟进记录模型 ====================
+
+model FollowRecord {
+  id             String          @id @default(uuid())
+  customerId     String
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  followType     FollowType
+  content        String          @db.Text
+  result         String?         @db.Text
+  address        String?         @db.Text
+  nextFollowDate DateTime?       @db.Date
+  newStatus      CustomerStatus?
+  createdAt      DateTime        @default(now())
+
+  @@index([customerId])
+  @@index([userId])
+  @@map("follow_records")
+}
+
+// ==================== 产品模型（主表） ====================
+
+model Product {
+  id           String      @id @default(uuid())
+  model        String      @unique
+  category     String
+  productType  ProductType @default(MAIN)
+  imageUrl     String?
+  videoUrl     String?
+  factoryPrice Decimal?    @db.Decimal(12, 2)
+  currency     String      @default("CNY")
+  remark       String?     @db.Text
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  translations   ProductTranslation[]
+  contracts      Contract[]
+  customerQuotes CustomerQuote[]
+  quoteItems     CustomerQuoteItem[]
+  contractItems  ContractItem[]
+
+  @@map("products")
+}
+
+// ==================== 产品多语言资料模型 ====================
+
+model ProductTranslation {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  language    Language
+  name        String
+  description String?  @db.Text
+  specs       Json?
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([productId, language])
+  @@map("product_translations")
+}
+
+// ==================== 客户报价模型 ====================
+
+model CustomerQuote {
+  id                   String   @id @default(uuid())
+  customerId           String
+  customer             Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId            String
+  product              Product  @relation(fields: [productId], references: [id])
+  quotedPrice          Decimal  @db.Decimal(12, 2)
+  factoryPriceSnapshot Decimal? @db.Decimal(12, 2)
+  currency             String   @default("CNY")
+  remark               String?  @db.Text
+  createdById          String
+  createdBy            User     @relation(fields: [createdById], references: [id])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  items          CustomerQuoteItem[]
+  sourceContract Contract?           @relation("QuoteSourceContract")
+
+  @@index([customerId])
+  @@index([productId])
+  @@map("customer_quotes")
+}
+
+model CustomerQuoteItem {
+  id                   String        @id @default(uuid())
+  quoteId              String
+  quote                CustomerQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId            String
+  product              Product       @relation(fields: [productId], references: [id])
+  itemType             QuoteItemType
+  productNameSnapshot  String
+  productModelSnapshot String
+  factoryPriceSnapshot Decimal?      @db.Decimal(12, 2)
+  quotedPrice          Decimal?      @db.Decimal(12, 2)
+  quantity             Int           @default(1)
+  sortOrder            Int           @default(0)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([quoteId])
+  @@index([productId])
+  @@map("customer_quote_items")
+}
+
+// ==================== 合同模型 ====================
+
+model Contract {
+  id                    String         @id @default(uuid())
+  contractNo            String         @unique
+  signedDate            DateTime       @db.Date
+  estimatedShipmentDate DateTime?      @db.Date
+  customerId            String
+  customer              Customer       @relation(fields: [customerId], references: [id])
+  salesUserId           String
+  salesUser             User           @relation("SalesUser", fields: [salesUserId], references: [id])
+  productId             String?
+  product               Product?       @relation(fields: [productId], references: [id])
+  sourceQuoteId         String?        @unique
+  sourceQuote           CustomerQuote? @relation("QuoteSourceContract", fields: [sourceQuoteId], references: [id])
+  equipmentName         String
+  equipmentModel        String
+  amount                Decimal        @db.Decimal(12, 2)
+  paidAmount            Decimal        @default(0) @db.Decimal(12, 2)
+  unpaidAmount          Decimal?       @db.Decimal(12, 2)
+  currency              String         @default("CNY")
+  attachmentUrl         String?
+  remark                String?        @db.Text
+  paymentStatus         PaymentStatus  @default(UNPAID)
+  contractStatus        ContractStatus @default(SIGNED)
+  editUnlockedUntil     DateTime?
+  editUnlockRequestId   String?
+  createdById           String
+  createdBy             User           @relation("ContractCreator", fields: [createdById], references: [id])
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  deletedAt             DateTime?
+
+  payments       ContractPayment[]
+  shipments      Shipment[]
+  items          ContractItem[]
+  unlockRequests ContractUnlockRequest[]
+  deleteRequests ContractDeleteRequest[]
+  afterSalesOrders AfterSalesOrder[]
+
+  @@index([customerId])
+  @@index([salesUserId])
+  @@index([paymentStatus])
+  @@index([contractStatus])
+  @@index([estimatedShipmentDate])
+  @@index([deletedAt])
+  @@map("contracts")
+}
+
+model ContractItem {
+  id                    String           @id @default(uuid())
+  contractId            String
+  contract              Contract         @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  productId             String
+  product               Product          @relation(fields: [productId], references: [id])
+  itemType              ContractItemType
+  productNameSnapshot   String
+  productModelSnapshot  String
+  factoryPriceSnapshot  Decimal?         @db.Decimal(12, 2)
+  contractPrice         Decimal?         @db.Decimal(12, 2)
+  quantity              Int              @default(1)
+  estimatedShipmentDate DateTime?        @db.Date
+  sortOrder             Int              @default(0)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  productionOrders ProductionOrder[]
+
+  @@index([contractId])
+  @@index([productId])
+  @@map("contract_items")
+}
+
+// ==================== 发货记录模型 ====================
+
+model Shipment {
+  id               String         @id @default(uuid())
+  contractId       String
+  contract         Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  shipmentDate     DateTime       @db.Date
+  receivingAddress String         @db.Text
+  driverPhone      String
+  equipmentName    String
+  quantity         Int
+  shipmentStatus   ShipmentStatus @default(NOT_SHIPPED)
+  deliveryNoteUrl  String?
+  shipmentPhotoUrl String?
+  remark           String?        @db.Text
+  createdById      String
+  createdBy        User           @relation(fields: [createdById], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([contractId])
+  @@index([shipmentStatus])
+  @@index([shipmentDate])
+  @@map("shipments")
+}
+
+// ==================== 合同回款记录模型 ====================
+
+model ContractPayment {
+  id            String              @id @default(uuid())
+  contractId    String
+  contract      Contract            @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  amount        Decimal             @db.Decimal(12, 2)
+  paymentDate   DateTime            @db.Date
+  paymentMethod String?
+  remark        String?             @db.Text
+  status        PaymentRecordStatus @default(ACTIVE)
+  createdById   String
+  createdBy     User                @relation(fields: [createdById], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([contractId])
+  @@map("contract_payments")
+}
+
+model ContractUnlockRequest {
+  id             String               @id @default(uuid())
+  contractId     String
+  contract       Contract             @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  requesterId    String
+  requester      User                 @relation("ContractUnlockRequester", fields: [requesterId], references: [id])
+  approverId     String?
+  approver       User?                @relation("ContractUnlockApprover", fields: [approverId], references: [id])
+  status         ContractUnlockStatus @default(PENDING)
+  reason         String               @db.Text
+  approvalRemark String?              @db.Text
+  createdAt      DateTime             @default(now())
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+  usedAt         DateTime?
+  updatedAt      DateTime             @updatedAt
+
+  @@index([contractId])
+  @@index([requesterId])
+  @@index([approverId])
+  @@index([status])
+  @@map("contract_unlock_requests")
+}
+
+model ContractDeleteRequest {
+  id             String               @id @default(uuid())
+  contractId     String
+  contract       Contract             @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  requesterId    String
+  requester      User                 @relation("ContractDeleteRequester", fields: [requesterId], references: [id])
+  approverId     String?
+  approver       User?                @relation("ContractDeleteApprover", fields: [approverId], references: [id])
+  status         ContractDeleteStatus @default(PENDING)
+  reason         String               @db.Text
+  approvalRemark String?              @db.Text
+  createdAt      DateTime             @default(now())
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+  updatedAt      DateTime             @updatedAt
+
+  @@index([contractId])
+  @@index([requesterId])
+  @@index([approverId])
+  @@index([status])
+  @@map("contract_delete_requests")
+}
+
+// ==================== 售后调试工单（纯新增模块） ====================
+
+model AfterSalesOrder {
+  id                    String   @id @default(uuid())
+  orderNo               String   @unique
+  contractId            String
+  contract              Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  customerId            String
+  customer              Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  contractNoSnapshot    String
+  customerNameSnapshot  String
+  equipmentModelSnapshot String
+  orderType             String
+  urgency               String   @default("NORMAL")
+  dispatchDate          DateTime @db.Date
+  completedDate         DateTime? @db.Date
+  status                String   @default("PENDING_DISPATCH")
+  serviceAmount         Decimal? @db.Decimal(12, 2)
+  assigneeNames         String   @db.Text
+  serviceAddress        String?  @db.VarChar(255)
+  description           String   @db.Text
+  receiptContent        String?  @db.Text
+  problemCategory       String?
+  otherReason           String?  @db.Text
+  satisfaction          String?  @db.VarChar(191)
+  receiptAt             DateTime?
+  closedAt              DateTime?
+  createdById           String
+  createdBy             User     @relation("AfterSalesOrderCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
+
+  parts AfterSalesOrderPart[]
+
+  @@index([contractId])
+  @@index([customerId])
+  @@index([status])
+  @@index([dispatchDate])
+  @@index([deletedAt])
+  @@map("after_sales_orders")
+}
+
+model AfterSalesOrderPart {
+  id                String          @id @default(uuid())
+  afterSalesOrderId String
+  afterSalesOrder   AfterSalesOrder @relation(fields: [afterSalesOrderId], references: [id], onDelete: Cascade)
+  partName          String
+  sortOrder         Int             @default(0)
+  createdAt         DateTime        @default(now())
+
+  @@index([afterSalesOrderId])
+  @@index([partName])
+  @@map("after_sales_order_parts")
+}
+
+model AfterSalesSupplementPart {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  createdById String
+  createdBy   User     @relation("AfterSalesSupplementPartCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+
+  @@map("after_sales_supplement_parts")
+}
+
+model OperationLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  beforeData Json?
+  afterData  Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@map("operation_logs")
+}
+
+// ==================== 操作审计日志 ====================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  entityName String
+  entityId   String?
+  details    String?  @db.Text
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ==================== AI 线索池 ====================
+
+model Lead {
+  id            String     @id @default(uuid())
+  companyName   String
+  contactName   String?
+  phone         String?
+  email         String?
+  source        LeadSource
+  sourceUrl     String?    @db.VarChar(2048)
+  searchKeyword String?
+
+  aiScore            Int?
+  profile            Json?
+  sourceModelVersion String?
+  extractorVersion   String?
+
+  sourceSystem   String?
+  externalLeadId String?
+  idempotencyKey String? @unique
+  payloadHash    String?
+
+  dedupKey            String?         @unique
+  duplicateOfLeadId   String?
+  duplicateConfidence Int?
+  dedupStatus         LeadDedupStatus @default(UNIQUE)
+
+  reviewStatus        LeadReviewStatus @default(PENDING)
+  assignedUserId      String?
+  reviewedByUserId    String?
+  reviewedAt          DateTime?
+  convertedCustomerId String?
+  feedbackVersion     Int              @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reviewStatus])
+  @@index([source])
+  @@index([aiScore])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+model LeadFeedbackEvent {
+  id               String   @id @default(uuid())
+  leadId           String
+  reviewStatus     LeadReviewStatus?
+  reviewReasonCode String?
+  comment          String?
+  reviewedByUserId String?
+  reviewedAt       DateTime @default(now())
+
+  @@index([leadId, reviewedAt])
+  @@map("lead_feedback_events")
+}
+
+model LeadWriteAudit {
+  id             String                 @id @default(uuid())
+  principalType  LeadWritePrincipalType
+  principalId    String
+  action         String
+  entityType     String
+  entityId       String?
+  idempotencyKey String
+  outcome        LeadWriteOutcome
+  routingOutcome LeadRoutingOutcome?
+  payloadHash    String
+  requestId      String
+  createdAt      DateTime               @default(now())
+
+  @@index([principalType, principalId, createdAt])
+  @@index([idempotencyKey, createdAt])
+  @@index([entityType, entityId])
+  @@index([routingOutcome, createdAt])
+  @@index([createdAt])
+  @@map("lead_write_audits")
+}
+
+model LeadWriteIdempotency {
+  idempotencyKey String   @id
+  payloadHash    String
+  leadId         String
+  createdAt      DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@map("lead_write_idempotencies")
+}
+
+// ==================== AI 获客助手（lead-hunter） ====================
+// 纯新增两张表：获客任务 + 候选线索。不修改任何既有表。
+// 候选状态 PENDING_CONFIRM/ADMITTED/NO_CONTACT/LOOKING_UP/LOOKUP_FOUND/LOOKUP_FAILED/DISCARDED；
+// 任务状态 running/done/failed/cancelled（服务重启可能中断 running，页面允许"重新执行"）。
+
+model LeadHuntTask {
+  id          String   @id @default(uuid())
+  status      String
+  config      Json
+  progress    Json?
+  report      Json?
+  error       String?
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  candidates  LeadHuntCandidate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@map("lead_hunt_tasks")
+}
+
+model LeadHuntCandidate {
+  id          String       @id @default(uuid())
+  taskId      String
+  task        LeadHuntTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  companyName String
+  sourceUrl   String?      @db.VarChar(2048)
+  snippet     String?      @db.Text
+  keywords    Json?
+  round       Int?
+  score       Int?
+  scoreReason String?      @db.Text
+  phone       String?
+  email       String?
+  province    String?
+  city        String?
+  status      String
+  tianyancha  Json?
+  leadId      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId, status])
+  @@map("lead_hunt_candidates")
+}
+
+// ==================== ERP 第 1 期：枚举 ====================
+
+enum StockInType {
+  PURCHASE
+  RETURN
+  INITIAL
+  CHECK_IN
+  OTHER
+}
+
+enum StockOutType {
+  PRODUCTION
+  CHECK_OUT
+  OTHER
+}
+
+enum StockCheckStatus {
+  DRAFT
+  CHECKING
+  DONE
+}
+
+enum StockMovementType {
+  STOCK_IN
+  STOCK_OUT
+  CHECK_ADJUST
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+// 入库创建即确认；DRAFT 仅为未来流程预留，当前公开状态转换只有 CONFIRMED -> VOIDED。
+enum StockInStatus {
+  DRAFT
+  CONFIRMED
+  VOIDED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIAL_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum ProductionOrderStatus {
+  DRAFT
+  ISSUED
+  CHANGE_PENDING
+  CANCELLED
+}
+
+enum ProductionOrderChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum KitCheckStatus {
+  NOT_CHECKED
+  SUFFICIENT
+  SHORTAGE
+}
+
+enum ProcurementSourceType {
+  PRODUCTION_ORDER
+  STOCK_REPLENISHMENT
+  MONTHLY_PRODUCTION_PLAN
+  MANUAL
+}
+
+enum PurchaseDemandStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PARTIALLY_CONVERTED
+  CONVERTED
+  CANCELLED
+}
+
+enum MonthlyProductionPlanStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PurchaseDeliveryStatus {
+  NOT_DELIVERED
+  PARTIAL_RECEIVED
+  FULLY_RECEIVED
+  OVERDUE_NOT_RECEIVED
+  OVERDUE_PARTIAL_RECEIVED
+  CLOSED
+}
+
+enum SupplierProgressStatus {
+  UNCONFIRMED
+  NOT_SCHEDULED
+  SCHEDULED
+  IN_PRODUCTION
+  PENDING_INSPECTION
+  COMPLETED
+  PENDING_SHIPMENT
+  SHIPPED
+  PARTIAL_RECEIVED
+  FULLY_RECEIVED
+  DELAYED
+  PAUSED
+}
+
+// ==================== ERP：仓库 ====================
+// 注：createdById / productId 等指向 CRM 既有模型（User/Product）的字段
+// 一律使用标量外键（不声明 @relation），以遵守「不改动 CRM 既有模型」约束。
+
+model Warehouse {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  inventories Inventory[]
+  stockIns    StockIn[]
+  stockOuts   StockOut[]
+  stockChecks StockCheck[]
+  movements   StockMovement[]
+
+  @@index([isActive])
+  @@map("erp_warehouses")
+}
+
+// ==================== ERP：物料分类（树形） ====================
+
+model MaterialCategory {
+  id               String             @id @default(uuid())
+  name             String
+  code             String
+  parentId         String?
+  parent           MaterialCategory?  @relation("MaterialCategoryTree", fields: [parentId], references: [id])
+  children         MaterialCategory[] @relation("MaterialCategoryTree")
+  sortOrder        Int                @default(0)
+  warningThreshold Decimal?           @db.Decimal(10, 2)
+  createdAt        DateTime           @default(now())
+
+  materials Material[]
+
+  @@index([parentId])
+  @@map("erp_material_categories")
+}
+
+// ==================== ERP：物料主表 ====================
+
+model Material {
+  id                       String           @id @default(uuid())
+  code                     String           @unique
+  name                     String
+  categoryId               String
+  category                 MaterialCategory @relation(fields: [categoryId], references: [id])
+  spec                     String?
+  materialType             String?
+  drawingNo                String?
+  supplier                 String?
+  supplierId               String?
+  unit                     String           @default("件")
+  standardPrice            Decimal?         @db.Decimal(12, 2)
+  safetyStock              Decimal?         @db.Decimal(10, 2)
+  minStock                 Decimal?         @db.Decimal(10, 2)
+  maxStock                 Decimal?         @db.Decimal(10, 2)
+  procurementLeadDays      Int              @default(0)
+  safetyStockEnabled       Boolean          @default(false)
+  autoPurchaseDraftEnabled Boolean          @default(false)
+  weight                   Decimal?         @db.Decimal(10, 2)
+  remark                   String?          @db.Text
+  isActive                 Boolean          @default(true)
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+  deletedAt                DateTime?
+
+  inventories                  Inventory[]
+  stockInItems                 StockInItem[]
+  stockInVoidItems             StockInVoidItem[]
+  stockOutItems                StockOutItem[]
+  stockCheckItems              StockCheckItem[]
+  movements                    StockMovement[]
+  bomItems                     BomItem[]
+  purchaseOrderShortageSources PurchaseOrderShortageSource[]
+  purchaseDemands              PurchaseDemand[]
+  monthlyMaterialRequirements  MonthlyMaterialRequirement[]
+
+  @@index([categoryId])
+  @@index([supplierId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("erp_materials")
+}
+
+// ==================== ERP：供应商与采购订单（第 3 期 Part A） ====================
+// 注：supplierId / materialId 等均为标量关联，避免改动既有 CRM/ERP 模型关系。
+
+model Supplier {
+  id           String    @id @default(uuid())
+  name         String
+  contactName  String?
+  phone        String?
+  wechat       String?
+  email        String?
+  address      String?
+  mainCategory String?
+  remark       String?   @db.Text
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("erp_suppliers")
+}
+
+model PurchaseOrder {
+  id                      String              @id @default(uuid())
+  orderNo                 String              @unique
+  supplierId              String
+  supplierNameSnapshot    String
+  orderDate               DateTime
+  expectedArrivalDate     DateTime?
+  status                  PurchaseOrderStatus @default(DRAFT)
+  remark                  String?             @db.Text
+  createdById             String
+  sourceProductionOrderId String?
+  sourceKitCheckId        String?
+  sourceShortageDetail    Json?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  deletedAt               DateTime?
+
+  sourceProductionOrder ProductionOrder?              @relation("PurchaseOrderSourceProductionOrder", fields: [sourceProductionOrderId], references: [id], onDelete: SetNull)
+  sourceKitCheck        KitCheckResult?               @relation("PurchaseOrderSourceKitCheck", fields: [sourceKitCheckId], references: [id], onDelete: SetNull)
+  shortageSources       PurchaseOrderShortageSource[]
+  deleteRequests        PurchaseOrderDeleteRequest[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([sourceProductionOrderId])
+  @@index([sourceKitCheckId])
+  @@map("erp_purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id                   String                 @id @default(uuid())
+  purchaseOrderId      String
+  materialId           String
+  materialCodeSnapshot String
+  materialNameSnapshot String
+  materialSpecSnapshot String?
+  quantity             Decimal                @db.Decimal(10, 2)
+  unitPrice            Decimal                @db.Decimal(12, 2)
+  amount               Decimal                @db.Decimal(12, 2)
+  receivedQuantity     Decimal                @default(0) @db.Decimal(10, 2)
+  needArrivalDate      DateTime?              @db.Date
+  requiredDeliveryDate DateTime?              @db.Date
+  firstPromisedDate    DateTime?              @db.Date
+  latestPromisedDate   DateTime?              @db.Date
+  estimatedShipDate    DateTime?              @db.Date
+  actualShipDate       DateTime?              @db.Date
+  actualArrivalDate    DateTime?              @db.Date
+  deliveryStatus       PurchaseDeliveryStatus @default(NOT_DELIVERED)
+  responsibleId        String?
+  sortOrder            Int                    @default(0)
+  createdAt            DateTime               @default(now())
+
+  shortageSources             PurchaseOrderShortageSource[]
+  demandSources               PurchaseOrderItemSource[]
+  followUps                   SupplierDeliveryFollowUp[]
+  promiseHistory              SupplierPromiseDateHistory[]
+  deliveryBatches             PurchaseDeliveryBatch[]
+  demandProductionAllocations PurchaseDemandProductionAllocation[]
+
+  @@index([purchaseOrderId])
+  @@index([materialId])
+  @@index([responsibleId])
+  @@index([deliveryStatus])
+  @@index([latestPromisedDate])
+  @@map("erp_purchase_order_items")
+}
+
+// 物料级缺料采购来源。活动记录由齐套检查和物料唯一确定；取消或软删除
+// 后置空 isActive，既保留追溯记录，也允许该缺料物料重新生成采购草稿。
+model PurchaseOrderShortageSource {
+  id                  String            @id @default(uuid())
+  purchaseOrderId     String
+  purchaseOrder       PurchaseOrder     @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  kitCheckId          String
+  kitCheck            KitCheckResult    @relation(fields: [kitCheckId], references: [id], onDelete: Restrict)
+  materialId          String
+  material            Material          @relation(fields: [materialId], references: [id])
+  isActive            Boolean?          @default(true)
+  createdAt           DateTime          @default(now())
+  releasedAt          DateTime?
+
+  @@unique([kitCheckId, materialId, isActive], map: "erp_po_shortage_src_kit_mat_active_uq")
+  @@unique([purchaseOrderItemId])
+  @@index([purchaseOrderId])
+  @@index([kitCheckId])
+  @@index([materialId])
+  @@map("erp_purchase_order_shortage_sources")
+}
+
+// ==================== ERP：库存台账 ====================
+
+model Inventory {
+  id          String    @id @default(uuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  materialId  String
+  material    Material  @relation(fields: [materialId], references: [id])
+  quantity    Decimal   @default(0) @db.Decimal(10, 2)
+  totalAmount Decimal   @default(0) @db.Decimal(12, 2)
+  avgPrice    Decimal?  @db.Decimal(12, 2)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([warehouseId, materialId])
+  @@index([materialId])
+  @@map("erp_inventories")
+}
+
+// ==================== ERP：入库单（头 + 明细） ====================
+
+model StockIn {
+  id                     String      @id @default(uuid())
+  batchNo                String      @unique
+  warehouseId            String
+  warehouse              Warehouse   @relation(fields: [warehouseId], references: [id])
+  purchaseOrderId        String?
+  productionOrderId      String?
+  type                   StockInType @default(PURCHASE)
+  remark                 String?     @db.Text
+  createdById            String
+  confirmedById          String?
+  confirmedAt            DateTime?
+  sourceDocumentSnapshot Json?
+  status                 StockInStatus @default(CONFIRMED)
+  voidedAt               DateTime?
+  voidedById             String?
+  voidReason             String?     @db.Text
+  createdAt              DateTime    @default(now())
+
+  items      StockInItem[]
+  voidRecord StockInVoid?
+
+  @@index([warehouseId])
+  @@index([purchaseOrderId])
+  @@index([productionOrderId])
+  @@index([type])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([status])
+  @@map("erp_stock_ins")
+}
+
+model StockInItem {
+  id                         String                              @id @default(uuid())
+  stockInId                  String
+  stockIn                    StockIn                             @relation(fields: [stockInId], references: [id], onDelete: Cascade)
+  materialId                 String
+  material                   Material                            @relation(fields: [materialId], references: [id])
+  purchaseOrderItemId        String?
+  quantity                   Decimal                             @db.Decimal(10, 2)
+  unitPrice                  Decimal                             @db.Decimal(12, 2)
+  amount                     Decimal                             @db.Decimal(12, 2)
+  materialCodeSnapshot       String?
+  materialNameSnapshot       String?
+  materialSpecSnapshot       String?
+  unitSnapshot               String?
+  warehouseSnapshot          String?
+  beforeQty                  Decimal?                            @db.Decimal(10, 2)
+  afterQty                   Decimal?                            @db.Decimal(10, 2)
+  sortOrder                  Int                                 @default(0)
+  createdAt                  DateTime                            @default(now())
+  deliveryReceiptAllocations PurchaseDeliveryReceiptAllocation[]
+  voidItems                  StockInVoidItem[]
+
+  @@index([stockInId])
+  @@index([materialId])
+  @@index([purchaseOrderItemId])
+  @@map("erp_stock_in_items")
+}
+
+// 入库作废审计头。原入库及其原始库存流水始终保留，作废仅追加反向事实。
+model StockInVoid {
+  id         String    @id @default(uuid())
+  stockInId  String    @unique
+  stockIn    StockIn   @relation(fields: [stockInId], references: [id], onDelete: Restrict)
+  voidedById String
+  reason     String    @db.Text
+  createdAt  DateTime  @default(now())
+
+  items StockInVoidItem[]
+
+  @@index([createdAt])
+  @@map("erp_stock_in_voids")
+}
+
+// 作废明细记录冲减时库存快照和金额，不修改原入库明细。
+model StockInVoidItem {
+  id            String      @id @default(uuid())
+  stockInVoidId String
+  stockInVoid   StockInVoid @relation(fields: [stockInVoidId], references: [id], onDelete: Restrict)
+  stockInItemId String
+  stockInItem   StockInItem @relation(fields: [stockInItemId], references: [id], onDelete: Restrict)
+  materialId    String
+  material      Material    @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  quantity      Decimal     @db.Decimal(10, 2)
+  reversalAmount Decimal    @db.Decimal(12, 2)
+  beforeQty     Decimal     @db.Decimal(10, 2)
+  afterQty      Decimal     @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now())
+
+  @@unique([stockInVoidId, stockInItemId])
+  @@index([materialId])
+  @@map("erp_stock_in_void_items")
+}
+
+// ==================== ERP：出库单（头 + 明细） ====================
+
+model StockOut {
+  id                     String       @id @default(uuid())
+  batchNo                String       @unique
+  warehouseId            String
+  productionOrderId      String?
+  warehouse              Warehouse    @relation(fields: [warehouseId], references: [id])
+  type                   StockOutType @default(PRODUCTION)
+  remark                 String?      @db.Text
+  createdById            String
+  confirmedById          String?
+  confirmedAt            DateTime?
+  sourceDocumentSnapshot Json?
+  createdAt              DateTime     @default(now())
+
+  items StockOutItem[]
+
+  @@index([warehouseId])
+  @@index([productionOrderId])
+  @@index([type])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("erp_stock_outs")
+}
+
+model StockOutItem {
+  id                   String   @id @default(uuid())
+  stockOutId           String
+  stockOut             StockOut @relation(fields: [stockOutId], references: [id], onDelete: Cascade)
+  materialId           String
+  material             Material @relation(fields: [materialId], references: [id])
+  quantity             Decimal  @db.Decimal(10, 2)
+  materialCodeSnapshot String?
+  materialNameSnapshot String?
+  materialSpecSnapshot String?
+  unitSnapshot         String?
+  warehouseSnapshot    String?
+  beforeQty            Decimal? @db.Decimal(10, 2)
+  afterQty             Decimal? @db.Decimal(10, 2)
+  sortOrder            Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  @@index([stockOutId])
+  @@index([materialId])
+  @@map("erp_stock_out_items")
+}
+
+// ==================== ERP：盘点单（头 + 明细） ====================
+
+model StockCheck {
+  id          String           @id @default(uuid())
+  batchNo     String           @unique
+  warehouseId String
+  warehouse   Warehouse        @relation(fields: [warehouseId], references: [id])
+  checkDate   DateTime
+  status      StockCheckStatus @default(DRAFT)
+  remark      String?          @db.Text
+  createdById String
+  createdAt   DateTime         @default(now())
+
+  items StockCheckItem[]
+
+  @@index([warehouseId])
+  @@index([status])
+  @@index([checkDate])
+  @@map("erp_stock_checks")
+}
+
+model StockCheckItem {
+  id           String     @id @default(uuid())
+  stockCheckId String
+  stockCheck   StockCheck @relation(fields: [stockCheckId], references: [id], onDelete: Cascade)
+  materialId   String
+  material     Material   @relation(fields: [materialId], references: [id])
+  bookQty      Decimal    @db.Decimal(10, 2)
+  actualQty    Decimal?   @db.Decimal(10, 2)
+  diffQty      Decimal?   @db.Decimal(10, 2)
+  diffAmount   Decimal?   @db.Decimal(12, 2)
+  reason       String?    @db.Text
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([stockCheckId])
+  @@index([materialId])
+  @@map("erp_stock_check_items")
+}
+
+// ==================== ERP：库存流水总账 ====================
+
+model StockMovement {
+  id          String            @id @default(uuid())
+  warehouseId String
+  warehouse   Warehouse         @relation(fields: [warehouseId], references: [id])
+  materialId  String
+  material    Material          @relation(fields: [materialId], references: [id])
+  type        StockMovementType
+  quantity    Decimal           @db.Decimal(10, 2)
+  beforeQty   Decimal           @db.Decimal(10, 2)
+  afterQty    Decimal           @db.Decimal(10, 2)
+  refType     String
+  refId       String
+  remark      String?           @db.Text
+  createdById String
+  createdAt   DateTime          @default(now())
+
+  @@index([warehouseId])
+  @@index([materialId])
+  @@index([type])
+  @@index([refType, refId])
+  @@index([createdAt])
+  @@map("erp_stock_movements")
+}
+
+// ==================== ERP：BOM（第 2 期预留） ====================
+
+model BomHeader {
+  id           String   @id @default(uuid())
+  productId    String
+  version      String   @default("v1.0")
+  isActive     Boolean  @default(true)
+  remark       String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  supersedesId String?
+
+  items BomItem[]
+
+  @@index([productId])
+  @@index([supersedesId])
+  @@map("erp_bom_headers")
+}
+
+model BomItem {
+  id           String    @id @default(uuid())
+  bomId        String
+  bom          BomHeader @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  materialId   String
+  material     Material  @relation(fields: [materialId], references: [id])
+  quantity     Decimal   @db.Decimal(10, 2)
+  level        Int       @default(1)
+  parentItemId String?
+  parentItem   BomItem?  @relation("BomItemTree", fields: [parentItemId], references: [id])
+  children     BomItem[] @relation("BomItemTree")
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  @@index([bomId])
+  @@index([materialId])
+  @@index([parentItemId])
+  @@map("erp_bom_items")
+}
+
+// ==================== ERP 第 4 期：生产工单 ====================
+// 注：合同、产品、仓库均以松散标量引用，避免改动既有 CRM/ERP 模型关系。
+
+model ProductionOrder {
+  id                   String                @id @default(uuid())
+  orderNo              String                @unique
+  contractId           String?
+  contractItemId       String?
+  contractItem         ContractItem?         @relation(fields: [contractItemId], references: [id], onDelete: SetNull, map: "fk_po_contract_item")
+  sourceRequestKey     String?               @unique(map: "uq_po_source_request")
+  contractNoSnapshot   String?
+  isStockOrder         Boolean               @default(false)
+  sequenceInContract   Int?
+  productId            String
+  productModelSnapshot String
+  productNameSnapshot  String
+  quantity             Decimal               @db.Decimal(10, 2)
+  bomId                String
+  bomVersionSnapshot   String
+  configuration        Json?
+  warehouseId          String
+  plannedDate          DateTime?             @db.Date
+  deliveryDateSnapshot DateTime?             @db.Date
+  kitCheckStatus       KitCheckStatus        @default(NOT_CHECKED)
+  kitCheckRequired     Boolean               @default(true)
+  latestKitCheckId     String?
+  lastKitCheckedAt     DateTime?
+  monthlyPlanItemId    String?
+  responsibleId        String?
+  status               ProductionOrderStatus @default(DRAFT)
+  version              Int                   @default(1)
+  supersedesId         String?               @unique
+  isCurrent            Boolean               @default(true)
+  remark               String?               @db.Text
+  createdById          String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
+
+  materials                 ProductionOrderMaterial[]
+  changeRequests            ProductionOrderChangeRequest[]
+  kitCheckResults           KitCheckResult[]
+  sourcePurchaseOrders      PurchaseOrder[]                      @relation("PurchaseOrderSourceProductionOrder")
+  monthlyPlanItem           MonthlyProductionPlanItem?           @relation(fields: [monthlyPlanItemId], references: [id], onDelete: SetNull)
+  recheckQueue              KitRecheckQueue?
+  purchaseDemandAllocations PurchaseDemandProductionAllocation[]
+
+  @@index([contractId])
+  @@index([contractItemId], map: "idx_po_contract_item")
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([status])
+  @@index([responsibleId])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([contractId, sequenceInContract])
+  @@index([isCurrent])
+  @@index([kitCheckRequired])
+  @@index([monthlyPlanItemId])
+  @@map("erp_production_orders")
+}
+
+model ProductionOrderMaterial {
+  id                   String          @id @default(uuid())
+  productionOrderId    String
+  productionOrder      ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  materialId           String
+  materialCodeSnapshot String
+  materialNameSnapshot String
+  materialSpecSnapshot String?
+  unitSnapshot         String
+  perUnitQuantity      Decimal         @db.Decimal(10, 4)
+  requiredQuantity     Decimal         @db.Decimal(12, 4)
+  bomVersionSnapshot   String
+  sortOrder            Int             @default(0)
+  createdAt            DateTime        @default(now())
+
+  @@index([productionOrderId])
+  @@index([materialId])
+  @@map("erp_production_order_materials")
+}
+
+model ProductionOrderChangeRequest {
+  id                String                      @id @default(uuid())
+  productionOrderId String
+  productionOrder   ProductionOrder             @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  requesterId       String
+  approverId        String?
+  status            ProductionOrderChangeStatus @default(PENDING)
+  reason            String                      @db.Text
+  approvalRemark    String?                     @db.Text
+  proposedDiff      Json
+  createdAt         DateTime                    @default(now())
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  updatedAt         DateTime                    @updatedAt
+
+  @@index([productionOrderId])
+  @@index([requesterId])
+  @@index([approverId])
+  @@index([status])
+  @@map("erp_production_order_change_requests")
+}
+
+model KitCheckResult {
+  id                 String          @id @default(uuid())
+  productionOrderId  String
+  productionOrder    ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  warehouseId        String
+  bomVersionSnapshot String?
+  status             KitCheckStatus
+  shortageCount      Int             @default(0)
+  totalMaterials     Int             @default(0)
+  detail             Json
+  checkedById        String
+  triggerKey         String?         @unique
+  triggerType        String          @default("MANUAL")
+  createdAt          DateTime        @default(now())
+  deletedAt          DateTime?
+  deletedById        String?
+  deleteReason       String?         @db.Text
+
+  sourcePurchaseOrders PurchaseOrder[]               @relation("PurchaseOrderSourceKitCheck")
+  shortageSources      PurchaseOrderShortageSource[]
+  deleteRequests       KitCheckDeleteRequest[]
+
+  @@index([productionOrderId])
+  @@index([warehouseId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("erp_kit_check_results")
+}
+
+model SystemUserTaskState {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceType   String
+  sourceId     String
+  readAt       DateTime?
+  pinnedAt     DateTime?
+  ignoredAt    DateTime?
+  lastViewedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, sourceType, sourceId], map: "uq_system_task_state_source")
+  @@index([userId, ignoredAt])
+  @@map("system_user_task_states")
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  updatedById String?
+  updatedBy   User?    @relation("SystemSettingUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model SystemPermissionDefinition {
+  id              String                 @id @default(uuid())
+  code            String                 @unique
+  module          String
+  action          String
+  description     String
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  rolePermissions SystemRolePermission[]
+
+  @@unique([module, action], map: "uq_system_permission_module_action")
+  @@map("system_permission_definitions")
+}
+
+model SystemRolePermission {
+  id           String                     @id @default(uuid())
+  role         Role
+  permissionId String
+  permission   SystemPermissionDefinition @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  allowed      Boolean                    @default(true)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+
+  @@unique([role, permissionId], map: "uq_system_role_permission")
+  @@index([role])
+  @@map("system_role_permissions")
+}
+
+model PurchaseOrderDeleteRequest {
+  id              String                 @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder          @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  requesterId     String
+  requester       User                   @relation("PurchaseOrderDeleteRequester", fields: [requesterId], references: [id])
+  approverId      String?
+  approver        User?                  @relation("PurchaseOrderDeleteApprover", fields: [approverId], references: [id])
+  status          ErpDeleteRequestStatus @default(PENDING)
+  reason          String                 @db.Text
+  approvalRemark  String?                @db.Text
+  createdAt       DateTime               @default(now())
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  updatedAt       DateTime               @updatedAt
+
+  @@index([purchaseOrderId])
+  @@index([requesterId])
+  @@index([status])
+  @@map("erp_purchase_order_delete_requests")
+}
+
+model KitCheckDeleteRequest {
+  id               String                 @id @default(uuid())
+  kitCheckResultId String
+  kitCheckResult   KitCheckResult         @relation(fields: [kitCheckResultId], references: [id], onDelete: Restrict)
+  requesterId      String
+  requester        User                   @relation("KitCheckDeleteRequester", fields: [requesterId], references: [id])
+  approverId       String?
+  approver         User?                  @relation("KitCheckDeleteApprover", fields: [approverId], references: [id])
+  status           ErpDeleteRequestStatus @default(PENDING)
+  reason           String                 @db.Text
+  approvalRemark   String?                @db.Text
+  createdAt        DateTime               @default(now())
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  updatedAt        DateTime               @updatedAt
+
+  @@index([kitCheckResultId])
+  @@index([requesterId])
+  @@index([status])
+  @@map("erp_kit_check_delete_requests")
+}
+
+model KitRecheckQueue {
+  id                String          @id @default(uuid())
+  productionOrderId String          @unique
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  reason            String
+  materialIds       Json
+  requestedById     String
+  requestedAt       DateTime        @default(now())
+  processingAt      DateTime?
+  processedAt       DateTime?
+  attemptCount      Int             @default(0)
+  lastError         String?         @db.Text
+
+  @@index([processedAt, requestedAt])
+  @@map("erp_kit_recheck_queue")
+}
+
+model PurchaseDemand {
+  id                    String                               @id @default(uuid())
+  demandNo              String                               @unique
+  sourceType            ProcurementSourceType
+  sourceRecordId        String
+  sourceLineId          String?
+  sourceLabel           String
+  materialId            String
+  material              Material                             @relation(fields: [materialId], references: [id])
+  requestedQuantity     Decimal                              @db.Decimal(12, 4)
+  suggestedQuantity     Decimal                              @db.Decimal(12, 4)
+  convertedQuantity     Decimal                              @default(0) @db.Decimal(12, 4)
+  targetStockQuantity   Decimal?                             @db.Decimal(12, 4)
+  needByDate            DateTime                             @db.Date
+  stockPurpose          String?
+  replenishmentReason   String?
+  calculationSnapshot   Json
+  status                PurchaseDemandStatus                 @default(DRAFT)
+  activeSlot            Boolean?
+  createdById           String
+  approvedById          String?
+  createdAt             DateTime                             @default(now())
+  approvedAt            DateTime?
+  cancelledAt           DateTime?
+  updatedAt             DateTime                             @updatedAt
+  allocations           PurchaseOrderItemSource[]
+  productionAllocations PurchaseDemandProductionAllocation[]
+
+  @@unique([sourceType, sourceRecordId, materialId, activeSlot], map: "erp_demand_source_mat_active_uq")
+  @@index([materialId, status])
+  @@index([sourceType, sourceRecordId])
+  @@index([needByDate])
+  @@map("erp_purchase_demands")
+}
+
+model PurchaseOrderItemSource {
+  id                  String            @id @default(uuid())
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  purchaseDemandId    String
+  purchaseDemand      PurchaseDemand    @relation(fields: [purchaseDemandId], references: [id], onDelete: Restrict)
+  allocatedQuantity   Decimal           @db.Decimal(12, 4)
+  fulfilledQuantity   Decimal           @default(0) @db.Decimal(12, 4)
+  createdAt           DateTime          @default(now())
+
+  @@unique([purchaseOrderItemId, purchaseDemandId], map: "erp_po_item_demand_uq")
+  @@index([purchaseDemandId])
+  @@map("erp_purchase_order_item_sources")
+}
+
+model MonthlyProductionPlan {
+  id           String                      @id @default(uuid())
+  planNo       String                      @unique
+  planMonth    DateTime                    @db.Date
+  name         String
+  status       MonthlyProductionPlanStatus @default(DRAFT)
+  description  String?                     @db.Text
+  version      Int                         @default(1)
+  supersedesId String?
+  createdById  String
+  approvedById String?
+  createdAt    DateTime                    @default(now())
+  approvedAt   DateTime?
+  updatedAt    DateTime                    @updatedAt
+  items        MonthlyProductionPlanItem[]
+
+  @@unique([planMonth, version], map: "erp_month_plan_month_version_uq")
+  @@index([status])
+  @@index([supersedesId])
+  @@map("erp_monthly_production_plans")
+}
+
+model MonthlyProductionPlanItem {
+  id                    String                       @id @default(uuid())
+  planId                String
+  plan                  MonthlyProductionPlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  productId             String
+  productModelSnapshot  String
+  plannedQuantity       Decimal                      @db.Decimal(10, 2)
+  plannedStartDate      DateTime                     @db.Date
+  plannedCompletionDate DateTime                     @db.Date
+  bomId                 String
+  bomVersionSnapshot    String
+  convertedQuantity     Decimal                      @default(0) @db.Decimal(10, 2)
+  remark                String?                      @db.Text
+  createdAt             DateTime                     @default(now())
+  materialRequirements  MonthlyMaterialRequirement[]
+  productionOrders      ProductionOrder[]
+
+  @@index([planId])
+  @@index([productId])
+  @@map("erp_monthly_production_plan_items")
+}
+
+model MonthlyMaterialRequirement {
+  id                  String                    @id @default(uuid())
+  planItemId          String
+  planItem            MonthlyProductionPlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
+  materialId          String
+  material            Material                  @relation(fields: [materialId], references: [id])
+  requiredQuantity    Decimal                   @db.Decimal(12, 4)
+  plannedDemandQty    Decimal                   @db.Decimal(12, 4)
+  convertedDemandQty  Decimal                   @default(0) @db.Decimal(12, 4)
+  calculationSnapshot Json
+  createdAt           DateTime                  @default(now())
+
+  @@unique([planItemId, materialId], map: "erp_month_req_item_mat_uq")
+  @@index([materialId])
+  @@map("erp_monthly_material_requirements")
+}
+
+model SupplierDeliveryFollowUp {
+  id                      String                 @id @default(uuid())
+  purchaseOrderItemId     String
+  purchaseOrderItem       PurchaseOrderItem      @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  followedAt              DateTime
+  followedById            String
+  supplierContact         String?
+  contactMethod           String?
+  progress                SupplierProgressStatus
+  completionPercent       Int?
+  estimatedCompletionDate DateTime?              @db.Date
+  estimatedShipDate       DateTime?              @db.Date
+  hasDelayRisk            Boolean                @default(false)
+  riskReason              String?                @db.Text
+  actionPlan              String?                @db.Text
+  remark                  String?                @db.Text
+  createdAt               DateTime               @default(now())
+
+  @@index([purchaseOrderItemId, followedAt])
+  @@map("erp_supplier_delivery_followups")
+}
+
+model SupplierPromiseDateHistory {
+  id                  String            @id @default(uuid())
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  oldPromisedDate     DateTime?         @db.Date
+  newPromisedDate     DateTime          @db.Date
+  changedAt           DateTime          @default(now())
+  changedById         String
+  supplierReason      String?           @db.Text
+  affectsProduction   Boolean           @default(false)
+  remark              String?           @db.Text
+
+  @@index([purchaseOrderItemId, changedAt])
+  @@map("erp_supplier_promise_date_history")
+}
+
+model PurchaseDeliveryBatch {
+  id                  String                              @id @default(uuid())
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem                   @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  plannedQuantity     Decimal                             @db.Decimal(10, 2)
+  plannedArrivalDate  DateTime?                           @db.Date
+  promisedDate        DateTime?                           @db.Date
+  shippedQuantity     Decimal                             @default(0) @db.Decimal(10, 2)
+  actualShipDate      DateTime?                           @db.Date
+  receivedQuantity    Decimal                             @default(0) @db.Decimal(10, 2)
+  actualArrivalDate   DateTime?                           @db.Date
+  trackingNo          String?
+  remark              String?                             @db.Text
+  createdAt           DateTime                            @default(now())
+  updatedAt           DateTime                            @updatedAt
+  receiptAllocations  PurchaseDeliveryReceiptAllocation[]
+
+  @@index([purchaseOrderItemId])
+  @@map("erp_purchase_delivery_batches")
+}
+
+model PurchaseDemandProductionAllocation {
+  id                  String             @id @default(uuid())
+  purchaseDemandId    String
+  purchaseDemand      PurchaseDemand     @relation(fields: [purchaseDemandId], references: [id], onDelete: Restrict)
+  productionOrderId   String
+  productionOrder     ProductionOrder    @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  purchaseOrderItemId String?
+  purchaseOrderItem   PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
+  allocatedQuantity   Decimal            @db.Decimal(12, 4)
+  createdAt           DateTime           @default(now())
+
+  @@unique([purchaseDemandId, productionOrderId], map: "erp_demand_prod_order_uq")
+  @@index([productionOrderId])
+  @@index([purchaseOrderItemId])
+  @@map("erp_purchase_demand_production_allocations")
+}
+
+model PurchaseDeliveryReceiptAllocation {
+  id              String                @id @default(uuid())
+  deliveryBatchId String
+  deliveryBatch   PurchaseDeliveryBatch @relation(fields: [deliveryBatchId], references: [id], onDelete: Restrict)
+  stockInItemId   String
+  stockInItem     StockInItem           @relation(fields: [stockInItemId], references: [id], onDelete: Restrict)
+  quantity        Decimal               @db.Decimal(10, 2)
+  createdAt       DateTime              @default(now())
+
+  @@unique([deliveryBatchId, stockInItemId], map: "erp_batch_receipt_item_uq")
+  @@index([stockInItemId])
+  @@map("erp_purchase_delivery_receipt_allocations")
+}
+
+model StockTransfer {
+  id              String              @id @default(uuid())
+  transferNo      String              @unique
+  fromWarehouseId String
+  toWarehouseId   String
+  reason          String?             @db.Text
+  confirmedById   String
+  confirmedAt     DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+  items           StockTransferItem[]
+
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+  @@map("erp_stock_transfers")
+}
+
+model StockTransferItem {
+  id                   String        @id @default(uuid())
+  stockTransferId      String
+  stockTransfer        StockTransfer @relation(fields: [stockTransferId], references: [id], onDelete: Restrict)
+  materialId           String
+  materialCodeSnapshot String
+  materialNameSnapshot String
+  materialSpecSnapshot String?
+  unitSnapshot         String
+  quantity             Decimal       @db.Decimal(10, 2)
+  fromBeforeQty        Decimal       @db.Decimal(10, 2)
+  fromAfterQty         Decimal       @db.Decimal(10, 2)
+  toBeforeQty          Decimal       @db.Decimal(10, 2)
+  toAfterQty           Decimal       @db.Decimal(10, 2)
+  createdAt            DateTime      @default(now())
+
+  @@index([stockTransferId])
+  @@index([materialId])
+  @@map("erp_stock_transfer_items")
+}
+
+model ErpAttachment {
+  id           String    @id @default(uuid())
+  entityType   String
+  entityId     String
+  fileName     String
+  storedName   String
+  fileUrl      String
+  mimeType     String
+  fileSize     Int
+  uploadedById String
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+  deletedById  String?
+
+  @@index([entityType, entityId, deletedAt])
+  @@map("erp_attachments")
+}
+
+model ProcurementConfig {
+  id            String   @id @default("default")
+  attentionDays Int      @default(7)
+  highRiskDays  Int      @default(3)
+  urgentDays    Int      @default(1)
+  updatedById   String?
+  updatedAt     DateTime @updatedAt
+
+  @@map("erp_procurement_config")
+}
+
+model ErpNotification {
+  id              String    @id @default(uuid())
+  notificationKey String    @unique
+  userId          String
+  title           String
+  content         String    @db.Text
+  link            String?
+  level           String    @default("INFO")
+  readAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@map("erp_notifications")
+}
+
+model SalesTarget {
+  id          String            @id @default(uuid())
+  periodType  SalesTargetPeriod
+  periodYear  Int
+  periodIndex Int               @default(0)
+  metric      SalesTargetMetric
+  amount      Decimal           @db.Decimal(14, 2)
+  salesUserId String?
+  note        String?           @db.Text
+  createdById String
+  createdBy   User              @relation("SalesTargetCreator", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   User?             @relation("SalesTargetUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([periodType, periodYear, periodIndex, metric, salesUserId], map: "uq_sales_target_scope")
+  @@index([periodType, periodYear, periodIndex])
+  @@index([salesUserId])
+  @@map("sales_targets")
+}
+
+enum SalesTargetPeriod {
+  MONTH
+  YEAR
+}
+
+enum SalesTargetMetric {
+  CONTRACT_AMOUNT
+  PAID_AMOUNT
+}
+
+// ==================== 小川 AI 助手（对话记忆，纯新增，不涉及任何业务数据） ====================
+
+model AgentConversation {
+  id           String         @id @default(uuid())
+  // 双归属：CRM 员工的会话挂 userId，Agent 独立账号的会话挂 agentAccountId；两列恰好一列有值
+  userId       String?
+  user         User?          @relation(fields: [userId], references: [id])
+  agentAccountId String?
+  agentAccount AgentAccount?  @relation(fields: [agentAccountId], references: [id])
+  title        String         @default("新对话")
+  thinkingTier String         @default("standard")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  messages     AgentMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([agentAccountId, updatedAt])
+  @@map("agent_conversations")
+}
+
+model AgentMessage {
+  id               String            @id @default(uuid())
+  conversationId   String
+  conversation     AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  // user | assistant；工具调用过程不单独成行，摘要记录在 assistant 行的 toolSummary
+  role             String
+  content          String            @db.Text
+  // 用户消息随附文件（图片/PDF/CAD），形如 [{url,name,type,size,kind}]；assistant 行为 null
+  attachments      Json?
+  // 用户对小川回复的反馈：'up'=有帮助，'down'=没帮助，NULL=未评价（段 5 案例沉淀素材）
+  feedback         String?
+  thinkingTier     String?
+  toolSummary      Json?
+  promptTokens     Int?
+  completionTokens Int?
+  durationMs       Int?
+  error            Boolean?
+  createdAt        DateTime          @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("agent_messages")
+}
+
+// ==================== Agent 独立账号体系（纯新增，与 CRM 用户表完全分离：仅能登录 Agent 平台，无任何 CRM/ERP 数据权限） ====================
+
+model AgentAccount {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String
+  remark       String?
+  // 每日提问上限（按北京时间自然日计数）
+  dailyQuota   Int      @default(50)
+  // 重置密码时递增，使此前签发的 Agent Cookie 立即失效
+  sessionVersion Int    @default(0)
+  // 软删除：停用后不可登录，历史数据保留（只加不删原则）
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  conversations AgentConversation[]
+  usageDays     AgentUsageDaily[]
+  auditLogs     AgentAccountAuditLog[]
+
+  @@map("agent_accounts")
+}
+
+// Agent 独立账号的每日提问用量（每账号每天一行，upsert 累加）
+model AgentUsageDaily {
+  id             String       @id @default(uuid())
+  agentAccountId String
+  agentAccount   AgentAccount @relation(fields: [agentAccountId], references: [id])
+  usageDate      DateTime     @db.Date
+  questionCount  Int          @default(0)
+
+  @@unique([agentAccountId, usageDate])
+  @@map("agent_usage_daily")
+}
+
+// 外部 MCP 服务（智谱联网搜索/网页读取等）：URL 支持 {API_KEY} 占位符；启用后工具全员下发（含 Agent 账号）
+model AgentMcpServer {
+  id           String   @id @default(uuid())
+  name         String
+  url          String
+  apiKeyCipher String?
+  apiKeyHint   String?
+  // 停用后工具不再下发，配置保留
+  isEnabled    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("agent_mcp_servers")
+}
+
+// Agent 模型服务配置（多套保存、单套生效；API Key AES-256-GCM 加密存储，页面仅展示尾四位）
+model AgentModelConfig {
+  id           String   @id @default(uuid())
+  name         String
+  baseUrl      String
+  model        String
+  apiKeyCipher String   @db.Text
+  // 尾四位展示串，如 "****abcd"
+  apiKeyHint   String
+  // 全局仅允许一套生效
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("agent_model_configs")
+}
+
+// Agent 独立账号的工具调用审计（与 MCP/员工同纪律：逐次审计、审计失败不交付结果；
+// 因 audit_logs/operation_logs 对 users 表有外键约束，Agent 账号单独落这张纯新增表）
+model AgentAccountAuditLog {
+  id              String       @id @default(uuid())
+  agentAccountId  String
+  agentAccount    AgentAccount @relation(fields: [agentAccountId], references: [id])
+  requestId       String
+  toolName        String
+  success         Boolean
+  statusCode      Int
+  durationMs      Int
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+
+  @@index([agentAccountId, createdAt])
+  @@map("agent_account_audit_logs")
+}
+
+// ==================== 小川知识库（第 2 期段 1：机型参数 / 工艺规则 / 程序模板，纯新增，不涉及业务数据） ====================
+
+model MachineCapability {
+  id                String   @id @default(uuid())
+  // 机型大类：数控插床 / 数控插齿机 / 插齿插键复合机床 / 五轴加工中心 / 数控键槽铣床 / 普通刨床 / 普通插床
+  category          String
+  // 型号（唯一键；一行多型号如 B5032/B5040 按原文整行保留）
+  model             String   @unique
+  fullName          String   @db.Text
+  mainObjects       String?  @db.Text
+  // 最大插削/刨削长度：原文保留（如 350/320），数值列供筛选（复合值取最大；非插削类机型为 NULL）
+  maxStrokeText     String?
+  maxStrokeLengthMm Float?
+  tableSizeText     String?
+  tableLoadKg       Float?
+  maxModuleMm       Float?
+  maxGearWidthMm    Float?
+  maxOuterGearDiaMm Float?
+  maxInnerGearText  String?
+  ramStrokeText     String?
+  powerText         String?
+  powerKw           Float?
+  maxSpindleRpm     Float?
+  travelsText       String?  @db.Text
+  ramTiltText       String?
+  netWeightText     String?
+  dimensionsText    String?  @db.Text
+  optionsText       String?  @db.Text
+  notSuitableText   String?  @db.Text
+  sourceNote        String?
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("machine_capabilities")
+}
+
+model ProcessRuleCard {
+  id               String   @id @default(uuid())
+  // 规则编号（唯一键，如 R001），重导按编号覆盖更新
+  ruleNo           String   @unique
+  conditionText    String   @db.Text
+  recommendModels  String   @db.Text
+  recommendProcess String?  @db.Text
+  notRecommended   String?  @db.Text
+  rationale        String?  @db.Text
+  enabled          Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("process_rule_cards")
+}
+
+model NcProgramTemplate {
+  id          String   @id @default(uuid())
+  // 数控系统：GSK（广数）/ KND（凯恩帝）/ SIEMENS（西门子）
+  system      String
+  name        String
+  machineNote String?
+  program     String   @db.Text
+  paramNotes  String?  @db.Text
+  extraNotes  String?  @db.Text
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([system, name])
+  @@map("nc_program_templates")
+}

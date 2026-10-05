@@ -1,0 +1,63 @@
+name: build-mcp-image
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 覆写 Dockerfile.mcp（适配 pnpm 布局）
+        run: |
+          cat > Dockerfile.mcp <<'DOCKERFILE'
+          FROM node:22-bookworm-slim AS dependencies
+          WORKDIR /app
+          RUN corepack enable
+          COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+          RUN corepack pnpm install --frozen-lockfile
+
+          FROM dependencies AS build
+          WORKDIR /app
+          ARG DATABASE_URL=mysql://build_user:build_only@127.0.0.1:3306/build_only
+          ENV DATABASE_URL=$DATABASE_URL
+          COPY . .
+          RUN corepack pnpm exec prisma generate
+          RUN corepack pnpm build
+          RUN mkdir -p /runtime-prisma && cp -aL node_modules/@prisma /runtime-prisma/@prisma && PRISMA_CLIENT_DIR="$(find node_modules -type d -name .prisma | head -n 1)" && echo "PRISMA_CLIENT_DIR=$PRISMA_CLIENT_DIR" && test -n "$PRISMA_CLIENT_DIR" && cp -a "$PRISMA_CLIENT_DIR" /runtime-prisma/.prisma
+
+          FROM node:20-bookworm-slim AS runtime
+          WORKDIR /app
+          ENV NODE_ENV=production
+          ENV PORT=3010
+          ENV HOSTNAME=0.0.0.0
+          RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
+          COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+          COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+          COPY --from=build --chown=nextjs:nodejs /app/public ./public
+          RUN rm -rf ./node_modules/@prisma ./node_modules/.prisma
+          COPY --from=build --chown=nextjs:nodejs /runtime-prisma/.prisma ./node_modules/.prisma
+          COPY --from=build --chown=nextjs:nodejs /runtime-prisma/@prisma ./node_modules/@prisma
+          USER nextjs
+          EXPOSE 3010
+          HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:3010/api/mcp/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+          CMD ["node", "server.js"]
+          DOCKERFILE
+          echo "---- final Dockerfile.mcp ----"
+          grep -n "FROM node\|rm -rf\|PRISMA_CLIENT_DIR" Dockerfile.mcp
+
+      - name: 构建 MCP 镜像
+        run: docker build -f Dockerfile.mcp -t dachuanpro-crm-erp-mcp:1.4.0-lead-routing.1 .
+
+      - name: 导出镜像产物
+        run: |
+          docker save dachuanpro-crm-erp-mcp:1.4.0-lead-routing.1 | gzip -1 > /tmp/mcp-image.tar.gz
+          ls -lh /tmp/mcp-image.tar.gz
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-image-1.4.0-lead-routing
+          path: /tmp/mcp-image.tar.gz
+          retention-days: 7
+          compression-level: 0

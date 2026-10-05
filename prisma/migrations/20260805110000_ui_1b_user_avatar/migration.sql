@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD COLUMN `avatarPath` VARCHAR(191) NULL;
