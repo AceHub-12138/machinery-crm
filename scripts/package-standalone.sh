@@ -162,6 +162,7 @@ NODE
 # 且包内校验会读取 src/lib/changelog.ts）
 cp -a src "$PKG_DIR/src"
 cp -a start-standalone.cjs "$PKG_DIR/start-standalone.cjs"
+cp -a ecosystem.config.cjs "$PKG_DIR/ecosystem.config.cjs"
 cp -a package.json "$PKG_DIR/package.json"
 PKG_JSON="$PKG_DIR/package.json" node <<'NODE'
 const fs = require("node:fs");

@@ -7,6 +7,7 @@ import { getAgentAuthRuntime } from "@/lib/agent-auth/runtime";
 import { getLeadWriterAuthRuntime } from "@/lib/agent-auth/service-runtime";
 import { createPrismaLeadCommandDataSource } from "@/lib/mcp/prisma-command-data-source";
 import { McpToolError } from "@/lib/mcp/tools";
+import { withDatabasePoolDefaults } from "@/lib/database-pool";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +20,8 @@ async function getDataSource(config: ReturnType<typeof loadMcpConfig>) {
     if (config.toolMode === "lead-write-internal") {
       if (!config.commandDatabaseUrl || !config.auditDatabaseUrl) throw new Error("Lead command databases are not configured");
       if (!leadWriteDataSource) {
-        const commandClient = new PrismaClient({ datasources: { db: { url: config.commandDatabaseUrl } } });
-        const protocolAuditClient = new PrismaClient({ datasources: { db: { url: config.auditDatabaseUrl } } });
+        const commandClient = new PrismaClient({ datasources: { db: { url: withDatabasePoolDefaults(config.commandDatabaseUrl, 2) } } });
+        const protocolAuditClient = new PrismaClient({ datasources: { db: { url: withDatabasePoolDefaults(config.auditDatabaseUrl, 2) } } });
         const protocolAudit = createPrismaMcpDataSource(commandClient, protocolAuditClient);
         const command = createPrismaLeadCommandDataSource(commandClient);
         leadWriteDataSource = {
@@ -37,8 +38,8 @@ async function getDataSource(config: ReturnType<typeof loadMcpConfig>) {
     return createPrismaMcpDataSource(prisma);
   }
   fullReadOnlyDataSource ??= createPrismaMcpDataSource(
-    new PrismaClient({ datasources: { db: { url: config.queryDatabaseUrl } } }),
-    new PrismaClient({ datasources: { db: { url: config.auditDatabaseUrl } } }),
+    new PrismaClient({ datasources: { db: { url: withDatabasePoolDefaults(config.queryDatabaseUrl, 2) } } }),
+    new PrismaClient({ datasources: { db: { url: withDatabasePoolDefaults(config.auditDatabaseUrl, 2) } } }),
   );
   return fullReadOnlyDataSource;
 }

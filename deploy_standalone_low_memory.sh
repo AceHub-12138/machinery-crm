@@ -19,10 +19,7 @@ fi
 mkdir -p "$UPLOAD_DIR"
 grep -q '^UPLOAD_DIR=' .env || printf '\nUPLOAD_DIR=%s\n' "$UPLOAD_DIR" >> .env
 
-if pm2 describe "$PM2_APP" >/dev/null 2>&1; then
-  pm2 restart "$PM2_APP" --update-env
-else
-  pm2 start start-standalone.cjs --name "$PM2_APP"
-fi
+[[ -f ecosystem.config.cjs ]] || { echo "Missing ecosystem.config.cjs" >&2; exit 1; }
+PM2_APP="$PM2_APP" HOSTNAME=127.0.0.1 pm2 startOrRestart ecosystem.config.cjs --update-env
 
 pm2 save
