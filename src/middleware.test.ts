@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({
   auth: (handler: (req: unknown) => unknown) => handler,
 }));
 
-import middleware from "./middleware";
+import middleware, { config } from "./middleware";
 
 type FakeReq = {
   nextUrl: URL;
@@ -28,6 +28,19 @@ async function runMiddleware(path: string, role: string | null): Promise<Respons
 }
 
 beforeEach(() => vi.clearAllMocks());
+
+describe("附件双身份鉴权边界", () => {
+  const matcher = new RegExp(`^${config.matcher[0]}$`);
+  it("显式把上传和附件读取交给路由鉴权，Agent 不被 CRM 登录页拦截", () => {
+    expect(matcher.test("/api/upload/xiaochuan")).toBe(false);
+    expect(matcher.test("/api/uploads/xiaochuan/agent-account/agent-1/a.png")).toBe(false);
+    expect(matcher.test("/api/uploads/contracts/a.pdf")).toBe(false);
+  });
+  it("相似前缀不能获得豁免", () => {
+    expect(matcher.test("/api/upload-other")).toBe(true);
+    expect(matcher.test("/api/uploads-other")).toBe(true);
+  });
+});
 
 describe("sales screen share middleware protection", () => {
   it("blocks non SUPER_ADMIN accounts from /api/system/sales-screen/share with 403", async () => {

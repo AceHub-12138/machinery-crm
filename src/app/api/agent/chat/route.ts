@@ -1,3 +1,4 @@
+import { ownsLegacyXiaochuanUpload } from "@/lib/agent/legacy-upload-owner";
 import { createPrismaMcpDataSource } from "@/lib/mcp/prisma-data-source";
 import {
   parseXiaochuanThinkingTier,
@@ -61,6 +62,13 @@ export async function POST(request: Request) {
   const parsedAttachments = parseChatAttachments(body.attachments, attachmentOwner);
   if (!parsedAttachments.ok) return jsonError(400, parsedAttachments.error);
   const attachments = parsedAttachments.attachments;
+  for (const attachment of attachments) {
+    const legacy = attachment.url.slice("/uploads/xiaochuan/".length).split("/").length === 1;
+    if (legacy && (viewer.kind !== "crm" || !await ownsLegacyXiaochuanUpload(viewer.user.id, attachment.url))) {
+      return jsonError(403, "附件不属于当前账号");
+    }
+  }
+
 
   // 身份拆分：CRM 员工沿用角色化数据工具；Agent 独立账号走每日额度 + 知识工具
   const rateKey = viewer.kind === "agent-account" ? `agent:${viewer.account.id}` : viewer.user.id;

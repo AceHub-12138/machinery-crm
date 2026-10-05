@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { readBoundedBody } from "@/lib/bounded-request";
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/permissions";
 import { writeFile, mkdir } from "fs/promises";
@@ -7,12 +9,21 @@ import { getUploadPath, getUploadUrl, sanitizeFileName } from "@/lib/uploads";
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "未登录" }, { status: 401 });
+  if (!["SUPER_ADMIN", "SALES", "FOREIGN_TRADE"].includes(user.role)) {
+    return NextResponse.json({ error: "无权限上传发货附件" }, { status: 403 });
+  }
 
-  const formData = await request.formData();
-  const file = formData.get("file") as File;
+  let formData: FormData;
+  try {
+    const bytes = await readBoundedBody(request, 20 * 1024 * 1024 + 128 * 1024);
+    formData = await new Response(bytes, { headers: { "content-type": request.headers.get("content-type") || "" } }).formData();
+  } catch {
+    return NextResponse.json({ error: "上传内容无效或超过 20MB 限制" }, { status: 400 });
+  }
+  const file = formData.get("file");
   const type = String(formData.get("type") || "docs");
 
-  if (!file) {
+  if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: "请选择文件" }, { status: 400 });
   }
 
@@ -34,16 +45,17 @@ export async function POST(request: NextRequest) {
   }
 
   const folder = type === "photos" ? "photos" : "docs";
-  const uploadDir = getUploadPath("shipments", folder);
+  const scope = ["shipments", "crm", user.id, folder];
+  const uploadDir = getUploadPath(...scope);
   await mkdir(uploadDir, { recursive: true });
 
-  const fileName = sanitizeFileName(file.name);
+  const fileName = `${randomUUID()}_${sanitizeFileName(file.name)}`;
   const filePath = path.join(uploadDir, fileName);
   const bytes = await file.arrayBuffer();
   await writeFile(filePath, Buffer.from(bytes));
 
   return NextResponse.json({
-    url: getUploadUrl("shipments", folder, fileName),
+    url: getUploadUrl(...scope, fileName),
     fileName,
   });
 }

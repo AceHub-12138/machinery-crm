@@ -1,8 +1,7 @@
-import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import type { XiaochuanConfig } from "@/lib/agent/config";
 import type { XiaochuanAttachment } from "@/lib/agent/attachments";
-import { getUploadPath } from "@/lib/uploads";
+import { readXiaochuanAttachment } from "@/lib/agent/read-attachment";
 import { analyzeCadAttachment } from "@/lib/agent/cad/analyze";
 
 /**
@@ -145,24 +144,7 @@ async function extractPdfText(bytes: Buffer): Promise<string | null> {
 /** 安全读取附件文件：相对路径段再次校验（与 parseChatAttachments 同一形态规则），防路径穿越。
  *  归属校验（目录 ID 必须等于对话者本人）已在 chat 入口的 parseChatAttachments 完成，这里做读取侧纵深防御。 */
 async function readAttachmentBytes(attachment: XiaochuanAttachment): Promise<Buffer | null> {
-  const prefix = "/uploads/xiaochuan/";
-  if (!attachment.url.startsWith(prefix)) return null;
-  const relative = attachment.url.slice(prefix.length);
-  const segments = relative.split("/");
-  // 只接受「单层历史文件名」或「归属目录/ID/文件名」三层形态
-  if (segments.length !== 1 && segments.length !== 3) return null;
-  if (segments.some((segment) => !segment || segment.includes("..") || segment.includes("\\"))) return null;
-  const target = getUploadPath("xiaochuan", ...segments);
-  // realpath 双重校验（与 /api/uploads 读取代理同一纪律）：实际文件必须落在附件根目录内
-  const baseDir = getUploadPath("xiaochuan");
-  try {
-    const real = await realpath(target);
-    if (!real.startsWith(baseDir + path.sep) && real !== target) return null;
-    if (path.basename(real) !== segments[segments.length - 1]) return null;
-    return await readFile(real);
-  } catch {
-    return null;
-  }
+  return readXiaochuanAttachment(attachment.url);
 }
 
 export type AttachmentAnalysis = {

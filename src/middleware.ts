@@ -12,6 +12,7 @@ export default auth((req) => {
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
+    pathname === "/api/health" ||
     // 桌面客户端下载与版本信息：公开（未登录新员工要能下载；更新器不带会话 Cookie）
     pathname.startsWith("/api/downloads") ||
     pathname === "/api/desktop/latest" ||
@@ -110,6 +111,8 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/upload|_next/static|_next/image|favicon.ico).*)",
+    // 两个前缀显式划界。附件读取接口自行执行 CRM/Agent 双身份及文件权限校验，
+    // 不交给仅识别 CRM 会话的中间件，否则 Agent 独立账号会被误重定向。
+    "/((?!api/upload/|api/uploads/|_next/static|_next/image|favicon.ico).*)",
   ],
 };
