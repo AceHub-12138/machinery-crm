@@ -41,39 +41,41 @@ export async function PUT(
   const { id } = await params;
   const body = await request.json();
 
-  const product = await prisma.product.update({
-    where: { id },
-    data: {
-      model: body.model,
-      category: body.category,
-      productType: body.productType || undefined,
-      imageUrl: body.imageUrl || null,
-      videoUrl: body.videoUrl || null,
-      factoryPrice: body.factoryPrice !== undefined ? (body.factoryPrice ? parseFloat(body.factoryPrice) : null) : undefined,
-      currency: body.currency || undefined,
-      remark: body.remark !== undefined ? (body.remark || null) : undefined,
-      isActive: body.isActive !== false,
-    },
-  });
-
-  // 更新翻译（先删后建策略）
-  if (body.translations) {
-    await prisma.productTranslation.deleteMany({ where: { productId: id } });
-    await prisma.productTranslation.createMany({
-      data: body.translations.map((t: any) => ({
-        productId: id,
-        language: t.language,
-        name: t.name,
-        description: t.description || null,
-        specs: t.specs || null,
-        pdfUrl: t.pdfUrl || null,
-      })),
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.product.update({
+      where: { id },
+      data: {
+        model: body.model,
+        category: body.category,
+        productType: body.productType || undefined,
+        imageUrl: body.imageUrl || null,
+        videoUrl: body.videoUrl || null,
+        factoryPrice: body.factoryPrice !== undefined ? (body.factoryPrice ? parseFloat(body.factoryPrice) : null) : undefined,
+        currency: body.currency || undefined,
+        remark: body.remark !== undefined ? (body.remark || null) : undefined,
+        isActive: body.isActive !== false,
+      },
     });
-  }
 
-  const updated = await prisma.product.findUnique({
-    where: { id },
-    include: { translations: true },
+    // 更新翻译（先删后建策略）
+    if (body.translations) {
+      await tx.productTranslation.deleteMany({ where: { productId: id } });
+      await tx.productTranslation.createMany({
+        data: body.translations.map((t: any) => ({
+          productId: id,
+          language: t.language,
+          name: t.name,
+          description: t.description || null,
+          specs: t.specs || null,
+          pdfUrl: t.pdfUrl || null,
+        })),
+      });
+    }
+
+    return tx.product.findUnique({
+      where: { id },
+      include: { translations: true },
+    });
   });
 
   return NextResponse.json(updated);
