@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser, isSuperAdmin, canSeeAllData, customerIsolationWhere, canAccessCustomer } from "@/lib/permissions";
 import { writeOperationLog } from "@/lib/sales-items";
-import { contractStatusWhere, localStartOfDay } from "@/modules/crm/dashboard/kpi-linkage";
+import { contractStatusWhere, localStartOfDay, parseLocalDate } from "@/modules/crm/dashboard/kpi-linkage";
 
 const SHIPMENT_STATUS = ["NOT_SHIPPED", "PARTIAL_SHIPPED", "SHIPPED"];
 const SHIPMENT_FILTER_STATUS = [...SHIPMENT_STATUS, "OVERDUE"];
 
 function startOfDay(value: string) {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date;
+  return parseLocalDate(value)!;
 }
 
 function endExclusive(value: string) {
@@ -20,7 +18,7 @@ function endExclusive(value: string) {
 }
 
 function validDate(value: string) {
-  return value && !Number.isNaN(new Date(value).getTime());
+  return Boolean(parseLocalDate(value));
 }
 
 export async function GET(request: NextRequest) {

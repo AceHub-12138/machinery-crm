@@ -4,7 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { formatDxfReport, parseDxf } from "@/lib/agent/cad/dxf-parser";
 import type { XiaochuanAttachment } from "@/lib/agent/attachments";
-import { getUploadPath } from "@/lib/uploads";
+import { readXiaochuanAttachment } from "@/lib/agent/read-attachment";
 
 /**
  * CAD 附件分析（第 2 期段 4）：
@@ -27,15 +27,7 @@ async function fileExists(candidate: string): Promise<boolean> {
 }
 
 async function readAttachment(attachment: XiaochuanAttachment): Promise<Buffer | null> {
-  const prefix = "/uploads/xiaochuan/";
-  if (!attachment.url.startsWith(prefix)) return null;
-  const storedName = attachment.url.slice(prefix.length);
-  if (!storedName || storedName.includes("/") || storedName.includes("\\") || storedName.includes("..")) return null;
-  try {
-    return await readFile(getUploadPath("xiaochuan", storedName));
-  } catch {
-    return null;
-  }
+  return readXiaochuanAttachment(attachment.url);
 }
 
 /** 解析出完整转换命令（含 xvfb-run 前缀）；未安装返回 null */

@@ -1,6 +1,7 @@
+import { readBoundedBody } from "@/lib/bounded-request";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import * as XLSX from "xlsx";
+import { MAX_IMPORT_BYTES, MAX_IMPORT_CELLS, MAX_IMPORT_ROWS, parseMaterialWorkbook } from "@/lib/material-import";
 import { prisma } from "@/lib/db";
 import { getSessionUser, canManageMaterialMaster } from "@/lib/permissions";
 import { writeOperationLog } from "@/lib/sales-items";
@@ -241,14 +242,6 @@ async function nextMaterialCode(
   }
 }
 
-async function parseWorkbook(file: File) {
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const workbook = XLSX.read(buffer, { type: "buffer" });
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) return [];
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[sheetName], { defval: "" });
-}
-
 function rowValue(row: Record<string, unknown>, aliases: readonly string[]) {
   const byNormalizedHeader = new Map(
     Object.entries(row).map(([key, value]) => [normalizeHeader(key), value])
@@ -269,8 +262,12 @@ async function buildPreviewRows(rawRows: Record<string, unknown>[]) {
   const categories = flattenCategories(categoryTree as CategoryNode[]);
   const categoryById = new Map(categories.map((category) => [category.id, category]));
 
+  const codes = [...new Set(rawRows.map((row) => rowValue(row, HEADER_ALIASES.code)).filter(Boolean))];
+  const names = [...new Set(rawRows.map((row) => rowValue(row, HEADER_ALIASES.name)).filter(Boolean))];
   const materials = await prisma.material.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, OR: [
+      { code: { in: codes } }, { drawingNo: { in: codes } }, { name: { in: names } },
+    ] },
     include: { category: { select: { id: true, name: true, code: true } } },
   });
   const materialsByCode = new Map<string, (typeof materials)[number]>();
@@ -395,7 +392,13 @@ export async function POST(request: NextRequest) {
 
   const contentType = request.headers.get("content-type") || "";
   if (contentType.includes("multipart/form-data")) {
-    const formData = await request.formData();
+    let formData: FormData;
+    try {
+      const bytes = await readBoundedBody(request, MAX_IMPORT_BYTES + 128 * 1024);
+      formData = await new Response(bytes, { headers: { "content-type": contentType } }).formData();
+    } catch {
+      return NextResponse.json({ error: "上传内容无效或超过 5MB 限制" }, { status: 400 });
+    }
     const intent = String(formData.get("intent") || "preview");
     if (intent !== "preview") {
       return NextResponse.json({ error: "不支持的导入操作" }, { status: 400 });
@@ -405,7 +408,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "请上传 Excel 文件" }, { status: 400 });
     }
 
-    const rawRows = await parseWorkbook(file);
+    let rawRows: Record<string, unknown>[];
+    try {
+      rawRows = await parseMaterialWorkbook(file);
+    } catch {
+      return NextResponse.json({ error: "Excel 格式无效或超过限制：文件 5MB、解压 40MB、5000 行、50000 个单元格" }, { status: 400 });
+    }
     if (rawRows.length === 0) {
       return NextResponse.json({ error: "Excel 中没有可导入的数据" }, { status: 400 });
     }
@@ -413,10 +421,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ rows, summary: summarize(rows) });
   }
 
-  const body = await request.json();
+  let body;
+  try {
+    body = JSON.parse((await readBoundedBody(request, MAX_IMPORT_BYTES)).toString("utf8"));
+  } catch {
+    return NextResponse.json({ error: "导入请求无效或超过 5MB 限制" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "导入请求格式无效" }, { status: 400 });
+  }
+  if (Array.isArray(body.rows) && (body.rows.some((row: unknown) => !row || typeof row !== "object" || Array.isArray(row))
+    || body.rows.reduce((count: number, row: Record<string, unknown>) => count + Object.keys(row).length, 0) > MAX_IMPORT_CELLS)) {
+    return NextResponse.json({ error: "导入行格式无效或超过 50000 个单元格" }, { status: 400 });
+  }
   if (body.intent === "preview") {
-    if (!Array.isArray(body.rows)) {
-      return NextResponse.json({ error: "预览数据不能为空" }, { status: 400 });
+    if (!Array.isArray(body.rows) || body.rows.length > MAX_IMPORT_ROWS) {
+      return NextResponse.json({ error: "预览数据必须是数组且不能超过 5000 行" }, { status: 400 });
     }
     const rows = await buildPreviewRows(body.rows);
     return NextResponse.json({ rows, summary: summarize(rows) });
@@ -427,6 +447,9 @@ export async function POST(request: NextRequest) {
   }
 
   const rows = Array.isArray(body.rows) ? body.rows as PreviewRow[] : [];
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return NextResponse.json({ error: "单次导入不能超过 5000 行" }, { status: 400 });
+  }
   const resolutions = (body.resolutions || {}) as Record<string, Resolution>;
   if (rows.length === 0) {
     return NextResponse.json({ error: "导入数据不能为空" }, { status: 400 });

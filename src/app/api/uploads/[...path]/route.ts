@@ -2,8 +2,13 @@ import fs from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { getXiaochuanViewer } from "@/lib/agent/auth";
-import { getContentType, getUploadRoot } from "@/lib/uploads";
-import { canReadProtectedUpload } from "@/lib/agent/upload-scope";
+import { getContentType, getUploadRoot, getUploadUrl } from "@/lib/uploads";
+import { canReadProtectedUpload, isUploadPathSafe } from "@/lib/agent/upload-scope";
+import { prisma } from "@/lib/db";
+import { buildCustomerWhereClause } from "@/lib/customer-permissions";
+import { canViewAttachmentEntity } from "@/lib/erp-attachments";
+import { ownsLegacyXiaochuanUpload } from "@/lib/agent/legacy-upload-owner";
+import type { XiaochuanViewer } from "@/lib/agent/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +16,50 @@ export const dynamic = "force-dynamic";
 function isInsideBaseDir(baseDir: string, filePath: string) {
   const relativePath = path.relative(baseDir, filePath);
   return relativePath !== "" && !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+}
+
+async function canReadBusinessUpload(viewer: XiaochuanViewer, segments: string[]) {
+  if (viewer.kind !== "crm") return true; // 已通过自己的小川目录校验。
+  const user = viewer.user;
+  const fileUrl = getUploadUrl(...segments);
+  const urls = [fileUrl, `/api${fileUrl}`];
+  if (segments[0] === "xiaochuan" && segments.length === 2) {
+    // 历史文件按已有对话记录判断归属，不搬文件、不改数据库。
+    return ownsLegacyXiaochuanUpload(user.id, fileUrl);
+  }
+  if (segments[0] === "contracts" && user.role !== "SUPER_ADMIN") {
+    const visible = await prisma.contract.findFirst({
+      where: { attachmentUrl: { in: urls }, deletedAt: null, customer: buildCustomerWhereClause(user) },
+      select: { id: true },
+    });
+    if (visible) return true;
+    // 上传后、保存合同前，只有上传者能预览；一旦关联业务记录就必须遵循区域权限。
+    if (segments.length !== 4 || segments[1] !== "crm" || segments[2] !== user.id) return false;
+    return !await prisma.contract.findFirst({ where: { attachmentUrl: { in: urls } }, select: { id: true } });
+  }
+  if (segments[0] === "shipments" && user.role !== "SUPER_ADMIN") {
+    const visible = await prisma.shipment.findFirst({
+      where: {
+        OR: [{ deliveryNoteUrl: { in: urls } }, { shipmentPhotoUrl: { in: urls } }],
+        contract: { deletedAt: null, customer: buildCustomerWhereClause(user) },
+      },
+      select: { id: true },
+    });
+    if (visible) return true;
+    if (segments.length !== 5 || segments[1] !== "crm" || segments[2] !== user.id) return false;
+    return !await prisma.shipment.findFirst({
+      where: { OR: [{ deliveryNoteUrl: { in: urls } }, { shipmentPhotoUrl: { in: urls } }] },
+      select: { id: true },
+    });
+  }
+  if (segments[0] === "erp") {
+    const attachment = await prisma.erpAttachment.findFirst({
+      where: { fileUrl: { in: urls }, deletedAt: null },
+      select: { entityType: true, entityId: true },
+    });
+    return Boolean(attachment && await canViewAttachmentEntity(user, attachment.entityType, attachment.entityId));
+  }
+  return true;
 }
 
 export async function GET(
@@ -24,10 +73,10 @@ export async function GET(
   }
 
   const { path: pathSegments } = await params;
-  if (!pathSegments?.length || pathSegments.some((segment) => segment.includes("\0"))) {
+  if (!pathSegments || !isUploadPathSafe(pathSegments)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
-  if (!canReadProtectedUpload(viewer, pathSegments)) {
+  if (!canReadProtectedUpload(viewer, pathSegments) || !await canReadBusinessUpload(viewer, pathSegments)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -42,7 +91,13 @@ export async function GET(
     const realBaseDir = fs.realpathSync(baseDir);
     const realFilePath = fs.realpathSync(filePath);
 
-    if (!isInsideBaseDir(realBaseDir, realFilePath) || !fs.statSync(realFilePath).isFile()) {
+    // realpath 还必须留在授权目录内，防止同一上传根目录中的符号链接跨账号/跨业务目录。
+    const scoped = pathSegments[0] === "xiaochuan" && pathSegments.length === 4
+      || ["contracts", "shipments"].includes(pathSegments[0]) && pathSegments[1] === "crm";
+    const scopeLength = scoped ? 3 : 1;
+    const authorizedDir = path.join(realBaseDir, ...pathSegments.slice(0, scopeLength));
+
+    if (!isInsideBaseDir(authorizedDir, realFilePath) || !fs.statSync(realFilePath).isFile()) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

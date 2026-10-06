@@ -32,8 +32,7 @@ jobs:
       - name: 安装 pnpm
         uses: pnpm/action-setup@v4
         with:
-          # 如首次构建报 lockfile 不匹配，把这里换成你们本地实际使用的 pnpm 大版本
-          version: 9
+          version: 10.33.4
 
       # ---------- 构建阶段（等价于 Codex 脚本的 1/2/3 步）----------
       - name: 安装依赖
@@ -201,6 +200,7 @@ jobs:
 
           # 7. 放入启动脚本和部署说明
           cp -a start-standalone.cjs "$PKG_DIR/start-standalone.cjs"
+          cp -a ecosystem.config.cjs "$PKG_DIR/ecosystem.config.cjs"
           cp -a package.json "$PKG_DIR/package.json"
           PKG_JSON="$PKG_DIR/package.json" node <<'NODE'
           const fs = require("node:fs");

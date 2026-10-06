@@ -36,7 +36,7 @@ For a new PM2 application or a new directory:
 
 ```bash
 cd /opt/machinery-crm-v108-upload-security-step1
-pm2 start start-standalone.cjs --name machinery-crm
+HOSTNAME=127.0.0.1 pm2 start ecosystem.config.cjs --update-env
 pm2 save
 ```
 

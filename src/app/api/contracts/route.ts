@@ -3,19 +3,16 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionUser, isSuperAdmin, canAccessCustomer, canSeeAllData, customerIsolationWhere } from "@/lib/permissions";
 import { buildItemsFromInputs, sumItems, writeOperationLog } from "@/lib/sales-items";
-import { contractStatusWhere, localStartOfDay, overdueShipmentWhere } from "@/modules/crm/dashboard/kpi-linkage";
+import { contractStatusWhere, localStartOfDay, overdueShipmentWhere, parseLocalDate } from "@/modules/crm/dashboard/kpi-linkage";
 
 function endExclusive(value: string) {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
+  const date = parseLocalDate(value)!;
   date.setDate(date.getDate() + 1);
   return date;
 }
 
 function startInclusive(value: string) {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date;
+  return parseLocalDate(value)!;
 }
 
 function applyDateRange(where: any, field: string, start?: string, end?: string) {
@@ -43,6 +40,9 @@ export async function GET(request: NextRequest) {
     const signedStart = searchParams.get("signedStart") || "";
     const signedEnd = searchParams.get("signedEnd") || "";
     const overdueShipment = searchParams.get("overdueShipment") || "";
+    if ([createdStart, createdEnd, signedStart, signedEnd].some((value) => value && !parseLocalDate(value))) {
+      return NextResponse.json({ error: "合同日期筛选格式错误" }, { status: 400 });
+    }
 
     const where: any = { deletedAt: null };
     where.customer = {};

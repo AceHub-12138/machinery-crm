@@ -44,7 +44,8 @@ describe("analyzeAttachment", () => {
       expect(result.note).toContain("键槽宽12mm");
       const calledBody = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
       expect(calledBody.messages[0].content[0].image_url.url).toContain("data:image/png;base64,");
-      expect(calledBody.enable_thinking).toBe(false);
+      // Qwen3-VL 等视觉模型不接受 enable_thinking 参数，必须省略。
+      expect(calledBody).not.toHaveProperty("enable_thinking");
     } finally {
       await rm(getUploadPath("xiaochuan", storedName));
       vi.unstubAllGlobals();

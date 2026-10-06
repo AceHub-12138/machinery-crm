@@ -142,9 +142,9 @@ node node_modules/prisma/build/index.js migrate status --schema=prisma/schema.pr
 
 ```bash
 cd "$RELEASE_DIR"
-HOSTNAME=127.0.0.1 PORT="$PRECHECK_PORT" NODE_ENV=production pm2 start start-standalone.cjs --name "$PRECHECK_SERVICE" --update-env
+PM2_APP="$PRECHECK_SERVICE" HOSTNAME=127.0.0.1 PORT="$PRECHECK_PORT" pm2 start ecosystem.config.cjs --update-env
 pm2 describe "$PRECHECK_SERVICE"
-curl -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PRECHECK_PORT/login"
+curl -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PRECHECK_PORT/api/health"
 ```
 
 预期登录页 HTTP 200。使用浏览器完成正式账号登录后，验证 ERP 页面与只读列表 API；未登录访问 ERP API 应被 307、401 或 403 拒绝。
@@ -169,10 +169,10 @@ pm2 delete "$PRECHECK_SERVICE"
 pm2 stop "$PM2_SERVICE"
 pm2 delete "$PM2_SERVICE"
 cd "$RELEASE_DIR"
-HOSTNAME=127.0.0.1 PORT="$PROD_PORT" NODE_ENV=production pm2 start start-standalone.cjs --name "$PM2_SERVICE" --update-env
+PM2_APP="$PM2_SERVICE" HOSTNAME=127.0.0.1 PORT="$PROD_PORT" pm2 start ecosystem.config.cjs --update-env
 pm2 save
 pm2 describe "$PM2_SERVICE"
-curl -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PROD_PORT/login"
+curl -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PROD_PORT/api/health"
 ```
 
 如果实际 Nginx 使用版本化 upstream 或端口发生变化，先备份已确认的站点文件，再人工只改 upstream 目标：
