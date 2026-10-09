@@ -40,7 +40,7 @@ export type TransformOptions = {
 };
 
 function safeInteger(value: unknown, multiplier: number): number {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
     return 0;
   }
   const result = Math.floor(value * multiplier);
@@ -72,7 +72,7 @@ function applyAmountMultiplier(value: unknown, multiplier: number): string {
     return "0.00";
   }
 
-  if (!decimal.isFinite() || decimal.lt(0)) {
+  if (!decimal.isFinite()) {
     return "0.00";
   }
 
@@ -211,8 +211,9 @@ export function transformToPublicPayload(
   // 销售目标处理
   const targetInput = source.target && typeof source.target === "object" ? source.target : null;
   let collectionTarget = {
+    targetConfigured: targetInput !== null,
     targetAmount: "0.00",
-    actualAmount: "0.00",
+    actualAmount: periodContractAmount,
     targetRate: 0,
     targetVisualRate: 0,
     remainingAmount: "0.00",
@@ -222,7 +223,7 @@ export function transformToPublicPayload(
 
   if (targetInput) {
     const targetAmount = applyAmountMultiplier(targetInput.targetAmount, multipliers.amount);
-    const actualAmount = applyAmountMultiplier(targetInput.actualAmount, multipliers.amount);
+    const actualAmount = periodContractAmount;
 
     const targetDecimal = new Prisma.Decimal(targetAmount);
     const actualDecimal = new Prisma.Decimal(actualAmount);
@@ -235,6 +236,7 @@ export function transformToPublicPayload(
     const exceeded = actualDecimal.gt(targetDecimal);
 
     collectionTarget = {
+      targetConfigured: true,
       targetAmount,
       actualAmount,
       targetRate,
@@ -333,6 +335,9 @@ export function transformToPublicPayload(
   };
 
   const reminders = {
+    todayTotal: summary.todayDue,
+    sevenDaysTotal: summary.sevenDayDue,
+    overdueTotal: summary.overdueDue,
     today: collectReminderDrafts(source.reminders?.today).map((draft) => withKey(draft, buildKey)),
     sevenDays: collectReminderDrafts(source.reminders?.sevenDays).map((draft) => withKey(draft, buildKey)),
     overdue: collectReminderDrafts(source.reminders?.overdue).map((draft) => withKey(draft, buildKey)),
@@ -392,6 +397,17 @@ export function transformToPublicPayload(
     },
     delivery: {
       summary,
+      regionUnits: (source.regionUnits ?? []).filter(row => isValidLocation(row.province, null)).map(row => ({
+        province: row.province,
+        shipmentCount: safeInteger(row.shipmentCount, multipliers.shipmentCount),
+        unitCount: safeInteger(row.unitCount, multipliers.shipmentCount),
+      })),
+      unresolvedRegionTotals: {
+        shipmentCount: safeInteger(source.unresolvedRegionTotals?.shipmentCount ?? 0, multipliers.shipmentCount),
+        unitCount: safeInteger(source.unresolvedRegionTotals?.unitCount ?? 0, multipliers.shipmentCount),
+      },
+      routesTotal: summary.shipmentCount,
+      milestonesTotal: safeInteger(source.milestonesTotal ?? 0, multipliers.shipmentCount),
       routes,
       reminders,
       milestones,

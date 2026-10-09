@@ -82,6 +82,9 @@ export type SalesScreenSourceData = {
     actualAmount: AmountInput;
   } | null;
   deliveryTotals: SalesScreenDeliveryTotals;
+  regionUnits?: Array<{ province: string; shipmentCount: number; unitCount: number }>;
+  unresolvedRegionTotals?: { shipmentCount: number; unitCount: number };
+  milestonesTotal?: number;
   routes: SalesScreenRouteSource[];
   reminders: {
     today: SalesScreenReminderSource[];

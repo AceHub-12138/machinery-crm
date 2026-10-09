@@ -45,6 +45,7 @@ function ReminderGroup({
         </span>
       </header>
 
+      <p className="screen-text-micro text-[var(--ink-3)]">样本 {Math.min(2, items.length)} / 展示总量 {count}</p>
       {/* 每条一行：日期 · 合同编号（hidden 模式回退省市） · 设备。
           每条只有约 272px，两个字段必然放不下，都显式 truncate：
           中间字段给固定基准（basis-28）先截断，设备名吃剩余宽度。 */}

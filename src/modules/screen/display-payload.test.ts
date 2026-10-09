@@ -249,7 +249,7 @@ describe("transformToPublicPayload", () => {
       const json = JSON.stringify(result);
 
       expect(result.delivery.summary.shipmentCount).toBe(0);
-      expect(result.delivery.summary.unitCount).toBe(0);
+      expect(result.delivery.summary.unitCount).toBe(-20);
       expect(result.delivery.summary.regionCount).toBe(0);
       expect(result.delivery.summary.todayDue).toBe(0);
       expect(result.delivery.summary.sevenDayDue).toBe(12);
@@ -662,7 +662,8 @@ describe("transformToPublicPayload", () => {
   describe("销售目标映射", () => {
     it("目标与实际同时乘相同倍率，完成率与原比例一致", () => {
       const source = makeSource({
-        target: { targetAmount: "200000", actualAmount: "50000" },
+        target: { targetAmount: "200000", actualAmount: "99999" },
+        amounts: { ...makeSource().amounts, periodContractAmount: "50000" },
       });
 
       const result = transform(source);
@@ -679,7 +680,8 @@ describe("transformToPublicPayload", () => {
 
     it("超额目标应输出超额值且剩余为零", () => {
       const source = makeSource({
-        target: { targetAmount: "100000", actualAmount: "120000" },
+        target: { targetAmount: "100000", actualAmount: "99999" },
+        amounts: { ...makeSource().amounts, periodContractAmount: "120000" },
       });
 
       const result = transform(source);
@@ -730,6 +732,7 @@ describe("transformToPublicPayload", () => {
         amounts: {
           ...makeSource().amounts,
           totalContractAmount: "0.01",
+          periodContractAmount: Number.MAX_VALUE,
           totalPaidAmount: Number.MAX_VALUE,
         },
         target: {
@@ -781,7 +784,7 @@ describe("transformToPublicPayload", () => {
 
       expect(result.kpis.totalCustomers).toBe(0);
       expect(result.kpis.periodNewCustomers).toBe(0);
-      expect(result.kpis.todayFollowUp).toBe(0);
+      expect(result.kpis.todayFollowUp).toBe(-10);
       expect(result.kpis.periodNewContracts).toBe(0);
       expect(result.kpis.periodContractAmount).toBe("0.00");
       expect(result.kpis.periodShipments).toBe(16);

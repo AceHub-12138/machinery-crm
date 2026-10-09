@@ -71,9 +71,9 @@ describe("migrated panels render from the public payload only", () => {
       <DeliveryMilestones milestones={fixture.delivery.milestones} summary={fixture.delivery.summary} />,
     );
     expect(hasTitle(html, "交付里程碑")).toBe(true);
-    // 左栏统计来自显式汇总：86 单 · 132 台 / 9 大区
+    // 左栏统计来自显式汇总：86 单 · 132 台 / 9 省份
     expect(html).toContain("86 单 · 132 台");
-    expect(html).toContain("9 大区");
+    expect(html).toContain("9 省份");
     // 卡片只列样本并显示遮掩合同号
     expect(html).toContain("数控龙门加工中心");
     expect(html).toContain("2 台");

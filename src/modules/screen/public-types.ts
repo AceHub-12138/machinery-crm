@@ -34,6 +34,7 @@ export type PublicSalesScreenPayload = {
     totalPaidAmount: string;
     totalUnpaidAmount: string;
     collectionRate: number;
+    targetConfigured?: boolean;
     targetAmount: string;
     actualAmount: string;
     targetRate: number;
@@ -51,8 +52,15 @@ export type PublicSalesScreenPayload = {
       sevenDayDue: number;
       overdueDue: number;
     };
+    regionUnits?: Array<{ province: string; shipmentCount: number; unitCount: number }>;
+    unresolvedRegionTotals?: { shipmentCount: number; unitCount: number };
+    routesTotal?: number;
+    milestonesTotal?: number;
     routes: PublicRouteSample[];
     reminders: {
+      todayTotal?: number;
+      sevenDaysTotal?: number;
+      overdueTotal?: number;
       today: PublicReminderSample[];
       sevenDays: PublicReminderSample[];
       overdue: PublicReminderSample[];

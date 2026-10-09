@@ -107,7 +107,10 @@ describe("sales screen component boundary", () => {
         const allowed =
           usage.startsWith(".length === 0") ||
           usage.startsWith(".length > 0") ||
-          usage.startsWith(".length !== 0");
+          usage.startsWith(".length !== 0") ||
+          // 新增样本提示允许显示样本长度；全量数字仍只能来自接口汇总。
+          (text.slice(Math.max(0, match.index - 80), match.index).includes("样本") &&
+            text.slice(match.index, match.index + 100).includes("展示总量"));
         if (!allowed) {
           offenders.push(`${path.relative(COMPONENTS_DIR, file)}: ${usage}`);
         }

@@ -9,7 +9,7 @@ type Collection = PublicSalesScreenPayload["collection"];
 /**
  * 累计回款率环。
  *
- * 环只承担一个任务：让管理者在远处看清总体回款率。
+ * 环只承担一个任务：让管理者在远处看清累计回款率。
  * 金额与目标移到环外，避免同一块图形里同时塞进三组口径。
  * 比例直接使用服务器按扩大后金额重算的 collectionRate，图形与数字不会互相矛盾。
  */
@@ -97,7 +97,7 @@ export function TargetRing({
             <RateDial rate={collection.collectionRate} />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <p className="screen-text-micro leading-none tracking-[0.08em] text-[var(--ink-3)]">
-                总体回款率
+                累计回款率
               </p>
               <p className="num screen-text-hero mt-2.5 flex items-baseline leading-none tracking-[-0.02em] text-[var(--ink)]">
                 {collection.collectionRate.toFixed(1)}
@@ -130,7 +130,7 @@ export function TargetRing({
                 {formatMoneyAmount(collection.totalContractAmount)}
               </p>
             </div>
-            {targetAmount > 0 ? (
+            {(collection.targetConfigured ?? targetAmount > 0) && targetAmount > 0 ? (
               <p className="num screen-text-micro text-right leading-tight text-[var(--ink-3)]">
                 本月目标 {formatMoneyAmount(collection.targetAmount)}
                 <br />
@@ -138,7 +138,7 @@ export function TargetRing({
                   已完成 {formatMoneyAmount(collection.actualAmount)}
                 </span>
               </p>
-            ) : null}
+            ) : <p className="screen-text-micro text-[var(--ink-3)]">{collection.targetConfigured && targetAmount === 0 ? "目标为 0" : "目标未设置"}</p>}
           </div>
           <div className="collection-track mt-3 flex overflow-hidden">
             <span className="bg-[var(--c-received)]" style={{ width: `${collectRate * 100}%` }} />

@@ -89,7 +89,7 @@ type DragState = {
 /**
  * 全国交付态势地图。
  *
- * 只使用公开白名单字段：路线终点是省/市中心投影坐标，热度与排行由样本构造；
+ * 只使用公开白名单字段：路线终点是省/市中心投影坐标，热度与排行使用全量省份聚合；
  * 标题栏三个数字全部来自显式汇总，不从样本长度推导。
  *
  * 交互：滚轮以光标为锚缩放（1–5×）、按住拖拽平移、双击回全图、
@@ -99,9 +99,13 @@ type DragState = {
 export function ShipmentMap({
   routes,
   summary,
+  regionUnits,
+  unresolvedRegionTotals,
   mapBox,
 }: {
   routes: PublicRouteSample[];
+  regionUnits?: PublicSalesScreenPayload["delivery"]["regionUnits"];
+  unresolvedRegionTotals?: PublicSalesScreenPayload["delivery"]["unresolvedRegionTotals"];
   summary: DeliverySummary;
   mapBox: { width: number; height: number };
 }) {
@@ -190,12 +194,11 @@ export function ShipmentMap({
 
   const heat = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const route of routes) {
-      const key = matchProvinceKey(route.province);
-      counts.set(key, (counts.get(key) || 0) + 1);
+    for (const row of (regionUnits ?? [])) {
+      counts.set(matchProvinceKey(row.province), row.unitCount);
     }
     return { counts, max: Math.max(1, ...counts.values()) };
-  }, [routes]);
+  }, [regionUnits]);
 
   /** 密度自适应透明度：航线越多单条越淡 */
   const arcOpacity = useMemo(() => arcBaseOpacities(routes), [routes]);
@@ -273,17 +276,8 @@ export function ShipmentMap({
     return placeLabels([{ items: cities }, { items: provinceItems }, { items: neighborItems }]);
   }, [heat, neighbors, provinces, routes, destinations, factory.x, factory.y]);
 
-  /** 省级排行：样本热度对比，填满地图左侧空白 */
-  const provinceRanking = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const route of routes) {
-      const name = matchProvinceKey(route.province);
-      counts.set(name, (counts.get(name) || 0) + 1);
-    }
-    return [...counts.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-CN"));
-  }, [routes]);
+  /** 省级排行：全量台数对比，填满地图左侧空白 */
+  const provinceRanking = useMemo(() => (regionUnits ?? []).map(row => ({ name: matchProvinceKey(row.province), count: row.unitCount })), [regionUnits]);
 
   const maxRank = provinceRanking[0]?.count ?? 1;
 
@@ -683,7 +677,9 @@ export function ShipmentMap({
       </div>
 
       <div className="pointer-events-none absolute top-[92px] right-3 z-10 flex w-[150px] flex-col gap-2">
-        {/* 高度色阶图例：带刻度（max 为样本口径，仅作图例） */}
+        <p className="screen-text-micro text-[var(--ink-3)]">点位为样本</p>
+        {unresolvedRegionTotals && unresolvedRegionTotals.shipmentCount > 0 ? <p className="screen-text-micro text-[var(--ink-3)]">地区待确认 · {formatCount(unresolvedRegionTotals.unitCount)} 台 / {formatCount(unresolvedRegionTotals.shipmentCount)} 单</p> : null}
+        {/* 高度色阶图例：带刻度（max 为全量省份台数） */}
         <div className="map-hud px-2.5 py-2">
           <p className="screen-text-micro leading-none tracking-[0.14em] text-[var(--ink-3)]">省级发货量</p>
           <div className="mt-1.5 flex items-end gap-[3px]">
@@ -697,7 +693,7 @@ export function ShipmentMap({
           </div>
           <div className="screen-text-micro mt-1.5 flex justify-between leading-none text-[var(--ink-3)]">
             <span>0</span>
-            <span className="num text-[var(--brand-orange-hot)]">{formatCount(heat.max)} 单</span>
+            <span className="num text-[var(--brand-orange-hot)]">{formatCount(heat.max)} 台</span>
           </div>
         </div>
       </div>

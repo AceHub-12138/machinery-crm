@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCount } from "./format";
+import { formatCount, formatShortDate } from "./format";
 import type { PublicSalesScreenPayload, PublicMilestoneSample } from "@/modules/screen/public-types";
 
 type DeliverySummary = PublicSalesScreenPayload["delivery"]["summary"];
@@ -14,9 +14,11 @@ type DeliverySummary = PublicSalesScreenPayload["delivery"]["summary"];
 export function DeliveryMilestones({
   milestones,
   summary,
+  total,
 }: {
   milestones: PublicMilestoneSample[];
   summary: DeliverySummary;
+  total?: number;
 }) {
   // 最近交付在前；样本上限由服务器控制，这里再截一次只是防御
   const ordered = [...milestones]
@@ -33,17 +35,15 @@ export function DeliveryMilestones({
           <span>
             {formatCount(summary.shipmentCount)} 单 · {formatCount(summary.unitCount)} 台
           </span>
-          <span className="text-[var(--ink-4)]">{formatCount(summary.regionCount)} 大区</span>
+          <span className="text-[var(--ink-4)]">{formatCount(summary.regionCount)} 省份</span>
         </p>
+        <p className="screen-text-micro text-[var(--ink-3)]">样本 {ordered.length}{total === undefined ? "" : ` / 展示总量 ${total}`}</p>
       </div>
 
       {/* 三列自适应：auto-fit + minmax 让 5 张卡按可用宽度自己决定排几列 */}
       <div className="milestone-grid grid min-w-0 content-center gap-y-1.5 px-3 py-2 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
         {ordered.map((item) => {
-          const day = new Date(item.shipmentDate);
-          const dateLabel = Number.isNaN(day.getTime())
-            ? "—"
-            : `${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+          const dateLabel = formatShortDate(item.shipmentDate);
           return (
             <article key={item.key} className="milestone-item flex min-w-0 flex-col justify-center px-3">
               <div className="flex shrink-0 items-center justify-between gap-2">

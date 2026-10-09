@@ -6,7 +6,7 @@ import { formatClock } from "./format";
 /**
  * 每秒变化的时间源。
  *
- * 用 useSyncExternalStore 而不是「effect 里同步 setState」：服务端没有本地时间，
+ * 用 useSyncExternalStore 而不是「effect 里同步 setState」：服务端首帧未订阅时钟，
  * getServerSnapshot 返回 0 让首帧渲染成占位符，hydration 也不会不匹配。
  */
 function useClock() {
@@ -33,7 +33,7 @@ function useClock() {
   }, []);
 
   const getSnapshot = useCallback(() => snapshot.current, []);
-  // 0 = 服务端/首帧，没有本地时间可显示
+  // 0 = 服务端/首帧，等待客户端时钟订阅
   const getServerSnapshot = useCallback(() => 0, []);
 
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
@@ -81,7 +81,7 @@ export function HeaderBar({
         <span className="h-11 w-px bg-[var(--hairline)]" />
 
         <div className="text-right">
-          <p className="screen-text-micro leading-none tracking-[0.2em] text-[var(--ink-3)]">本地时间</p>
+          <p className="screen-text-micro leading-none tracking-[0.2em] text-[var(--ink-3)]">北京时间</p>
           <p className="screen-hud-en screen-text-label mt-2 leading-none font-semibold text-[var(--ink)]">
             {now ? formatClock(now) : "--:--:--"}
           </p>

@@ -112,6 +112,8 @@ export function SalesScreenBoard({
           <ShipmentMap
             routes={payload.delivery.routes}
             summary={payload.delivery.summary}
+            regionUnits={payload.delivery.regionUnits}
+            unresolvedRegionTotals={payload.delivery.unresolvedRegionTotals}
             mapBox={plan.mapBox ?? { width: 880, height: 838 }}
           />
         );
@@ -125,6 +127,7 @@ export function SalesScreenBoard({
         return (
           <DeliveryMilestones
             milestones={payload.delivery.milestones}
+            total={payload.delivery.milestonesTotal}
             summary={payload.delivery.summary}
           />
         );
