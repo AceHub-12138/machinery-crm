@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-11",
+  "branch": "codex/screen-data-reconcile",
+  "baseline": "4ebabe9",
+  "screenModuleTests": 216,
+  "unitTests": 1265,
+  "typecheck": "passed",
+  "fullLint": {
+    "errors": 0,
+    "existingWarnings": 632
+  },
+  "changedFileLint": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "productionBuild": "passed",
+  "database": "placeholder mysql on 127.0.0.1:9; no production connection"
+}

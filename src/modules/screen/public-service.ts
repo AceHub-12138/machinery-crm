@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { DomainError } from "@/modules/shared/domain-error";
 import { normalizeSalesScreenConfig, SALES_SCREEN_SETTING_KEY } from "./config";
@@ -84,7 +85,7 @@ export async function getPublicSalesScreenPayload(publicId: string, options: { n
   const period = beijingPeriod(atRequest);
   const [dashboard, companyTarget, delivery] = await Promise.all([
     readScreenMetrics(atRequest),
-    // MySQL 可空唯一键不能保证公司目标唯一；只读最新一条，绝不在取数时清理历史行。
+    // MySQL 可空唯一键不能保证公司目标唯一；用户确认同月多条取最后修改的一条（updatedAt desc、id asc），只读，绝不在取数时清理历史行。
     prisma.salesTarget.findFirst({
       where: { periodType: "MONTH", periodYear: period.year, periodIndex: period.month, salesUserId: null, metric: "CONTRACT_AMOUNT" },
       orderBy: [{ updatedAt: "desc" }, { id: "asc" }], select: { amount: true },
@@ -123,6 +124,13 @@ export async function getPublicSalesScreenPayload(publicId: string, options: { n
   }
   for (const [key, value] of Object.entries(source.deliveryTotals)) {
     if (value < 0) console.warn("[screen] negative count", { field: key, value });
+  }
+  for (const [key, value] of Object.entries({ ...source.amounts, targetAmount: source.target?.targetAmount ?? 0 })) {
+    // 与出口的防御性金额解析一致；坏格式仍由出口处理，不让日志检查中断公开响应。
+    try {
+      const decimal = new Prisma.Decimal(typeof value === "object" ? value.toFixed() : value);
+      if (decimal.lt(0)) console.warn("[screen] negative amount", { field: key, value: decimal.toFixed() });
+    } catch { /* 非十进制值沿用出口兜底。 */ }
   }
   return transformToPublicPayload(source, config, { generatedAt: atRequest.toISOString() });
 }

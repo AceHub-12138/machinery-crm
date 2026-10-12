@@ -62,10 +62,13 @@ export type SalesScreenSourceData = {
     todayFollowUp: number;
     overdueFollowUp: number;
     sevenDayFollowUp: number;
+    /** 本期有效 CNY 合同数，与本期合同额使用同一合同集合。 */
     periodNewContracts: number;
     /** 本期发货数（区别于 deliveryTotals.shipmentCount 的全量总单数） */
     periodShipments: number;
+    /** 累计有效 CNY 未回款合同数。 */
     unpaidContracts: number;
+    /** 累计有效 CNY 部分回款合同数。 */
     partialPaidContracts: number;
   };
   amounts: {
@@ -76,7 +79,7 @@ export type SalesScreenSourceData = {
     totalPaidAmount: AmountInput;
     totalUnpaidAmount: AmountInput;
   };
-  /** 当前考核期销售目标；无目标时为 null */
+  /** 当前考核期公司目标；同月多条取最后修改的一条（updatedAt desc，id asc）；无目标为 null */
   target: {
     targetAmount: AmountInput;
     actualAmount: AmountInput;

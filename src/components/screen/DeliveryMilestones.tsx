@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCount, formatShortDate } from "./format";
+import { DATA_PENDING, hasNegativeMetric, formatCount, formatShortDate } from "./format";
 import type { PublicSalesScreenPayload, PublicMilestoneSample } from "@/modules/screen/public-types";
 
 type DeliverySummary = PublicSalesScreenPayload["delivery"]["summary"];
@@ -33,11 +33,11 @@ export function DeliveryMilestones({
         {/* 三个统计量拆成两个 span：18px 下整串太宽，显式分行更易读 */}
         <p className="num screen-text-micro flex flex-wrap items-baseline gap-x-2 gap-y-1 leading-none text-[var(--ink-3)]">
           <span>
-            {formatCount(summary.shipmentCount)} 单 · {formatCount(summary.unitCount)} 台
+            {hasNegativeMetric(summary.shipmentCount, summary.unitCount) ? DATA_PENDING : `${formatCount(summary.shipmentCount)} 单 · ${formatCount(summary.unitCount)} 台`}
           </span>
           <span className="text-[var(--ink-4)]">{formatCount(summary.regionCount)} 省份</span>
         </p>
-        <p className="screen-text-micro text-[var(--ink-3)]">样本 {ordered.length}{total === undefined ? "" : ` / 展示总量 ${total}`}</p>
+        <p className="screen-text-micro text-[var(--ink-3)]">样本 {ordered.length}{total === undefined ? "" : ` / 展示总量 ${formatCount(total)}`}</p>
       </div>
 
       {/* 三列自适应：auto-fit + minmax 让 5 张卡按可用宽度自己决定排几列 */}

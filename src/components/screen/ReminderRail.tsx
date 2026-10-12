@@ -1,7 +1,7 @@
 "use client";
 
 import { Panel, PanelHead } from "./Panel";
-import { formatCount, formatShortDate } from "./format";
+import { DATA_PENDING, hasNegativeMetric, formatCount, formatShortDate } from "./format";
 import type { PublicSalesScreenPayload, PublicReminderSample } from "@/modules/screen/public-types";
 
 type DeliverySummary = PublicSalesScreenPayload["delivery"]["summary"];
@@ -45,7 +45,7 @@ function ReminderGroup({
         </span>
       </header>
 
-      <p className="screen-text-micro text-[var(--ink-3)]">样本 {Math.min(2, items.length)} / 展示总量 {count}</p>
+      <p className="screen-text-micro text-[var(--ink-3)]">样本 {Math.min(2, items.length)} / 展示总量 {formatCount(count)}</p>
       {/* 每条一行：日期 · 合同编号（hidden 模式回退省市） · 设备。
           每条只有约 272px，两个字段必然放不下，都显式 truncate：
           中间字段给固定基准（basis-28）先截断，设备名吃剩余宽度。 */}
@@ -84,6 +84,7 @@ export function ReminderRail({
   summary: DeliverySummary;
   reminders: ReminderGroups;
 }) {
+  const totalInvalid = hasNegativeMetric(summary.todayDue, summary.sevenDayDue, summary.overdueDue);
   const total = summary.todayDue + summary.sevenDayDue + summary.overdueDue;
 
   return (
@@ -93,7 +94,7 @@ export function ReminderRail({
         title="交付预警"
         extra={
           <p className="num screen-text-label leading-none text-[var(--ink)]">
-            {formatCount(total)}
+            {totalInvalid ? DATA_PENDING : formatCount(total)}
             <span className="screen-text-micro ml-1.5 font-normal text-[var(--ink-3)]">待处理</span>
           </p>
         }

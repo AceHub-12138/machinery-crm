@@ -38,7 +38,7 @@ export function AnimatedNumber({
     if (!node) return;
 
     const from = fromRef.current;
-    if (from === value || prefersReducedMotion()) {
+    if (from === value || from < 0 || value < 0 || prefersReducedMotion()) {
       fromRef.current = value;
       node.textContent = format(value);
       return;

@@ -1,3 +1,13 @@
+/** 原始负值保留在 payload；公开画面只呈现核对提示。 */
+export const DATA_PENDING = "数据待核对";
+export function hasNegativeMetric(...values: Array<number | string>) {
+  return values.some(value => Number(value) < 0);
+}
+export function formatPercent(value: number, digits = 1, cap = false) {
+  if (value < 0) return DATA_PENDING;
+  return `${cap && value > 999 ? ">999" : value.toFixed(digits)}%`;
+}
+
 export function pad2(value: number) {
   return String(value).padStart(2, "0");
 }
@@ -11,6 +21,7 @@ export function formatClock(date: Date) {
 }
 
 export function formatMoney(value: number) {
+  if (value < 0) return DATA_PENDING;
   const abs = Math.abs(value);
   if (abs >= 100000000) {
     return `¥${(value / 100000000).toLocaleString("zh-CN", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}亿`;
@@ -36,5 +47,6 @@ export function formatShortDate(value?: string | null) {
 }
 
 export function formatCount(value: number) {
+  if (value < 0) return DATA_PENDING;
   return value.toLocaleString("zh-CN");
 }

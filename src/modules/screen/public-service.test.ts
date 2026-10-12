@@ -99,6 +99,7 @@ describe("公开大屏取数入口", () => {
     const p = await getPublicSalesScreenPayload(id);
     expect(p.kpis.totalCustomers).toBe(-3);
     expect(warn).toHaveBeenCalledWith("[screen] negative count", { field: "totalCustomers", value: -1 });
+    expect(warn).toHaveBeenCalledWith("[screen] negative amount", { field: "totalUnpaidAmount", value: "-100" });
     warn.mockRestore();
   });
 });

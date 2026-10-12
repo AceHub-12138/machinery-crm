@@ -657,7 +657,7 @@ export function ShipmentMap({
           <ul className="mt-1.5 space-y-1.5">
             {provinceRanking.slice(0, 4).map((row) => (
               <li key={row.name}>
-                <div className="flex items-baseline justify-between gap-1.5">
+                <div className={row.count < 0 ? "flex flex-col gap-1" : "flex items-baseline justify-between gap-1.5"}>
                   <span className="screen-text-micro truncate leading-none text-[var(--ink-2)]">
                     {row.name}
                   </span>
@@ -666,8 +666,8 @@ export function ShipmentMap({
                 <span
                   className="mt-1 block h-1 rounded-full"
                   style={{
-                    width: `${Math.max(14, (row.count / maxRank) * 100)}%`,
-                    background: HEAT_SCALE[Math.min(HEAT_LEVELS - 1, 2 + row.count)],
+                    width: `${row.count < 0 ? 0 : Math.max(14, (row.count / Math.max(1, maxRank)) * 100)}%`,
+                    background: HEAT_SCALE[Math.min(HEAT_LEVELS - 1, 2 + Math.max(0, row.count))],
                   }}
                 />
               </li>

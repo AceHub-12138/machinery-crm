@@ -1,0 +1,271 @@
+
+> machinery-crm@1.5.2-rc.4 build /Users/apple/Desktop/Codex/machinery-crm-screen-data
+> next build
+
+▲ Next.js 16.2.6 (Turbopack)
+- Experiments (use with caution):
+  · proxyClientMaxBodySize: "100mb"
+  · serverActions
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  App Route:
+    ./next.config.ts
+    ./src/lib/uploads.ts
+    ./src/app/api/uploads/[...path]/route.ts
+
+
+✓ Compiled successfully in 70s
+  Running TypeScript ...
+  Finished TypeScript in 12.9s ...
+  Collecting page data using 19 workers ...
+  Generating static pages using 19 workers (0/120) ...
+  Generating static pages using 19 workers (30/120)
+  Generating static pages using 19 workers (60/120)
+  Generating static pages using 19 workers (90/120)
+✓ Generating static pages using 19 workers (120/120) in 293ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /admin/agent
+├ ○ /admin/cockpit
+├ ○ /admin/config
+├ ○ /admin/health
+├ ○ /admin/master-data
+├ ○ /after-sales
+├ ƒ /after-sales/[id]
+├ ƒ /after-sales/[id]/print
+├ ○ /after-sales/new
+├ ƒ /api/admin/agent-accounts
+├ ƒ /api/admin/agent-accounts/[id]
+├ ƒ /api/admin/agent-mcp-servers
+├ ƒ /api/admin/agent-mcp-servers/[id]
+├ ƒ /api/admin/agent-mcp-servers/test
+├ ƒ /api/admin/agent-model-configs
+├ ƒ /api/admin/agent-model-configs/[id]
+├ ƒ /api/admin/agent-model-configs/[id]/activate
+├ ƒ /api/admin/agent-model-configs/test
+├ ƒ /api/after-sales
+├ ƒ /api/after-sales/[id]
+├ ƒ /api/after-sales/[id]/receipt
+├ ƒ /api/after-sales/[id]/status
+├ ƒ /api/after-sales/contracts
+├ ƒ /api/after-sales/parts
+├ ƒ /api/after-sales/print-info
+├ ƒ /api/after-sales/stats
+├ ƒ /api/after-sales/supplement-parts
+├ ƒ /api/agent-gateway/chat
+├ ƒ /api/agent/account/login
+├ ƒ /api/agent/account/logout
+├ ƒ /api/agent/assertion
+├ ƒ /api/agent/chat
+├ ƒ /api/agent/conversations
+├ ƒ /api/agent/conversations/[id]
+├ ƒ /api/agent/messages/[id]/feedback
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/contract-delete-requests
+├ ƒ /api/contract-delete-requests/[id]/approve
+├ ƒ /api/contract-delete-requests/[id]/reject
+├ ƒ /api/contract-unlock-requests
+├ ƒ /api/contract-unlock-requests/[id]/approve
+├ ƒ /api/contract-unlock-requests/[id]/reject
+├ ƒ /api/contracts
+├ ƒ /api/contracts/[id]
+├ ƒ /api/contracts/[id]/payments
+├ ƒ /api/contracts/[id]/payments/[paymentId]
+├ ƒ /api/crm/customers
+├ ƒ /api/crm/dashboard
+├ ƒ /api/crm/leads
+├ ƒ /api/crm/leads/[id]
+├ ƒ /api/crm/leads/[id]/feedback
+├ ƒ /api/crm/leads/assignees
+├ ƒ /api/crm/leads/assignments
+├ ƒ /api/crm/leads/batch-invalid
+├ ƒ /api/crm/sales-targets
+├ ƒ /api/customer-quotes
+├ ƒ /api/customer-quotes/[id]
+├ ƒ /api/customer-quotes/[id]/contract
+├ ƒ /api/customer-quotes/[id]/update-contract
+├ ƒ /api/customers
+├ ƒ /api/customers/[id]
+├ ƒ /api/customers/[id]/contracts
+├ ƒ /api/customers/[id]/quotes
+├ ƒ /api/dashboard
+├ ƒ /api/desktop/latest
+├ ƒ /api/downloads/[...path]
+├ ƒ /api/erp/attachments
+├ ƒ /api/erp/attachments/[id]
+├ ƒ /api/erp/boms
+├ ƒ /api/erp/boms/[id]
+├ ƒ /api/erp/dashboard
+├ ƒ /api/erp/delivery-reminders/run
+├ ƒ /api/erp/document-creators
+├ ƒ /api/erp/inventory
+├ ƒ /api/erp/inventory/[id]
+├ ƒ /api/erp/kit-check-delete-requests/[id]/approve
+├ ƒ /api/erp/kit-check-delete-requests/[id]/reject
+├ ƒ /api/erp/kit-check-results
+├ ƒ /api/erp/kit-check-results/[id]/delete-request
+├ ƒ /api/erp/kit-rechecks/process
+├ ƒ /api/erp/material-categories
+├ ƒ /api/erp/material-categories/[id]
+├ ƒ /api/erp/materials
+├ ƒ /api/erp/materials/[id]
+├ ƒ /api/erp/materials/import
+├ ƒ /api/erp/monthly-production-plans
+├ ƒ /api/erp/monthly-production-plans/[id]
+├ ƒ /api/erp/monthly-production-plans/[id]/approve
+├ ƒ /api/erp/monthly-production-plans/[id]/convert
+├ ƒ /api/erp/monthly-spare-parts-forecasts
+├ ƒ /api/erp/procurement-config
+├ ƒ /api/erp/production-contracts
+├ ƒ /api/erp/production-order-change-requests
+├ ƒ /api/erp/production-order-change-requests/[id]/approve
+├ ƒ /api/erp/production-order-change-requests/[id]/reject
+├ ƒ /api/erp/production-orders
+├ ƒ /api/erp/production-orders/[id]
+├ ƒ /api/erp/production-orders/[id]/change-requests
+├ ƒ /api/erp/production-orders/[id]/issue
+├ ƒ /api/erp/production-orders/[id]/kit-check
+├ ƒ /api/erp/production-orders/[id]/purchase-demands
+├ ƒ /api/erp/production-orders/[id]/status
+├ ƒ /api/erp/production-orders/from-contract
+├ ƒ /api/erp/production-users
+├ ƒ /api/erp/products
+├ ƒ /api/erp/purchase-demands
+├ ƒ /api/erp/purchase-demands/[id]
+├ ƒ /api/erp/purchase-demands/convert
+├ ƒ /api/erp/purchase-order-delete-requests/[id]/approve
+├ ƒ /api/erp/purchase-order-delete-requests/[id]/reject
+├ ƒ /api/erp/purchase-orders
+├ ƒ /api/erp/purchase-orders/[id]
+├ ƒ /api/erp/purchase-orders/[id]/delete-request
+├ ƒ /api/erp/purchase-orders/[id]/status
+├ ƒ /api/erp/stock-checks
+├ ƒ /api/erp/stock-checks/[id]
+├ ƒ /api/erp/stock-in
+├ ƒ /api/erp/stock-in/[id]
+├ ƒ /api/erp/stock-in/[id]/unlink-purchase
+├ ƒ /api/erp/stock-in/[id]/void
+├ ƒ /api/erp/stock-movements
+├ ƒ /api/erp/stock-out
+├ ƒ /api/erp/stock-out/[id]
+├ ƒ /api/erp/stock-transfers
+├ ƒ /api/erp/supplier-deliveries
+├ ƒ /api/erp/supplier-deliveries/[itemId]
+├ ƒ /api/erp/supplier-deliveries/[itemId]/batches
+├ ƒ /api/erp/supplier-deliveries/[itemId]/follow-ups
+├ ƒ /api/erp/supplier-deliveries/[itemId]/promise-date
+├ ƒ /api/erp/suppliers
+├ ƒ /api/erp/suppliers/[id]
+├ ƒ /api/erp/suppliers/[id]/delivery-performance
+├ ƒ /api/erp/warehouses
+├ ƒ /api/erp/warehouses/[id]
+├ ƒ /api/follows
+├ ƒ /api/health
+├ ƒ /api/lead-hunter/tasks
+├ ƒ /api/lead-hunter/tasks/[id]
+├ ƒ /api/lead-hunter/tasks/[id]/admit
+├ ƒ /api/lead-hunter/tasks/[id]/cancel
+├ ƒ /api/lead-hunter/tasks/[id]/rerun
+├ ƒ /api/lead-hunter/tasks/[id]/reverse-lookup
+├ ƒ /api/map/geocode
+├ ƒ /api/map/tile
+├ ƒ /api/mcp
+├ ƒ /api/mcp/health
+├ ƒ /api/operation-logs
+├ ƒ /api/products
+├ ƒ /api/products/[id]
+├ ƒ /api/screen/sales/[publicId]
+├ ƒ /api/search
+├ ƒ /api/shipments
+├ ƒ /api/shipments/[id]
+├ ƒ /api/system/audit
+├ ƒ /api/system/audit/search
+├ ƒ /api/system/health
+├ ƒ /api/system/permissions
+├ ƒ /api/system/sales-screen/share
+├ ƒ /api/system/settings
+├ ƒ /api/system/tasks
+├ ƒ /api/system/tasks/monthly
+├ ƒ /api/upload/avatar
+├ ƒ /api/upload/contracts
+├ ƒ /api/upload/products
+├ ƒ /api/upload/shipments
+├ ƒ /api/upload/xiaochuan
+├ ƒ /api/uploads/[...path]
+├ ƒ /api/users
+├ ƒ /api/users/[id]
+├ ƒ /api/users/active
+├ ○ /contract-delete-requests
+├ ○ /contract-unlock-requests
+├ ○ /contracts
+├ ƒ /contracts/[id]
+├ ƒ /contracts/[id]/edit
+├ ○ /contracts/new
+├ ○ /customers
+├ ƒ /customers/[id]
+├ ƒ /customers/[id]/edit
+├ ○ /customers/new
+├ ○ /dashboard
+├ ○ /dashboard/crm
+├ ○ /dashboard/erp
+├ ○ /erp/bom
+├ ○ /erp/inventory
+├ ○ /erp/kit-check-results
+├ ○ /erp/materials
+├ ○ /erp/monthly-production-plans
+├ ○ /erp/monthly-production-plans/spare-parts-forecast
+├ ○ /erp/production-order-change-requests
+├ ○ /erp/production-orders
+├ ƒ /erp/production-orders/[id]
+├ ƒ /erp/production-orders/[id]/change
+├ ○ /erp/purchase-demands
+├ ○ /erp/purchase-orders
+├ ƒ /erp/purchase-orders/[id]
+├ ○ /erp/stock-check
+├ ○ /erp/stock-in
+├ ○ /erp/stock-out
+├ ○ /erp/stock-transfers
+├ ○ /erp/supplier-deliveries
+├ ○ /erp/suppliers
+├ ○ /erp/warehouse
+├ ƒ /lead-hunter
+├ ƒ /leads
+├ ƒ /leads/[id]
+├ ○ /login
+├ ○ /operation-logs
+├ ○ /products
+├ ƒ /products/[id]
+├ ƒ /products/[id]/edit
+├ ○ /products/new
+├ ○ /products/new-optional
+├ ○ /reminders
+├ ƒ /screen/sales/[publicId]
+├ ○ /settings
+├ ○ /shipments
+├ ○ /tasks
+├ ○ /tasks/monthly
+├ ○ /users
+└ ƒ /xiaochuan
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

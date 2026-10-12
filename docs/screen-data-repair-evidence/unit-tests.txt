@@ -1,0 +1,12 @@
+
+> machinery-crm@1.5.2-rc.4 test /Users/apple/Desktop/Codex/machinery-crm-screen-data
+> vitest run
+
+
+ RUN  v4.1.10 /Users/apple/Desktop/Codex/machinery-crm-screen-data
+
+
+ Test Files  164 passed (164)
+      Tests  1265 passed (1265)
+   Start at  19:39:33
+   Duration  3.89s (transform 17.30s, setup 0ms, import 37.24s, tests 4.55s, environment 11ms)

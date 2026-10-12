@@ -1,7 +1,7 @@
 "use client";
 
 import { Panel, PanelHead } from "./Panel";
-import { formatMoneyAmount } from "./format";
+import { DATA_PENDING, hasNegativeMetric, formatMoneyAmount } from "./format";
 import type { PublicSalesScreenPayload } from "@/modules/screen/public-types";
 
 type Collection = PublicSalesScreenPayload["collection"];
@@ -82,6 +82,8 @@ export function TargetRing({
   // 回款率口径与服务器一致：已回 / (已回 + 未回)，由服务器按扩大后展示值重算
   const collectRate = collection.collectionRate / 100;
   const targetAmount = Number(collection.targetAmount);
+  const collectionInvalid = hasNegativeMetric(collection.collectionRate, collection.totalContractAmount, collection.totalPaidAmount, collection.totalUnpaidAmount);
+  const targetInvalid = hasNegativeMetric(targetAmount, collection.actualAmount, collection.targetRate);
 
   return (
     <Panel className="flex h-full min-h-0 flex-col">
@@ -94,14 +96,14 @@ export function TargetRing({
       <div className="collection-layout min-h-0 flex-1 overflow-hidden p-[var(--panel-pad)]">
         <div className="collection-overview grid grid-cols-[198px_1fr] items-center gap-6">
           <div className="ring-box relative">
-            <RateDial rate={collection.collectionRate} />
+            {collectionInvalid ? null : <RateDial rate={collection.collectionRate} />}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <p className="screen-text-micro leading-none tracking-[0.08em] text-[var(--ink-3)]">
                 累计回款率
               </p>
-              <p className="num screen-text-hero mt-2.5 flex items-baseline leading-none tracking-[-0.02em] text-[var(--ink)]">
-                {collection.collectionRate.toFixed(1)}
-                <span className="screen-text-label ml-1 leading-none text-[var(--ink-3)]">%</span>
+              <p className={`num ${collectionInvalid ? "screen-text-label" : "screen-text-hero"} mt-2.5 flex items-baseline leading-none tracking-[-0.02em] text-[var(--ink)]`}>
+                {collectionInvalid ? DATA_PENDING : collection.collectionRate.toFixed(1)}
+                {collectionInvalid ? null : <span className="screen-text-label ml-1 leading-none text-[var(--ink-3)]">%</span>}
               </p>
             </div>
           </div>
@@ -130,7 +132,7 @@ export function TargetRing({
                 {formatMoneyAmount(collection.totalContractAmount)}
               </p>
             </div>
-            {(collection.targetConfigured ?? targetAmount > 0) && targetAmount > 0 ? (
+            {targetInvalid ? <p className="screen-text-micro">{DATA_PENDING}</p> : (collection.targetConfigured ?? targetAmount > 0) && targetAmount > 0 ? (
               <p className="num screen-text-micro text-right leading-tight text-[var(--ink-3)]">
                 本月目标 {formatMoneyAmount(collection.targetAmount)}
                 <br />
@@ -140,6 +142,7 @@ export function TargetRing({
               </p>
             ) : <p className="screen-text-micro text-[var(--ink-3)]">{collection.targetConfigured && targetAmount === 0 ? "目标为 0" : "目标未设置"}</p>}
           </div>
+          {collectionInvalid ? null : <>
           <div className="collection-track mt-3 flex overflow-hidden">
             <span className="bg-[var(--c-received)]" style={{ width: `${collectRate * 100}%` }} />
             <span className="bg-[var(--c-pending)]" style={{ width: `${(1 - collectRate) * 100}%` }} />
@@ -148,6 +151,7 @@ export function TargetRing({
             <span>已回 {Math.round(collectRate * 100)}%</span>
             <span>待回 {Math.round((1 - collectRate) * 100)}%</span>
           </div>
+          </>}
         </div>
       </div>
     </Panel>

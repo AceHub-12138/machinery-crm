@@ -68,16 +68,24 @@ describe("北京时间与固定公开口径", () => {
     expect(p.dateStart.toISOString()).toBe("2026-10-01T00:00:00.000Z");
     expect(p.dateSevenDays.toISOString()).toBe("2026-10-08T00:00:00.000Z");
   });
-  it("本期仅有效、累计含归档、金额排除外币、回款包含老合同和取消合同", async () => {
+  it("合同数与金额同为人民币、本期仅有效、累计含归档、回款含老合同和取消合同", async () => {
     const p = await readScreenMetrics(new Date("2026-09-30T18:00:00Z"));
-    expect(p.stats).toMatchObject({ totalCustomers: 1, todayFollowUp: 1, periodNewContracts: 3,
+    expect(p.stats).toMatchObject({ totalCustomers: 1, todayFollowUp: 1, periodNewContracts: 2,
       periodContractAmount: 300000, periodPaidAmount: 210000, periodUnpaidAmount: 230000,
       totalContractAmount: 700000, totalPaidAmount: 260000, totalUnpaidAmount: 440000,
-      periodShipments: 2, todayShipmentDue: 1, sevenDayShipmentDue: 2, overdueShipmentDue: 1 });
+      unpaidContracts: 0, partialPaidContracts: 3, periodShipments: 2, todayShipmentDue: 1, sevenDayShipmentDue: 2, overdueShipmentDue: 1 });
     expect(Number(p.stats.periodPaidAmount) + Number(p.stats.periodUnpaidAmount)).not.toBe(p.stats.periodContractAmount);
     expect(p.shipmentReminders.today).toHaveLength(1);
     expect(p.shipmentReminders.sevenDays).toHaveLength(2);
     expect(p.shipmentReminders.overdue).toHaveLength(1);
+  });
+  it("外币的未回款与部分回款合同不计入公开合同数", async () => {
+    const foreignPartial = makeContract("euro", "SIGNED", 800000, 200000, "2026-10-05Z", "EUR");
+    contracts.push(foreignPartial);
+    try {
+      const p = await readScreenMetrics(new Date("2026-09-30T18:00:00Z"));
+      expect(p.stats).toMatchObject({ periodNewContracts: 2, periodContractAmount: 300000, unpaidContracts: 0, partialPaidContracts: 3 });
+    } finally { contracts.pop(); }
   });
   it("软删除合同与客户不进入合同额、实收和发货，北京次日边界不计本期", async () => {
     const extra = [
@@ -89,7 +97,7 @@ describe("北京时间与固定公开口径", () => {
     shipments.push({ contract: extra[0], quantity: 99, shipmentDate: new Date("2026-10-01Z"), shipmentStatus: "SHIPPED" });
     try {
       const p = await readScreenMetrics(new Date("2026-09-30T18:00Z"));
-      expect(p.stats).toMatchObject({ periodContractAmount: 300000, periodPaidAmount: 210000, periodNewContracts: 3, periodShipments: 2 });
+      expect(p.stats).toMatchObject({ periodContractAmount: 300000, periodPaidAmount: 210000, periodNewContracts: 2, periodShipments: 2 });
       expect(p.shipmentReminders.today).toHaveLength(1);
     } finally { contracts.splice(-3); receipts.splice(-3); shipments.pop(); }
   });

@@ -1,0 +1,262 @@
+> machinery-crm@1.5.2-rc.4 lint /Users/apple/Desktop/Codex/machinery-crm-screen-data
+> eslint
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/prisma/seed.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/scripts/gen-xiaochuan-knowledge-sql.mjs
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/admin/config/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/admin/health/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/[id]/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/[id]/page.tsx:59:10
+> 59 |     void load();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/[id]/print/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/[id]/print/page.tsx:36:10
+> 36 |     void load();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/new/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/new/page.tsx:77:12
+> 77 |       void loadContracts("", controller.signal);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/new/page.tsx:92:7
+> 92 |       setPartOptions([]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/page.tsx:28:26
+> 28 |   useEffect(() => { void load(); }, [load]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/after-sales/page.tsx:29:195
+> 29 |   useEffect(() => { const params = new URLSearchParams(window.location.search); const reminder = params.get("reminder") || ""; const status = params.get("status") || ""; if (reminder || status) setFilters((current) => ({ ...current, reminder, status })); }, []);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/contract-delete-requests/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/contract-unlock-requests/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/contracts/[id]/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/contracts/[id]/page.tsx:72:5
+> 72 |     fetchContract();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/contracts/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/contracts/page.tsx:138:5
+> 138 |     setLoading(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/[id]/edit/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/[id]/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/[id]/page.tsx:99:5
+>  99 |     fetchAll();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/new/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/new/page.tsx:56:7
+> 56 |       setActiveUsers([]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/new/page.tsx:68:7
+> 68 |       setSelectedProductPrice(p?.factoryPrice || null);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/customers/page.tsx:80:5
+> 80 |     fetchCustomers();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/dashboard/erp/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/dashboard/erp/page.tsx:152:10
+> 152 |     void load();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/dashboard/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/bom/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/bom/page.tsx:188:7
+> 188 |       loadDetail(boms[0].id);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/inventory/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/inventory/page.tsx:74:5
+> 74 |     setAlertOnly(params.get("alertOnly") === "1");
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/inventory/page.tsx:92:5
+> 92 |     setLoading(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/kit-check-results/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/materials/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/materials/page.tsx:62:5
+> 62 |     loadCategories();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/materials/page.tsx:80:5
+> 80 |     loadMaterials();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/monthly-production-plans/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/monthly-production-plans/page.tsx:33:26
+> 33 |   useEffect(() => { void load().catch((reason) => setError(reason.message)); }, []);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/monthly-production-plans/spare-parts-forecast/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/monthly-production-plans/spare-parts-forecast/page.tsx:37:25
+> 37 |     if (canManage) void load().catch((reason) => setError(reason.message));
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-order-change-requests/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-order-change-requests/page.tsx:7:257
+>  7 |   const [items, setItems] = useState<any[]>([]); const load = async () => { const response = await fetch("/api/erp/production-order-change-requests"); const data = await response.json(); setItems(Array.isArray(data) ? data : []); }; useEffect(() => { void load(); }, []);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-orders/[id]/change/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-orders/[id]/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-orders/[id]/page.tsx:91:38
+> 91 |     if (role === "SUPER_ADMIN") void loadReferences();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-orders/[id]/page.tsx:305:21
+> 305 |   useEffect(() => { setContractOptions(contracts); }, [contracts]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-orders/[id]/page.tsx:306:21
+> 306 |   useEffect(() => { setProductOptions(products); }, [products]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/production-orders/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/purchase-demands/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/purchase-demands/page.tsx:36:26
+> 36 |   useEffect(() => { void load().catch((reason) => setError(reason.message)); }, []);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/purchase-orders/[id]/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/purchase-orders/[id]/page.tsx:73:10
+> 73 |     void loadOrder();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/purchase-orders/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/stock-check/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/stock-check/page.tsx:43:5
+> 43 |     setLoading(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/stock-in/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/stock-in/page.tsx:75:5
+> 75 |     setLoading(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/stock-in/page.tsx:90:7
+> 90 |       setPurchaseSource(null);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/stock-out/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/stock-out/page.tsx:74:5
+> 74 |     setLoading(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/suppliers/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/warehouse/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/erp/warehouse/page.tsx:29:5
+> 29 |     loadWarehouses();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/operation-logs/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/products/[id]/edit/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/products/[id]/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/products/new-optional/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/products/new/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/products/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/products/page.tsx:30:5
+> 30 |     setLoading(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/reminders/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/reminders/page.tsx:78:34
+> 78 |                   逾期 {Math.ceil((Date.now() - new Date(c.nextFollowDate).getTime()) / 86400000)} 天
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/shipments/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/shipments/page.tsx:122:7
+> 122 |       setShowForm(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/shipments/page.tsx:142:5
+> 142 |     fetchShipments();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/tasks/monthly/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/tasks/monthly/page.tsx:105:10
+> 105 |     void loadTasks();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/users/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/(app)/users/page.tsx:73:5
+> 73 |     fetchUsers();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/after-sales/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/after-sales/stats/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/contract-delete-requests/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/contract-unlock-requests/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/contracts/[id]/payments/[paymentId]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/contracts/[id]/payments/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/contracts/[id]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/contracts/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/customer-quotes/[id]/update-contract/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/customer-quotes/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/customers/[id]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/boms/[id]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/boms/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/material-categories/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/materials/import/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/materials/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/monthly-production-plans/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/production-orders/[id]/change-requests/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/production-orders/[id]/issue/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/production-orders/from-contract/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/production-orders/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/purchase-demands/convert/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/purchase-demands/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/purchase-orders/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/stock-checks/[id]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/stock-checks/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/stock-in/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/stock-movements/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/stock-out/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/stock-transfers/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/suppliers/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/erp/warehouses/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/follows/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/map/geocode/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/products/[id]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/products/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/shipments/[id]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/shipments/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/users/[id]/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/api/users/active/route.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:59:25
+> 59 |   const pupilPosition = calculatePupilPosition();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:125:25
+> 125 |   const pupilPosition = calculatePupilPosition();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:185:9
+> 185 |         setEmail(saved);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:238:7
+> 238 |       setIsLookingAtEachOther(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:254:5
+> 254 |     setIsPeeking(false);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:270:19
+> 270 |   const darkPos = calculatePosition(darkRef);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:271:19
+> 271 |   const greyPos = calculatePosition(greyRef);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:272:21
+> 272 |   const yellowPos = calculatePosition(yellowRef);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/app/login/page.tsx:273:20
+> 273 |   const whitePos = calculatePosition(whiteRef);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/admin/agent-manager.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/admin/agent-manager.tsx:101:26
+> 101 |   useEffect(() => { void reload(); }, [reload]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/admin/agent-manager.tsx:324:26
+> 324 |   useEffect(() => { void reload(); }, [reload]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/admin/agent-manager.tsx:609:26
+> 609 |   useEffect(() => { void reload(); }, [reload]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/admin/sales-screen-config-card.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/admin/sales-screen-config-card.tsx:516:26
+> 516 |   useEffect(() => { void reloadConfig(); }, [reloadConfig]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/admin/sales-screen-config-card.tsx:517:26
+> 517 |   useEffect(() => { void reloadShare(); }, [reloadShare]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/contracts/contract-combobox.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/contracts/contract-editor.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/contracts/contract-editor.tsx:83:5
+> 83 |     setForm((prev) => ({ ...prev, amount: String(itemTotal) }));
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/contracts/contract-editor.tsx:163:5
+> 163 |     setLoading(true);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/erp/erp-attachments.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/erp/erp-attachments.tsx:69:26
+> 69 |   useEffect(() => { void load(); }, [load]);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/erp/material-combobox.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/erp/material-combobox.tsx:90:5
+> 90 |     setActiveIndex(0);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/erp/material-import-dialog.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/layout/sidebar.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/layout/sidebar.tsx:218:10
+> 218 |         <NavContent />
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/layout/sidebar.tsx:106:22
+> 106 |   const NavContent = () => (
+> 107 |     <>
+> 108 |       <div className="px-4 py-4 border-b border-gray-100">
+> 204 |     </>
+> 205 |   );
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/layout/sidebar.tsx:228:14
+> 228 |             <NavContent />
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/layout/sidebar.tsx:106:22
+> 106 |   const NavContent = () => (
+> 107 |     <>
+> 108 |       <div className="px-4 py-4 border-b border-gray-100">
+> 204 |     </>
+> 205 |   );
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/lead-hunter/lead-hunter-client.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/lead-hunter/lead-hunter-client.tsx:168:10
+> 168 |     void loadTasks();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/maps/amap-shipment-map.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/xiaochuan/XiaochuanChat.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/xiaochuan/XiaochuanChat.tsx:232:10
+> 232 |     void refreshConversations();
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/xiaochuan/XiaochuanChat.tsx:240:9
+> 240 |         setSidebarOpen(false);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/xiaochuan/xiaochuan-login.tsx
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/components/xiaochuan/xiaochuan-login.tsx:46:9
+> 46 |         setUsername(saved);
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/cad/dxf-parser.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/engine.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/executor.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/executor.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/feedback.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/knowledge/queries.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/llm-client.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/agent/model-config-store.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/auth.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/bom-items.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/customer-permissions.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/maps/amap.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/mcp/prisma-command-data-source.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/mcp/prisma-data-source.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/permissions.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/production-orders.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/region-data.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/lib/sales-items.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/middleware.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/modules/crm/dashboard/permissions.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/modules/crm/dashboard/service.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/modules/erp/permission-routes.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/modules/screen/config.test.ts
+/Users/apple/Desktop/Codex/machinery-crm-screen-data/src/modules/system/settings/service.test.ts
+✖ 632 problems (0 errors, 632 warnings)
+Full local log: /tmp/screen-platform-lint.txt
+Exit: 0; changed files lint --max-warnings 0: passed.

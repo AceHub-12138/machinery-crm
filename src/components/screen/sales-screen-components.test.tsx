@@ -215,3 +215,34 @@ describe("sales screen board shell", () => {
     expect(withNotice).not.toMatch(/倍|放大/);
   });
 });
+
+
+describe("公开负指标隐藏数值并保留面板", () => {
+  it("经营、地图、提醒、里程碑的金额/计数/台数都显示待核对", () => {
+    const p = structuredClone(fixture);
+    for (const key of Object.keys(p.kpis) as Array<keyof typeof p.kpis>) {
+      const value = p.kpis[key];
+      (p.kpis as Record<string, number | string>)[key] = typeof value === "string" ? "-98765" : -98765;
+    }
+    p.delivery.summary = { shipmentCount: -98765, unitCount: -98765, regionCount: -98765, todayDue: -98765, sevenDayDue: -98765, overdueDue: -98765 };
+    p.delivery.regionUnits = [{ province: "山东省", shipmentCount: -98765, unitCount: -98765 }];
+    p.delivery.milestones[0].unitCount = -98765;
+    const html = renderToStaticMarkup(<SalesScreenBoard initialPayload={p} publicId={"x".repeat(43)} />);
+    expect(html).toContain("数据待核对");
+    expect(html).not.toContain("-98,765");
+    expect(html).not.toContain("-98765");
+    for (const title of ["经营指标", "全国交付态势", "合同与回款", "交付预警", "交付里程碑"]) expect(html).toContain(title);
+  });
+  it.each(["totalContractAmount", "totalPaidAmount", "totalUnpaidAmount", "collectionRate"] as const)("负 %s 不渲染误导性回款环或进度", key => {
+    const p = structuredClone(fixture);
+    Object.assign(p.collection, { [key]: key === "collectionRate" ? -12 : "-98765" });
+    const html = renderToStaticMarkup(<TargetRing collection={p.collection} periodLabel={p.period.label} />);
+    expect(html).toContain("数据待核对"); expect(html).not.toContain("collection-track"); expect(html).not.toContain("累计回款率 63.8%");
+    expect(html).not.toContain("¥-");
+  });
+  it.each(["targetAmount", "targetRate"] as const)("负 %s 保留目标核对提示", key => {
+    const p = structuredClone(fixture); Object.assign(p.collection, { [key]: key === "targetRate" ? -12 : "-98765" });
+    const html = renderToStaticMarkup(<KpiRail kpis={p.kpis} collection={p.collection} deliverySummary={p.delivery.summary} />);
+    expect(html).toContain("数据待核对"); expect(html).not.toContain("达成 -"); expect(html).not.toContain("目标为 0");
+  });
+});

@@ -2,7 +2,7 @@
 
 import { AnimatedNumber } from "./AnimatedNumber";
 import { Panel, PanelHead } from "./Panel";
-import { formatCount, formatMoney, formatMoneyAmount } from "./format";
+import { DATA_PENDING, formatPercent, hasNegativeMetric, formatCount, formatMoney, formatMoneyAmount } from "./format";
 import type { PublicSalesScreenPayload } from "@/modules/screen/public-types";
 
 type Kpis = PublicSalesScreenPayload["kpis"];
@@ -60,7 +60,7 @@ function MiniStat({
     <article className="metric-tile flex flex-col justify-between px-3.5 py-3">
       <p className="screen-text-micro leading-none text-[var(--ink-3)]">{label}</p>
       {/* money：金额不许折行，字号比小整数降一档 */}
-      <p className={`num mt-2.5 leading-none ${toneClass} ${money ? "money screen-text-label" : "screen-text-metric"}`}>
+      <p className={`num mt-2.5 leading-none ${toneClass} ${value < 0 || money ? "money screen-text-label" : "screen-text-metric"}`}>
         <AnimatedNumber value={value} format={format} />
       </p>
       <p className="screen-text-micro mt-2 leading-none text-[var(--ink-3)]">{hint}</p>
@@ -81,6 +81,8 @@ export function KpiRail({
   const totalContract = Number(collection.totalContractAmount);
   const totalUnpaid = Number(collection.totalUnpaidAmount);
   const unpaidShare = totalContract > 0 ? totalUnpaid / totalContract : 0;
+  const collectionInvalid = hasNegativeMetric(collection.collectionRate, collection.totalContractAmount, collection.totalPaidAmount, collection.totalUnpaidAmount);
+  const targetInvalid = hasNegativeMetric(collection.targetAmount, kpis.periodContractAmount, collection.targetRate);
   const targetRatio = collection.targetVisualRate / 100;
 
   return (
@@ -89,9 +91,9 @@ export function KpiRail({
         eyebrow="Sales KPI"
         title="经营指标"
         extra={
-          <p className="num screen-text-label leading-none text-[var(--c-collect)]">
-            {collection.collectionRate.toFixed(1)}%
-            <span className="screen-text-micro ml-1.5 font-normal text-[var(--ink-3)]">累计回款率</span>
+          <p className={`num leading-none text-[var(--c-collect)] ${collectionInvalid ? "screen-text-micro flex flex-col gap-1" : "screen-text-label"}`}>
+            {collectionInvalid ? DATA_PENDING : formatPercent(collection.collectionRate)}
+            <span className={`screen-text-micro font-normal text-[var(--ink-3)] ${collectionInvalid ? "" : "ml-1.5"}`}>累计回款率</span>
           </p>
         }
       />
@@ -107,17 +109,17 @@ export function KpiRail({
               {formatCount(kpis.periodNewContracts)} 份新签
             </p>
           </div>
-          <p className="num kpi-hero money screen-text-hero-lg mt-2.5 leading-none">
+          <p className={`num kpi-hero money ${Number(kpis.periodContractAmount) < 0 ? "screen-text-label" : "screen-text-hero-lg"} mt-2.5 leading-none`}>
             <AnimatedNumber value={Number(kpis.periodContractAmount)} format={formatMoney} />
           </p>
-          {targetConfigured && Number(collection.targetAmount) > 0 ? <div className="mt-4">
+          {targetInvalid ? <p className="screen-text-micro mt-4">{DATA_PENDING}</p> : targetConfigured && Number(collection.targetAmount) > 0 ? <div className="mt-4">
             <Gauge ratio={targetRatio} slots={22} />
             <div className="mt-2 flex items-baseline justify-between">
               <span className="screen-text-micro text-[var(--ink-3)]">
                 月度目标 {formatMoneyAmount(collection.targetAmount)}
               </span>
               <span className="num screen-text-label leading-none text-[var(--brand-orange-hot)]">
-                达成 {collection.targetRate > 999 ? ">999" : collection.targetRate.toFixed(1)}%
+                达成 {formatPercent(collection.targetRate, 1, true)}
               </span>
             </div>
           </div> : <p className="screen-text-micro mt-4 text-[var(--ink-3)]">{targetConfigured ? "目标为 0" : "目标未设置"}</p>}
@@ -133,7 +135,7 @@ export function KpiRail({
           </div>
           <div className="screen-text-micro mt-2.5 flex justify-between">
             <span className="text-[var(--ink-3)]">本期新合同欠款</span>
-            <span className="text-[var(--brand-orange-hot)]">{formatMoneyAmount(kpis.periodUnpaidAmount)}{Number(kpis.periodUnpaidAmount) < 0 ? " · 金额异常" : ""}</span>
+            <span className="text-[var(--brand-orange-hot)]">{formatMoneyAmount(kpis.periodUnpaidAmount)}</span>
           </div>
         </article>
 
@@ -142,7 +144,7 @@ export function KpiRail({
           <MiniStat label="客户总数" value={kpis.totalCustomers} format={formatCount} hint={`新增 ${formatCount(kpis.periodNewCustomers)}`} />
           <MiniStat label="本期发货" value={kpis.periodShipments} format={formatCount} hint={`待发 ${formatCount(deliverySummary.sevenDayDue)}`} tone="collect" />
           <MiniStat label="未回款" value={totalUnpaid} format={formatMoney} hint={`${formatCount(kpis.unpaidContracts)} 份未付`} tone="brand" money />
-          <MiniStat label="部分回款" value={kpis.partialPaidContracts} format={formatCount} hint={`${Math.round(unpaidShare * 100)}% 敞口`} tone="partial" />
+          <MiniStat label="部分回款" value={kpis.partialPaidContracts} format={formatCount} hint={`${collectionInvalid ? DATA_PENDING : formatPercent(unpaidShare * 100, 0)} 敞口`} tone="partial" />
         </div>
 
         {/* 待处理预警：一格一数 */}

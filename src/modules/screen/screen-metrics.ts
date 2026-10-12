@@ -33,7 +33,8 @@ export async function readScreenMetrics(now: Date) {
     prisma.customer.count({ where: { ...customer, nextFollowDate: buckets.today } }),
     prisma.customer.count({ where: { ...customer, nextFollowDate: buckets.sevenDays } }),
     prisma.customer.count({ where: { ...customer, nextFollowDate: buckets.overdue } }),
-    prisma.contract.count({ where: current }),
+    // 合同数与合同额来自同一批 CNY 合同；累计未回/部分回款计数也只算 CNY。
+    prisma.contract.count({ where: { ...current, currency: "CNY" } }),
     prisma.contract.aggregate({ where: { ...current, currency: "CNY" }, _sum: { amount: true, paidAmount: true, unpaidAmount: true } }),
     prisma.contract.aggregate({ where: { ...cumulative, currency: "CNY" }, _sum: { amount: true, paidAmount: true, unpaidAmount: true } }),
     // 有效实收包含老合同及取消合同，但不越过既有软删除边界；不折算外币。
@@ -45,8 +46,8 @@ export async function readScreenMetrics(now: Date) {
       shipmentDate: { gte: period.dateStart, lt: period.dateTomorrow },
       shipmentStatus: { in: ["SHIPPED", "PARTIAL_SHIPPED"] }, contract: scope,
     } }),
-    prisma.contract.count({ where: { ...effective, paymentStatus: "UNPAID" } }),
-    prisma.contract.count({ where: { ...effective, paymentStatus: "PARTIAL_PAID" } }),
+    prisma.contract.count({ where: { ...effective, currency: "CNY", paymentStatus: "UNPAID" } }),
+    prisma.contract.count({ where: { ...effective, currency: "CNY", paymentStatus: "PARTIAL_PAID" } }),
     prisma.contract.count({ where: dueWhere("today") }),
     prisma.contract.count({ where: dueWhere("sevenDays") }),
     prisma.contract.count({ where: dueWhere("overdue") }),
