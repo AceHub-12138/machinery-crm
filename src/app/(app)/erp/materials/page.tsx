@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { FileDown, Plus, Search, Pencil, Trash2, SlidersHorizontal, Upload } from "lucide-react";
@@ -261,7 +263,7 @@ export default function MaterialsPage() {
                   <td className="px-4 py-3 text-gray-500">{m.category?.name}</td>
                   <td className="px-4 py-3 text-gray-500">{m.spec || "-"}</td>
                   <td className="px-4 py-3 text-gray-500">{supplierById.get(m.supplierId)?.name || m.supplier || "-"}</td>
-                  <td className="px-4 py-3 text-right">{m.standardPrice ? `¥${Number(m.standardPrice).toLocaleString()}` : "-"}</td>
+                  <td className="px-4 py-3 text-right">{m.standardPrice ? formatMoney(m.standardPrice) : "-"}</td>
                   <td className="px-4 py-3 text-right">{m.safetyStock ? String(m.safetyStock) : "-"}</td>
                   <td className="px-4 py-3 text-center">{m.unit}</td>
                   {canEdit && (

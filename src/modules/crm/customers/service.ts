@@ -98,7 +98,7 @@ export async function listCustomers(user: SessionUser, searchParams: URLSearchPa
         assignedUser: { select: { id: true, name: true, email: true, isActive: true } },
         contracts: {
           where: { deletedAt: null },
-          select: { id: true, amount: true, paidAmount: true, unpaidAmount: true, paymentStatus: true, contractStatus: true },
+          select: { id: true, currency: true, amount: true, paidAmount: true, unpaidAmount: true, paymentStatus: true, contractStatus: true },
         },
         _count: { select: { contracts: true, customerQuotes: true, followRecords: true } },
       },

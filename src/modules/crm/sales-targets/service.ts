@@ -172,7 +172,9 @@ export async function getActualAmount(
   });
   // 全公司目标仅 SUPER_ADMIN 可见；个人目标仍严格沿用 Dashboard 的本人范围。
   const targetScope = salesUserId ? scope : {};
+  // 现有目标是人民币目标，外币不参与完成率，不做汇率换算。
   const contractWhere: Prisma.ContractWhereInput = {
+    currency: "CNY",
     deletedAt: null,
     customer: { deletedAt: null, ...targetScope },
     createdAt: { gte: period.start, lt: period.end },

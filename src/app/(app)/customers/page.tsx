@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney, sumByCurrency, contractPaymentLabel } from "@/lib/currency";
+
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -9,10 +11,6 @@ import { CUSTOMER_LEVELS, CUSTOMER_STATUS_LABELS, INTEREST_TAGS } from "@/lib/co
 import { PROVINCE_OPTIONS, BUSINESS_LINES } from "@/lib/region-data";
 import { PageContainer } from "@/components/layout/page-container";
 import { appendDateFilters, appendSalesUserFilter, readInitialDateFilters, readInitialSalesUserFilter } from "@/modules/crm/dashboard/kpi-linkage";
-
-function formatMoney(value: number) {
-  return value > 0 ? `¥${value.toLocaleString("zh-CN")}` : "-";
-}
 
 async function readJson(res: Response) {
   return res.json().catch(() => ({}));
@@ -219,10 +217,8 @@ function CustomersContent() {
               <tr><td colSpan={9} className="text-center py-8 text-sm text-gray-500">暂无客户数据</td></tr>
             ) : (
               customers.map((customer) => {
-                const totalAmount = customer.contracts?.reduce((sum: number, contract: any) => sum + Number(contract.amount), 0) || 0;
-                const totalPaid = customer.contracts?.reduce((sum: number, contract: any) => sum + Number(contract.paidAmount), 0) || 0;
                 const isWon = customer.status === "WON" || customer.contracts?.some((contract: any) => contract.contractStatus === "SIGNED");
-                const payStatus = totalPaid >= totalAmount && totalAmount > 0 ? "已回款" : totalPaid > 0 ? "部分回款" : totalAmount > 0 ? "未回款" : "-";
+                const payStatus = contractPaymentLabel(customer.contracts || []);
                 const payColor = payStatus === "已回款" ? "bg-green-50 text-green-700" : payStatus === "部分回款" ? "bg-yellow-50 text-yellow-700" : payStatus === "未回款" ? "bg-red-50 text-red-700" : "bg-gray-50 text-gray-500";
                 return (
                   <tr key={customer.id} className="h-12 hover:bg-[var(--surface-hover)] transition-colors">
@@ -232,7 +228,7 @@ function CustomersContent() {
                     <td className="px-4 py-3 text-sm text-gray-600">{customer.assignedUser?.name || "-"}</td>
                     <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{CUSTOMER_STATUS_LABELS[customer.status]}</span></td>
                     <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${isWon ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>{isWon ? "已成交" : "未成交"}</span></td>
-                    <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">{formatMoney(totalAmount)}</td>
+                    <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">{sumByCurrency(customer.contracts || []).map(row => <span key={row.currency} className="block whitespace-nowrap tabular-nums">{formatMoney(row.amount, row.currency)}</span>)}</td>
                     <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${payColor}`}>{payStatus}</span></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -258,9 +254,8 @@ function CustomersContent() {
         ) : (
           customers.map((customer) => {
             const isWon = customer.status === "WON" || customer.contracts?.some((contract: any) => contract.contractStatus === "SIGNED");
-            const totalPaid = customer.contracts?.reduce((sum: number, contract: any) => sum + Number(contract.paidAmount), 0) || 0;
-            const totalAmount = customer.contracts?.reduce((sum: number, contract: any) => sum + Number(contract.amount), 0) || 0;
-            const payLabel = totalPaid >= totalAmount && totalAmount > 0 ? "已回款" : totalPaid > 0 ? "部分回款" : totalAmount > 0 ? "未回款" : "";
+            const groupedPayLabel = contractPaymentLabel(customer.contracts || []);
+            const payLabel = groupedPayLabel === "-" ? "" : groupedPayLabel;
             return (
               <div key={customer.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow">
                 <div className="flex items-start justify-between gap-3">

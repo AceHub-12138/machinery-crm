@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -10,11 +12,6 @@ import {
 } from "@/lib/constants";
 import { BUSINESS_LINES } from "@/lib/region-data";
 import { ProvinceCitySelect } from "@/components/common/province-city-select";
-
-function formatMoney(v: any) {
-  if (!v) return "暂未维护";
-  return `¥${Number(v).toLocaleString("zh-CN")}`;
-}
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -288,7 +285,7 @@ export default function NewCustomerPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
               {quoteProductId && (
                 <p className="text-xs text-gray-400 mt-1">
-                  出厂价：{formatMoney(selectedProductPrice)}
+                  出厂价：{formatMoney(selectedProductPrice, products.find(product => product.id === quoteProductId)?.currency)}
                 </p>
               )}
             </div>

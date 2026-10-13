@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney as money } from "@/lib/currency";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -13,7 +15,7 @@ import { SurfaceCard } from "@/components/ui/surface-card";
 
 const statusLabel: Record<string, string> = { DRAFT: "草稿", ORDERED: "已下单", PARTIAL_RECEIVED: "部分到货", RECEIVED: "已到货", CANCELLED: "已取消" };
 
-function money(value: unknown) { return `¥${Number(value || 0).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`; }
+
 
 export default function PurchaseOrdersPage() {
   const { data: session } = useSession();

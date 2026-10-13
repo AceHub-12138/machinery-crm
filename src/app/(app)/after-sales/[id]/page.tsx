@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -217,7 +219,7 @@ export default function AfterSalesDetailPage() {
               <Info label="售后人员" value={item.assigneeNames} />
               <Info label="派发时间" value={formatDate(item.dispatchDate)} />
               <Info label="服务地址" value={item.serviceAddress} />
-              {item.serviceAmount !== null && <Info label="服务金额（仅记录）" value={`¥${item.serviceAmount}`} />}
+              {item.serviceAmount !== null && <Info label="服务金额（仅记录）" value={formatMoney(item.serviceAmount)} />}
             </div>
             <div className="mt-4">
               <p className="text-sm text-gray-500">工单说明</p>

@@ -1,14 +1,11 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { CustomerSearchCombobox } from "@/components/customers/customer-search-combobox";
-
-function formatMoney(value: any) {
-  if (!value && value !== 0) return "-";
-  return `¥${Number(value).toLocaleString("zh-CN")}`;
-}
 
 function productLabel(product: any) {
   return `${product.model} ${product.translations?.[0]?.name || product.category || ""}`;
@@ -32,7 +29,6 @@ type ContractLine = {
   estimatedShipmentDate: string;
 };
 
-
 function makeClientId() {
   const uuidFn = typeof crypto !== "undefined" ? (crypto as any)["randomUUID"] : undefined;
   if (typeof uuidFn === "function") return uuidFn.call(crypto);
@@ -48,6 +44,7 @@ type Props = {
 
 export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }: Props) {
   const router = useRouter();
+  const [displayCurrency, setDisplayCurrency] = useState("CNY");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [form, setForm] = useState({
@@ -95,6 +92,7 @@ export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }:
       const res = await fetch(`/api/customer-quotes/${quoteId}`);
       const data = await readJson(res);
       if (!res.ok) throw new Error(data.error || "读取报价失败");
+      setDisplayCurrency(data.currency || "CNY");
       const items = data.items || [];
       setForm((prev) => ({
         ...prev,
@@ -129,6 +127,7 @@ export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }:
       if (!data.canEdit) {
         setLockedMessage("当前合同已锁定，如需修改，请联系超级管理员审批。");
       }
+      setDisplayCurrency(data.currency || "CNY");
       const items = data.items || [];
       setForm({
         contractNo: data.contractNo || "",
@@ -321,7 +320,7 @@ export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }:
                     <option value="">请选择产品 {index + 1}</option>
                     {mainProducts.map((product) => (<option key={product.id} value={product.id}>{productLabel(product)}</option>))}
                   </select>
-                  {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice)}</p>}
+                  {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice, selected.currency)}</p>}
                 </div>
                 <input type="number" min="0" value={line.contractPrice} disabled={!!lockedMessage} onChange={(event) => updateMainLine(line.key, { contractPrice: event.target.value })}
                   placeholder="合同价"
@@ -330,7 +329,7 @@ export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }:
                   placeholder="数量"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:bg-gray-50" />
                 <input type="date" value={line.estimatedShipmentDate} disabled={!!lockedMessage} onChange={(event) => updateMainLine(line.key, { estimatedShipmentDate: event.target.value })} title="该合同明细独立交货日期；留空则使用合同表头日期" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50" />
-                <div className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg">{formatMoney(subtotal)}</div>
+                <div className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg">{formatMoney(subtotal, displayCurrency)}</div>
                 <button onClick={() => removeMainLine(line.key)} disabled={!!lockedMessage || mainLines.length === 1} title={mainLines.length === 1 ? "至少保留一个产品" : "删除产品"}
                   className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-30">
                   <Trash2 className="w-4 h-4" />
@@ -357,7 +356,7 @@ export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }:
                     <option value="">请选择选配产品</option>
                     {optionalProducts.map((product) => (<option key={product.id} value={product.id}>{productLabel(product)}</option>))}
                   </select>
-                  {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice)}</p>}
+                  {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice, selected.currency)}</p>}
                 </div>
                 <input type="number" value={line.contractPrice} disabled={!!lockedMessage} onChange={(event) => updateOptionalLine(line.key, { contractPrice: event.target.value })}
                   placeholder="合同价"
@@ -365,7 +364,7 @@ export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }:
                 <input type="number" min="1" value={line.quantity} disabled={!!lockedMessage} onChange={(event) => updateOptionalLine(line.key, { quantity: event.target.value })}
                   placeholder="数量"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:bg-gray-50" />
-                <div className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg">{formatMoney(subtotal)}</div>
+                <div className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg">{formatMoney(subtotal, displayCurrency)}</div>
                 <button onClick={() => removeOptionalLine(line.key)} disabled={!!lockedMessage} className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50">
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -377,11 +376,11 @@ export function ContractEditor({ mode, contractId, quoteId, initialCustomerId }:
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">明细合计</label>
-            <div className="px-3 py-2 rounded-lg bg-gray-50 text-sm text-gray-700">{formatMoney(itemTotal)}</div>
+            <div className="px-3 py-2 rounded-lg bg-gray-50 text-sm text-gray-700">{formatMoney(itemTotal, displayCurrency)}</div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">合同总价 *</label>
-            <div className="px-3 py-2 rounded-lg bg-gray-50 text-sm font-semibold text-gray-900">{formatMoney(itemTotal)}</div>
+            <div className="px-3 py-2 rounded-lg bg-gray-50 text-sm font-semibold text-gray-900">{formatMoney(itemTotal, displayCurrency)}</div>
             <p className="text-xs text-gray-400 mt-1">合同总价由全部产品明细小计自动计算</p>
           </div>
         </div>

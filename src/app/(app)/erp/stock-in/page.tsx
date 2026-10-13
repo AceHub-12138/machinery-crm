@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -333,7 +335,7 @@ function StockInContent() {
                   <input type="number" placeholder="单价" value={item.unitPrice} onChange={(e) => updateItem(idx, "unitPrice", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm sm:w-24" />
                   <span className="w-full text-right text-sm text-gray-500 sm:w-24">
-                    ¥{((parseFloat(item.quantity || "0")) * parseFloat(item.unitPrice || "0")).toLocaleString()}
+                    {formatMoney(parseFloat(item.quantity || "0") * parseFloat(item.unitPrice || "0"))}
                   </span>
                   {!purchaseSource && items.length > 1 && (
                     <button onClick={() => removeItem(idx)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
@@ -342,7 +344,7 @@ function StockInContent() {
               ))}
             </div>
             <div className="text-right mt-2 text-sm font-semibold text-gray-900">
-              合计金额：¥{totalAmount.toLocaleString()}
+              合计金额：{formatMoney(totalAmount)}
             </div>
           </div>
 
@@ -481,8 +483,8 @@ function StockInContent() {
                   <tr key={item.id} className="border-t">
                     <td className="px-3 py-2">{item.materialNameSnapshot || item.material?.name} <span className="text-gray-400 text-xs">({item.materialCodeSnapshot || item.material?.code})</span><div className="text-xs text-gray-400">{item.materialSpecSnapshot || item.material?.spec || "—"}</div></td>
                     <td className="px-3 py-2 text-right">{Number(item.quantity).toLocaleString()} {item.unitSnapshot || item.material?.unit}<div className="text-xs text-gray-400">库存 {Number(item.beforeQty ?? 0)} → {Number(item.afterQty ?? 0)}</div></td>
-                    <td className="px-3 py-2 text-right">¥{Number(item.unitPrice).toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right font-medium">¥{Number(item.amount).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right">{formatMoney(item.unitPrice)}</td>
+                    <td className="px-3 py-2 text-right font-medium">{formatMoney(item.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -490,7 +492,7 @@ function StockInContent() {
             {detail.voidRecord?.items?.length > 0 && (
               <div className="mt-4 rounded-lg border border-red-200 p-3 text-sm">
                 <h3 className="font-medium text-red-800">作废反向冲减明细</h3>
-                {detail.voidRecord.items.map((item: any) => <p key={item.id} className="mt-1 text-gray-700">{item.material?.code || item.materialId} {item.material?.name || ""}：冲减 {Number(item.quantity).toLocaleString()}，库存 {Number(item.beforeQty).toLocaleString()} → {Number(item.afterQty).toLocaleString()}，冲减金额 ¥{Number(item.reversalAmount).toLocaleString()}</p>)}
+                {detail.voidRecord.items.map((item: any) => <p key={item.id} className="mt-1 text-gray-700">{item.material?.code || item.materialId} {item.material?.name || ""}：冲减 {Number(item.quantity).toLocaleString()}，库存 {Number(item.beforeQty).toLocaleString()} → {Number(item.afterQty).toLocaleString()}，冲减金额 {formatMoney(item.reversalAmount)}</p>)}
               </div>
             )}
             {detail.stockMovements?.length > 0 && (

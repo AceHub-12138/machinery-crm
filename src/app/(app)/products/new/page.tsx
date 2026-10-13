@@ -106,7 +106,7 @@ export default function NewProductPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">出厂价格</label>
               <input type="number" value={form.factoryPrice} onChange={e => setForm({...form, factoryPrice: e.target.value})} placeholder="0.00"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-              <p className="text-xs text-gray-400 mt-1">单位：元（CNY）</p>
+              <p className="text-xs text-gray-400 mt-1">币种：{form.currency}</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">币种</label>

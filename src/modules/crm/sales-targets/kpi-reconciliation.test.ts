@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/permissions";
 
 const mocks = vi.hoisted(() => ({
   aggregate: vi.fn(),
+  groupBy: vi.fn().mockResolvedValue([]),
   count: vi.fn().mockResolvedValue(0),
   findMany: vi.fn().mockResolvedValue([]),
 }));
@@ -12,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/db", () => ({
   prisma: {
     customer: { count: mocks.count, findMany: mocks.findMany },
-    contract: { count: mocks.count, aggregate: mocks.aggregate, findMany: mocks.findMany },
+    contract: { count: mocks.count, aggregate: mocks.aggregate, groupBy: mocks.groupBy, findMany: mocks.findMany },
     shipment: { count: mocks.count, findMany: mocks.findMany },
     followRecord: { findMany: mocks.findMany },
     user: { findMany: mocks.findMany },

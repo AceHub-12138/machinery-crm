@@ -10,6 +10,29 @@ This package is prebuilt. Do not run `pnpm build` on the server.
 - Existing production `.env`
 - Persistent uploads directory, normally `/opt/machinery-crm-uploads`
 
+## Database backup before deployment
+
+Run this block in Bash. Confirm the database name and the existing MySQL client
+configuration before proceeding; the configuration file must have permission 600
+and contain the confirmed connection credentials. Do not put passwords in commands.
+A failed dump, an empty file, an empty decompressed SQL stream, or a failed gzip
+check must stop deployment. This backup does not execute database migrations.
+
+```bash
+set -euo pipefail
+read -r -p 'Confirmed MySQL client configuration path: ' MYSQL_BACKUP_CONFIG
+read -r -p 'Confirmed production database name: ' DB_NAME
+read -r -p 'Absolute output path for .sql.gz backup: ' DB_BACKUP
+test -f "$MYSQL_BACKUP_CONFIG"
+test -n "$DB_NAME"
+test -n "$DB_BACKUP"
+mysqldump --defaults-extra-file="$MYSQL_BACKUP_CONFIG" --column-statistics=0 --single-transaction --routines --triggers --events --hex-blob --default-character-set=utf8mb4 "$DB_NAME" | gzip -1 > "$DB_BACKUP"
+test -s "$DB_BACKUP" || { echo 'Empty backup; stop deployment'; exit 1; }
+gzip -t "$DB_BACKUP"
+gzip -dc "$DB_BACKUP" | awk 'END { if (NR == 0) exit 1 }' || { echo 'Empty SQL or decompression failure; stop deployment'; exit 1; }
+chmod 600 "$DB_BACKUP"
+```
+
 ## Deploy
 
 ```bash

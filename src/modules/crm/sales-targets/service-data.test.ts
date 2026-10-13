@@ -83,6 +83,7 @@ describe("sales target actual amount", () => {
     ).resolves.toEqual(new Prisma.Decimal("45.00"));
     expect(mocks.aggregate).toHaveBeenCalledWith({
       where: {
+        currency: "CNY",
         deletedAt: null,
         customer: {
           deletedAt: null,
@@ -135,6 +136,7 @@ describe("sales target actual amount", () => {
     expect(result.targets[1]).toMatchObject({ id: "global", actualAmount: "126.50", completionRate: 25.3 });
     expect(mocks.aggregate).toHaveBeenCalledTimes(2);
     expect(mocks.aggregate.mock.calls[1][0].where).toEqual({
+      currency: "CNY",
       deletedAt: null,
       customer: { deletedAt: null },
       createdAt: { gte: period.start, lt: period.end },

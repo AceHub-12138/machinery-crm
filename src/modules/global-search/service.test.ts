@@ -367,6 +367,7 @@ describe("global search", () => {
         id: true,
         contractNo: true,
         amount: true,
+        currency: true,
         customer: { select: { companyName: true } },
       },
       take: 8,

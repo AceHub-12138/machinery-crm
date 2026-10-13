@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Search, AlertTriangle, Package } from "lucide-react";
@@ -239,7 +241,7 @@ export default function InventoryPage() {
                       <td className="px-4 py-3 text-gray-500">{inv.warehouse?.name}</td>
                       <td className="px-4 py-3 text-right font-medium">{qty.toLocaleString()} {inv.material?.unit}</td>
                       <td className="px-4 py-3 text-right">{threshold !== null ? threshold.toLocaleString() : "-"}</td>
-                      <td className="px-4 py-3 text-right">¥{Number(inv.totalAmount).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right">{formatMoney(inv.totalAmount)}</td>
                       <td className="px-4 py-3 text-center">
                         {isZero ? (
                           <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
@@ -324,7 +326,7 @@ export default function InventoryPage() {
                       <tr key={inv.id} className="border-b border-gray-100">
                         <td className="px-3 py-2 font-medium text-gray-900">{inv.material?.name}</td>
                         <td className="px-3 py-2 text-gray-500">{inv.material?.spec || "-"}</td>
-                        <td className="px-3 py-2 text-right">{inv.material?.standardPrice ? `¥${Number(inv.material.standardPrice).toLocaleString()}` : "-"}</td>
+                        <td className="px-3 py-2 text-right">{inv.material?.standardPrice ? formatMoney(inv.material.standardPrice) : "-"}</td>
                         <td className="px-3 py-2 text-gray-500">{inv.material?.supplier || "-"}</td>
                         <td className="px-3 py-2 text-right text-red-600 font-medium">{Number(inv.quantity).toLocaleString()} {inv.material?.unit}</td>
                         <td className="px-3 py-2 text-gray-500">{inv.warehouse?.name}</td>

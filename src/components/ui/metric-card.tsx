@@ -39,7 +39,7 @@ export function MetricCard({
     : href ? "interactive" : "default";
   const card = (
     <SurfaceCard
-      className="h-full p-5"
+      className={surface === "dashboard" ? "h-[180px] overflow-hidden p-5" : "h-full p-5"}
       variant={surfaceVariant}
     >
       {loading ? (
@@ -55,9 +55,9 @@ export function MetricCard({
           </div>
         </div>
       ) : (
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm text-[var(--text-secondary)]">{title}</p>
+        <div className={surface === "dashboard" ? "relative" : "flex items-start justify-between gap-4"}>
+          <div className={surface === "dashboard" ? "min-w-0 w-full" : "min-w-0"}>
+            <p className={surface === "dashboard" ? "pr-8 text-sm text-[var(--text-secondary)]" : "text-sm text-[var(--text-secondary)]"}>{title}</p>
             {number !== undefined && (
               <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)] tabular-nums">
                 {animateNumber && typeof number === "number" ? (
@@ -76,7 +76,7 @@ export function MetricCard({
             )}
           </div>
           {icon && (
-            <div className="shrink-0 text-[var(--brand-orange)]" aria-hidden="true">
+            <div className={surface === "dashboard" ? "absolute right-0 top-0 text-[var(--brand-orange)]" : "shrink-0 text-[var(--brand-orange)]"} aria-hidden="true">
               {icon}
             </div>
           )}

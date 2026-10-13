@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney as currencyMoney } from "@/lib/currency";
+
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { CheckCircle2, RefreshCw, Settings2, Target } from "lucide-react";
 
@@ -9,6 +11,8 @@ import { ErrorState } from "@/components/ui/error-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SurfaceCard } from "@/components/ui/surface-card";
+
+const formatTargetMoney = (value: unknown) => currencyMoney(value ?? 0, "CNY", 2);
 
 type PeriodType = "MONTH" | "YEAR";
 type TargetMetric = "CONTRACT_AMOUNT" | "PAID_AMOUNT";
@@ -54,10 +58,6 @@ const metricOptions = [
 ];
 const fieldClassName =
   "h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--surface-solid)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--brand-orange)] focus:ring-2 focus:ring-[var(--brand-orange-soft)]";
-
-function formatMoney(value: string | number | null | undefined) {
-  return `¥${Number(value || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function formatDateTime(value?: string) {
   return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "暂无更新时间";
@@ -281,7 +281,7 @@ export function SalesTargetCard({ currentUserId, isSuperAdmin = false, salesUser
                   <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center">
                     <p className="text-4xl font-semibold text-[var(--text-primary)] tabular-nums sm:text-[2.75rem]">{selectedTarget.completionRate}%</p>
                     <p className="mt-2 text-xs text-[var(--text-tertiary)]">已完成</p>
-                    <p className="mt-1 max-w-full truncate text-sm font-semibold text-[var(--brand-orange)] tabular-nums sm:text-base">{formatMoney(selectedTarget.actualAmount)}</p>
+                    <p className="mt-1 max-w-full truncate text-sm font-semibold text-[var(--brand-orange)] tabular-nums sm:text-base">{formatTargetMoney(selectedTarget.actualAmount)}</p>
                     {selectedTarget.exceeded && <p className="mt-1 text-xs font-medium text-[var(--success)]">超额完成</p>}
                   </div>
                 </div>
@@ -289,13 +289,13 @@ export function SalesTargetCard({ currentUserId, isSuperAdmin = false, salesUser
 
               <dl className="mt-6 grid gap-2 text-sm">
                 <div className="dashboard-subcard flex items-center justify-between gap-4 rounded-[var(--radius-sm)] px-4 py-3 backdrop-blur-md backdrop-saturate-[1.04]">
-                  <dt className="text-[var(--text-secondary)]">目标金额</dt><dd className="font-semibold text-[var(--text-primary)] tabular-nums">{formatMoney(selectedTarget.amount)}</dd>
+                  <dt className="text-[var(--text-secondary)]">目标金额</dt><dd className="font-semibold text-[var(--text-primary)] tabular-nums">{formatTargetMoney(selectedTarget.amount)}</dd>
                 </div>
                 <div className="dashboard-subcard flex items-center justify-between gap-4 rounded-[var(--radius-sm)] px-4 py-3 backdrop-blur-md backdrop-saturate-[1.04]">
-                  <dt className="text-[var(--text-secondary)]">实际{metric === "PAID_AMOUNT" ? "回款" : "合同"}金额</dt><dd className="font-semibold text-[var(--text-primary)] tabular-nums">{formatMoney(selectedTarget.actualAmount)}</dd>
+                  <dt className="text-[var(--text-secondary)]">实际{metric === "PAID_AMOUNT" ? "回款" : "合同"}金额</dt><dd className="font-semibold text-[var(--text-primary)] tabular-nums">{formatTargetMoney(selectedTarget.actualAmount)}</dd>
                 </div>
                 <div className="dashboard-subcard flex items-center justify-between gap-4 rounded-[var(--radius-sm)] px-4 py-3 backdrop-blur-md backdrop-saturate-[1.04]">
-                  <dt className="text-[var(--text-secondary)]">{selectedTarget.exceeded ? "超额金额" : "距离目标"}</dt><dd className={`font-semibold tabular-nums ${selectedTarget.exceeded ? "text-[var(--success)]" : "text-[var(--warning)]"}`}>{formatMoney(selectedTarget.exceeded ? selectedTarget.exceededAmount : selectedTarget.remainingAmount)}</dd>
+                  <dt className="text-[var(--text-secondary)]">{selectedTarget.exceeded ? "超额金额" : "距离目标"}</dt><dd className={`font-semibold tabular-nums ${selectedTarget.exceeded ? "text-[var(--success)]" : "text-[var(--warning)]"}`}>{formatTargetMoney(selectedTarget.exceeded ? selectedTarget.exceededAmount : selectedTarget.remainingAmount)}</dd>
                 </div>
               </dl>
             </>

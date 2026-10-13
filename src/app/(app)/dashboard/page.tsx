@@ -15,6 +15,8 @@ import {
   Users,
 } from "lucide-react";
 
+import { CurrencyAmounts } from "@/components/ui/currency-amounts";
+import { dashboardAmounts } from "@/lib/currency";
 import { PageContainer } from "@/components/layout/page-container";
 import { SalesTargetCard } from "@/components/dashboard/sales-target-card";
 import { AmapShipmentMap } from "@/components/maps/amap-shipment-map";
@@ -65,16 +67,12 @@ const fieldClassName =
 
 type DashboardKpiCard = {
   title: string;
-  number: number;
+  number: ReactNode;
   href: string;
   icon: ReactNode;
   numberFormat?: (value: number) => ReactNode;
   numberPrecision?: number;
 };
-
-function formatMoney(value: unknown) {
-  return `¥${Number(value || 0).toLocaleString("zh-CN")}`;
-}
 
 function formatDate(value?: string | null) {
   return value ? new Date(value).toLocaleDateString("zh-CN") : "-";
@@ -200,9 +198,7 @@ export default function DashboardPage() {
         { title: "本周期新增客户", number: Number(data.stats.periodNewCustomers || 0), href: kpiHrefs.periodNewCustomers, icon: <UserPlus className="size-6" /> },
         {
           title: "本周期合同金额",
-          number: Number(data.stats.periodContractAmount || 0),
-          numberFormat: formatMoney,
-          numberPrecision: 2,
+          number: <CurrencyAmounts rows={dashboardAmounts(data.stats.amountsByCurrency, "periodContractAmount", data.stats.periodContractAmount)} />,
           href: kpiHrefs.periodContractAmount,
           icon: <FileText className="size-6" />,
         },
@@ -336,9 +332,11 @@ export default function DashboardPage() {
               <SectionHeading title="周期统计" description="按当前筛选周期汇总" />
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <CompactMetric label="新增合同" value={data.stats.periodNewContracts} />
-                <CompactMetric label="周期回款" value={formatMoney(data.stats.periodPaidAmount)} />
-                <CompactMetric label="当前未回款" value={formatMoney(data.stats.totalUnpaidAmount)} />
+                <CompactMetric label="周期回款" value={<CurrencyAmounts primarySize={18} rows={dashboardAmounts(data.stats.amountsByCurrency, "periodPaidAmount", data.stats.periodPaidAmount)} />} />
+                <CompactMetric label="当前未回款" value={<CurrencyAmounts primarySize={18} rows={dashboardAmounts(data.stats.amountsByCurrency, "totalUnpaidAmount", data.stats.totalUnpaidAmount)} />} />
                 <CompactMetric label="部分回款合同" value={data.stats.partialPaidContracts} />
+                <CompactMetric label="累计合同金额" value={<CurrencyAmounts primarySize={18} rows={dashboardAmounts(data.stats.amountsByCurrency, "totalContractAmount", data.stats.totalContractAmount)} />} />
+                <CompactMetric label="累计已收款" value={<CurrencyAmounts primarySize={18} rows={dashboardAmounts(data.stats.amountsByCurrency, "totalPaidAmount", data.stats.totalPaidAmount)} />} />
               </div>
             </SurfaceCard>
 
@@ -493,9 +491,9 @@ function AfterSalesReminder({ title, items = [], tone, href }: { title: string; 
   return <SurfaceCard className="flex h-[320px] flex-col p-5" variant="dashboard"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Clock className="size-4 text-[var(--brand-orange)]" aria-hidden="true" /><h2 className="text-sm font-semibold text-[var(--text-primary)]">售后 · {title}</h2></div><span className={`rounded-full px-2.5 py-1 text-xs font-medium tabular-nums ${toneClasses}`}>{items.length}</span></div>{items.length === 0 ? <p className="mt-4 text-sm text-[var(--text-tertiary)]">暂无记录</p> : <div className="mt-3 flex-1 space-y-1 overflow-y-auto pr-1">{items.map((item) => <Link className="block rounded-[var(--radius-sm)] p-3 transition hover:bg-[var(--surface-hover)]" href={`/after-sales/${item.id}`} key={item.id}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-medium text-[var(--text-primary)]">{item.customerNameSnapshot}</p><p className="mt-1 break-words text-xs text-[var(--text-secondary)]">{item.orderNo} · {item.equipmentModelSnapshot}</p></div><span className="shrink-0 text-xs text-[var(--text-tertiary)]">{formatDate(item.dispatchDate)}</span></div></Link>)}</div>}<Link href={href} className="mt-3 text-right text-sm font-medium text-[var(--brand-orange)] hover:underline">查看全部 →</Link></SurfaceCard>;
 }
 
-function CompactMetric({ label, value }: { label: string; value: string | number }) {
+function CompactMetric({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="dashboard-subcard rounded-[var(--radius-sm)] px-4 py-3 backdrop-blur-md backdrop-saturate-[1.04]">
+    <div className="dashboard-subcard h-[112px] overflow-hidden rounded-[var(--radius-sm)] px-4 py-3 backdrop-blur-md backdrop-saturate-[1.04]">
       <p className="text-lg font-semibold text-[var(--text-primary)] tabular-nums">{value}</p>
       <p className="mt-1 text-xs text-[var(--text-secondary)]">{label}</p>
     </div>

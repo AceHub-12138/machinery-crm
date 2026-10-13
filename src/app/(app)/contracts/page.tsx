@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -25,11 +27,6 @@ const CONTRACT_STATUS_OPTIONS = [
   { value: "ARCHIVED", label: "已归档" },
   { value: "CANCELLED", label: "已取消" },
 ];
-
-function formatMoney(amount: any) {
-  if (amount === null || amount === undefined || amount === "") return "-";
-  return `¥${Number(amount).toLocaleString("zh-CN")}`;
-}
 
 function contractStatusBadge(contract: any) {
   if (contract.contractStatus === "DRAFT") return { label: "草稿", color: "bg-gray-100 text-gray-700" };
@@ -274,9 +271,9 @@ function ContractsContent() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{contractEquipmentLabel(contract)}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{contract.salesUser?.name || "-"}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">{formatMoney(contract.amount)}</td>
-                      <td className="px-4 py-3 text-sm text-green-700 text-right">{formatMoney(contract.paidAmount)}</td>
-                      <td className="px-4 py-3 text-sm text-red-600 text-right">{formatMoney(contract.unpaidAmount)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">{formatMoney(contract.amount, contract.currency)}</td>
+                      <td className="px-4 py-3 text-sm text-green-700 text-right">{formatMoney(contract.paidAmount, contract.currency)}</td>
+                      <td className="px-4 py-3 text-sm text-red-600 text-right">{formatMoney(contract.unpaidAmount, contract.currency)}</td>
                       <td className="px-4 py-3 whitespace-nowrap"><span className={`inline-flex whitespace-nowrap text-xs px-2 py-0.5 rounded-full ${PAYMENT_STATUS_LABELS[contract.paymentStatus]?.color}`}>{PAYMENT_STATUS_LABELS[contract.paymentStatus]?.label}</span></td>
                       <td className="px-4 py-3 whitespace-nowrap"><span className={`inline-flex whitespace-nowrap text-xs px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span></td>
                       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{new Date(contract.signedDate).toLocaleDateString("zh-CN")}</td>
@@ -325,7 +322,7 @@ function ContractsContent() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${PAYMENT_STATUS_LABELS[contract.paymentStatus]?.color}`}>{PAYMENT_STATUS_LABELS[contract.paymentStatus]?.label}</span>
                   </div>
                   <div className="flex items-center justify-between mt-3 text-xs">
-                    <span className="text-gray-500">合同金额：{formatMoney(contract.amount)}</span>
+                    <span className="text-gray-500">合同金额：{formatMoney(contract.amount, contract.currency)}</span>
                     <span className={`px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
                   </div>
                 </Link>

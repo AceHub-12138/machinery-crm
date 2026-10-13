@@ -1,16 +1,13 @@
 "use client";
 
+import { formatMoney, formatPriceSnapshot } from "@/lib/currency";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, Download, Edit, Plus, Trash2 } from "lucide-react";
 import { toProtectedUploadUrl } from "@/lib/upload-urls";
-
-function formatMoney(value: any) {
-  if (value === null || value === undefined || value === "") return "-";
-  return `¥${Number(value).toLocaleString("zh-CN")}`;
-}
 
 const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
   UNPAID: { label: "未收款", color: "bg-red-50 text-red-700" },
@@ -243,9 +240,9 @@ export default function ContractDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h2 className="text-sm font-semibold text-gray-700">回款汇总</h2>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-gray-500">合同金额</span><span className="font-semibold text-gray-900">{formatMoney(contract.amount)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-gray-500">已收款</span><span className="font-semibold text-green-700">{formatMoney(contract.paidAmount)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-gray-500">未收款</span><span className="font-semibold text-red-600">{formatMoney(contract.unpaidAmount)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">合同金额</span><span className="font-semibold text-gray-900">{formatMoney(contract.amount, contract.currency)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">已收款</span><span className="font-semibold text-green-700">{formatMoney(contract.paidAmount, contract.currency)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">未收款</span><span className="font-semibold text-red-600">{formatMoney(contract.unpaidAmount, contract.currency)}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">付款状态</span><span className={`text-xs px-2 py-0.5 rounded-full ${PAYMENT_STATUS[contract.paymentStatus]?.color}`}>{PAYMENT_STATUS[contract.paymentStatus]?.label || contract.paymentStatus}</span></div>
             </div>
           </div>
@@ -261,13 +258,13 @@ export default function ContractDetailPage() {
                     <p className="text-sm font-medium text-gray-900">
                       {item.itemType === "MAIN" ? "产品" : "选配"}：{item.productNameSnapshot} {item.productModelSnapshot}
                     </p>
-                    <p className="text-sm font-semibold text-gray-900">{formatMoney(Number(item.contractPrice || 0) * Number(item.quantity || 1))}</p>
+                    <p className="text-sm font-semibold text-gray-900">{formatMoney(Number(item.contractPrice || 0) * Number(item.quantity || 1), contract.currency)}</p>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-500">
-                    <span>单价：{formatMoney(item.contractPrice)}</span>
+                    <span>单价：{formatMoney(item.contractPrice, contract.currency)}</span>
                     <span>数量：{item.quantity || 1}</span>
-                    <span>小计：{formatMoney(Number(item.contractPrice || 0) * Number(item.quantity || 1))}</span>
-                    <span>出厂价快照：{formatMoney(item.factoryPriceSnapshot)}</span>
+                    <span>小计：{formatMoney(Number(item.contractPrice || 0) * Number(item.quantity || 1), contract.currency)}</span>
+                    <span>出厂价快照：{formatPriceSnapshot(item.factoryPriceSnapshot)}</span>
                   </div>
                 </div>
               ))}
@@ -313,7 +310,7 @@ export default function ContractDetailPage() {
                 <div key={payment.id} className={`p-3 rounded-lg border ${payment.status === "VOIDED" ? "border-gray-100 bg-gray-50 opacity-70" : "border-gray-100"}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{formatMoney(payment.amount)} {payment.status === "VOIDED" && <span className="ml-2 text-xs text-gray-500">已作废</span>}</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatMoney(payment.amount, contract.currency)} {payment.status === "VOIDED" && <span className="ml-2 text-xs text-gray-500">已作废</span>}</p>
                       <p className="text-xs text-gray-500 mt-1">{new Date(payment.paymentDate).toLocaleDateString("zh-CN")} · {payment.paymentMethod || "未填写方式"} · {payment.createdBy?.name || ""}</p>
                       {payment.remark && <p className="text-xs text-gray-500 mt-1">{payment.remark}</p>}
                     </div>
@@ -326,7 +323,7 @@ export default function ContractDetailPage() {
                   </div>
                 </div>
               ))}
-              {activePayments.length > 0 && <p className="text-xs text-gray-400">有效回款合计：{formatMoney(contract.paidAmount)}</p>}
+              {activePayments.length > 0 && <p className="text-xs text-gray-400">有效回款合计：{formatMoney(contract.paidAmount, contract.currency)}</p>}
             </div>
           </div>
 

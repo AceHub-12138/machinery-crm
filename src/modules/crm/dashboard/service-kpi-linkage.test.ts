@@ -4,6 +4,7 @@ import type { SessionUser } from "@/lib/permissions";
 
 const mocks = vi.hoisted(() => ({
   aggregate: vi.fn(),
+  groupBy: vi.fn().mockResolvedValue([]),
   count: vi.fn(),
   findMany: vi.fn(),
 }));
@@ -11,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/db", () => ({
   prisma: {
     customer: { count: mocks.count, findMany: mocks.findMany },
-    contract: { count: mocks.count, aggregate: mocks.aggregate, findMany: mocks.findMany },
+    contract: { count: mocks.count, aggregate: mocks.aggregate, groupBy: mocks.groupBy, findMany: mocks.findMany },
     shipment: { count: mocks.count, findMany: mocks.findMany },
     followRecord: { findMany: mocks.findMany },
     user: { findMany: mocks.findMany },
@@ -161,6 +162,7 @@ describe("Dashboard KPI linkage response", () => {
       },
     });
     expect(mocks.aggregate.mock.calls[0][0].where).toEqual({
+      currency: "CNY",
       deletedAt: null,
       customer: {
         deletedAt: null,
@@ -179,6 +181,9 @@ describe("Dashboard KPI linkage response", () => {
         lt: new Date(2026, 7, 21),
       },
     });
+    const { currency: legacyCurrency, ...groupedWhere } = mocks.aggregate.mock.calls[0][0].where;
+    expect(legacyCurrency).toBe("CNY");
+    expect(mocks.groupBy).toHaveBeenCalledWith({ by: ["currency"], where: groupedWhere, _sum: { amount: true, paidAmount: true, unpaidAmount: true } });
     expect(whereCalls).toContainEqual({
       shipmentDate: {
         gte: new Date(2026, 7, 1),

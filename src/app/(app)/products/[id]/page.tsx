@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -7,11 +9,6 @@ import { useSession } from "next-auth/react";
 import { ArrowLeft, Download, Edit, Package, Trash2 } from "lucide-react";
 import { LANGUAGE_LABELS } from "@/lib/constants";
 import { toProtectedUploadUrl } from "@/lib/upload-urls";
-
-function formatMoney(value: any) {
-  if (!value && value !== 0) return "暂未维护出厂价";
-  return `¥${Number(value).toLocaleString("zh-CN")}`;
-}
 
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
   MAIN: "主产品",
@@ -90,7 +87,7 @@ export default function ProductDetailPage() {
                 <div className="flex justify-between"><dt className="text-gray-500">型号</dt><dd className="text-gray-900 font-medium">{product.model}</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">分类</dt><dd className="text-gray-900">{product.category}</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">类型</dt><dd className="text-gray-900">{PRODUCT_TYPE_LABELS[product.productType] || "主产品"}</dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500">出厂价格</dt><dd className="text-gray-900 font-semibold">{formatMoney(product.factoryPrice)}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">出厂价格</dt><dd className="text-gray-900 font-semibold">{formatMoney(product.factoryPrice, product.currency)}</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">币种</dt><dd className="text-gray-900">{product.currency || "CNY"}</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">状态</dt><dd>{product.isActive ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700">启用</span> : <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600">停用</span>}</dd></div>
               </dl>

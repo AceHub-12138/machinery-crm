@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney as money } from "@/lib/currency";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -19,7 +21,7 @@ function dateInputValue(value: unknown) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 }
 
-function money(value: number) { return `¥${value.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`; }
+
 
 export default function PurchaseOrderDetailPage() {
   const params = useParams<{ id: string }>();

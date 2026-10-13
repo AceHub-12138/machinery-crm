@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney, formatPriceSnapshot } from "@/lib/currency";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -7,11 +9,6 @@ import { ArrowLeft, FileText, Phone, Plus, Trash2 } from "lucide-react";
 
 import { CustomerLifecycleBar } from "@/components/customers/customer-lifecycle-bar";
 import { CUSTOMER_STATUS_LABELS } from "@/lib/constants";
-
-function formatMoney(value: any) {
-  if (value === null || value === undefined || value === "") return "-";
-  return `¥${Number(value).toLocaleString("zh-CN")}`;
-}
 
 function productLabel(product: any) {
   return `${product.model} ${product.translations?.[0]?.name || product.category || ""}`.trim();
@@ -266,7 +263,7 @@ export default function CustomerDetailPage() {
                           <option value="">请选择产品 {index + 1}</option>
                           {mainProducts.map((product) => (<option key={product.id} value={product.id}>{productLabel(product)}</option>))}
                         </select>
-                        {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice)}</p>}
+                        {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice, selected.currency)}</p>}
                       </div>
                       <input type="number" min="0" value={line.quotedPrice} onChange={(event) => updateMainLine(line.key, { quotedPrice: event.target.value })} placeholder="产品报价"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
@@ -295,7 +292,7 @@ export default function CustomerDetailPage() {
                           <option value="">请选择选配产品</option>
                           {optionalProducts.map((product) => (<option key={product.id} value={product.id}>{productLabel(product)}</option>))}
                         </select>
-                        {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice)}</p>}
+                        {selected && <p className="text-xs text-gray-400 mt-1">出厂价：{formatMoney(selected.factoryPrice, selected.currency)}</p>}
                       </div>
                       <input type="number" value={line.quotedPrice} onChange={(event) => updateOptionalLine(line.key, { quotedPrice: event.target.value })} placeholder="选配报价"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
@@ -367,12 +364,12 @@ export default function CustomerDetailPage() {
                 <div key={quote.id} className="border border-gray-100 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{formatMoney(quoteAmount(quote))}</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatMoney(quoteAmount(quote), quote.currency)}</p>
                       <p className="text-xs text-gray-500 mt-1">{new Date(quote.createdAt).toLocaleString("zh-CN")} · {quote.createdBy?.name || ""}</p>
                       <div className="mt-2 space-y-1">
                         {(quote.items?.length ? quote.items : [{ itemType: "MAIN", productNameSnapshot: quote.product?.translations?.[0]?.name, productModelSnapshot: quote.product?.model, quotedPrice: quote.quotedPrice, quantity: 1, factoryPriceSnapshot: quote.factoryPriceSnapshot }]).map((item: any, index: number) => (
                           <p key={item.id || index} className="text-xs text-gray-600">
-                            {item.itemType === "MAIN" ? "产品" : "选配"}：{item.productNameSnapshot || "-"} {item.productModelSnapshot || ""} · 单价 {formatMoney(item.quotedPrice)} × {item.quantity || 1} · 小计 {formatMoney(Number(item.quotedPrice || 0) * Number(item.quantity || 1))} · 出厂价 {formatMoney(item.factoryPriceSnapshot)}
+                            {item.itemType === "MAIN" ? "产品" : "选配"}：{item.productNameSnapshot || "-"} {item.productModelSnapshot || ""} · 单价 {formatMoney(item.quotedPrice, quote.currency)} × {item.quantity || 1} · 小计 {formatMoney(Number(item.quotedPrice || 0) * Number(item.quantity || 1), quote.currency)} · 出厂价 {formatPriceSnapshot(item.factoryPriceSnapshot)}
                           </p>
                         ))}
                       </div>
@@ -397,7 +394,7 @@ export default function CustomerDetailPage() {
                       <p className="text-xs text-gray-500 mt-1">{contractEquipmentLabel(contract)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{formatMoney(contract.amount)}</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatMoney(contract.amount, contract.currency)}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${PAYMENT_STATUS[contract.paymentStatus]?.color}`}>{PAYMENT_STATUS[contract.paymentStatus]?.label || contract.paymentStatus}</span>
                     </div>
                   </div>

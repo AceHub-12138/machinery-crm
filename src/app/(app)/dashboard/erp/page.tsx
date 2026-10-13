@@ -1,5 +1,7 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
@@ -260,7 +262,7 @@ export default function ErpDashboardPage() {
           error={data?.inventory?.error}
           href="/erp/inventory"
           icon={amountVisible ? <Banknote className="size-6" /> : <History className="size-6" />}
-          number={amountVisible ? `¥${number(inventory?.inventoryValue)}` : animatedNumber(inventory?.staleMaterials)}
+          number={amountVisible ? formatMoney(inventory?.inventoryValue ?? 0) : animatedNumber(inventory?.staleMaterials)}
           surface="dashboard"
           title={amountVisible ? "库存总金额" : "90 天无动动物料"}
         />
@@ -491,7 +493,7 @@ function WarehouseCard({ id, name, code, kinds, alertCount, value, amountVisible
       <div className="mt-3 flex-1 space-y-1 text-sm">
         <p className="text-[var(--text-secondary)]">{kinds > 0 ? `在库 ${number(kinds)} 种物料` : "暂无在库物料"}</p>
         {amountVisible && value !== undefined && (
-          <p className="tabular-nums text-[var(--text-tertiary)]">库存金额 ¥{number(value)}</p>
+          <p className="tabular-nums text-[var(--text-tertiary)]">库存金额 {formatMoney(value)}</p>
         )}
       </div>
       <div className="mt-3 flex items-center gap-4 border-t border-[var(--border)] pt-3">

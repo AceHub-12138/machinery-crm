@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/currency";
 import { canAccessCrmDashboard } from "@/lib/dashboard-access";
 import { prisma } from "@/lib/db";
 import { canViewERP } from "@/lib/erp-roles";
@@ -103,6 +104,7 @@ async function searchContracts(
         id: true,
         contractNo: true,
         amount: true,
+        currency: true,
         customer: { select: { companyName: true } },
       },
       take: 8,
@@ -111,7 +113,7 @@ async function searchContracts(
       type: "contract",
       id: contract.id,
       title: contract.contractNo,
-      subtitle: `${contract.customer.companyName} · ¥${contract.amount.toString()}`,
+      subtitle: `${contract.customer.companyName} · ${formatMoney(contract.amount, contract.currency)}`,
       href: "/contracts",
       group: "合同",
     }));

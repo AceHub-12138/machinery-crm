@@ -52,6 +52,7 @@ unset DATABASE_URL
 使用临时 MySQL 客户端配置，密码交互输入且不回显：
 
 ```bash
+set -euo pipefail
 install -m 600 /dev/null /root/phase4-release-mysql.cnf
 read -r -p 'MySQL host: ' DB_HOST
 read -r -p 'MySQL port: ' DB_PORT
@@ -62,8 +63,11 @@ read -r -p 'Production database name: ' DB_NAME
 printf '[client]\nhost=%s\nport=%s\nuser=%s\npassword=%s\n' "$DB_HOST" "$DB_PORT" "$DB_USER" "$DB_PASSWORD" > /root/phase4-release-mysql.cnf
 unset DB_PASSWORD
 mkdir -p /opt/crm-backups
-mysqldump --defaults-extra-file=/root/phase4-release-mysql.cnf --single-transaction --routines --triggers --events --hex-blob --default-character-set=utf8mb4 "$DB_NAME" | gzip -1 > "$DB_BACKUP"
+mysqldump --defaults-extra-file=/root/phase4-release-mysql.cnf --column-statistics=0 --single-transaction --routines --triggers --events --hex-blob --default-character-set=utf8mb4 "$DB_NAME" | gzip -1 > "$DB_BACKUP"
+test -s "$DB_BACKUP" || { echo '备份文件为空，停止部署'; exit 1; }
 gzip -t "$DB_BACKUP"
+# 空 SQL 也可能生成非空 gzip；完整读完 SQL 再判断，避免 pipefail 下的提前退出。
+gzip -dc "$DB_BACKUP" | awk 'END { if (NR == 0) exit 1 }' || { echo '备份 SQL 为空或解压失败，停止部署'; exit 1; }
 sha256sum "$DB_BACKUP" > "$DB_BACKUP.sha256"
 chmod 600 "$DB_BACKUP" "$DB_BACKUP.sha256"
 ```

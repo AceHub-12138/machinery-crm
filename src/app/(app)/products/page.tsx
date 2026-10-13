@@ -1,16 +1,13 @@
 "use client";
 
+import { formatMoney } from "@/lib/currency";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Edit, Package, Plus } from "lucide-react";
 import { PRODUCT_CATEGORIES, LANGUAGE_LABELS } from "@/lib/constants";
 import { toProtectedUploadUrl } from "@/lib/upload-urls";
-
-function formatMoney(value: any) {
-  if (!value && value !== 0) return "暂未维护出厂价";
-  return `¥${Number(value).toLocaleString("zh-CN")}`;
-}
 
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
   MAIN: "主产品",
@@ -92,7 +89,7 @@ export default function ProductsPage() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{product.translations?.[0]?.name || product.category}</p>
-                  <p className="text-xs font-medium text-gray-700 mt-1">{formatMoney(product.factoryPrice)}</p>
+                  <p className="text-xs font-medium text-gray-700 mt-1">{formatMoney(product.factoryPrice, product.currency)}</p>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex flex-wrap gap-1">
                       {product.translations?.map((translation: any) => (
