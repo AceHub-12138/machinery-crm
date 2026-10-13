@@ -67,3 +67,36 @@ export function currencyLines(rows: CurrencyAmount[]) {
     title: [formatMoney(primary.amount, "CNY"), ...foreign.map(row => `+ ${formatMoney(row.amount, row.currency)}`)].join("\n"),
   };
 }
+
+export type CurrencyDisplayLine = { full: string; compact: string; explanation: string };
+
+/** 只缩写原币种读数，不换汇；完整金额仍在悬停提示中。 */
+export function compactMoney(value: unknown, currency = "CNY"): string {
+  if (value === null || value === undefined || value === "") return "-";
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "-";
+  if (amount === 0) return formatMoney(0, currency);
+  const scale = Math.abs(amount) >= 100000000 ? 100000000 : 10000;
+  const scaled = amount / scale;
+  // 通常最多两位小数；极小非零金额保留足够精度，不能缩写成 0 万。
+  const digits = Math.min(20, Math.max(2, Math.ceil(-Math.log10(Math.abs(scaled))) + 1));
+  const prefix = currency === "CNY" ? "¥" : currency === "EUR" ? "€" : `${currency} `;
+  return `${prefix}${scaled.toLocaleString("zh-CN", { maximumFractionDigits: digits })} ${scale === 100000000 ? "亿" : "万"}`;
+}
+
+export function currencyDisplayRows(rows: CurrencyAmount[]) {
+  const ordered = sortCurrencyAmounts(rows);
+  const primary = ordered.find(row => row.currency === "CNY") ?? { currency: "CNY", amount: 0 };
+  const foreign = ordered.filter(row => row.currency !== "CNY" && Number(row.amount) !== 0);
+  const visible = foreign.length > 2 ? foreign.slice(0, 1) : foreign;
+  const line = (row: CurrencyAmount, prefix = "", explanation = ""): CurrencyDisplayLine => ({
+    full: `${prefix}${formatMoney(row.amount, row.currency)}`,
+    compact: `${prefix}${compactMoney(row.amount, row.currency)}`,
+    explanation,
+  });
+  return {
+    primary: line(primary),
+    foreign: visible.map(row => line(row, "+ ", foreign.length > 2 ? `等 ${foreign.length} 种` : "")),
+    title: [formatMoney(primary.amount, "CNY"), ...foreign.map(row => `+ ${formatMoney(row.amount, row.currency)}`)].join("\n"),
+  };
+}
