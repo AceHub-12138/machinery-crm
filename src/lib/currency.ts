@@ -14,9 +14,14 @@ export function formatMoney(value: unknown, currency = "CNY", minimumFractionDig
 }
 
 /** 历史快照未保存币种；不能用产品当前币种重解释历史数值。 */
-export function formatPriceSnapshot(value: unknown): string {
+export function formatPriceSnapshotAmount(value: unknown): string {
   if (value === null || value === undefined || value === "") return "-";
-  return `${Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}（币种待确认）`;
+  return Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+}
+
+export function formatPriceSnapshot(value: unknown): string {
+  const amount = formatPriceSnapshotAmount(value);
+  return amount === "-" ? amount : `${amount}（币种待确认）`;
 }
 
 export function sortCurrencyAmounts(rows: CurrencyAmount[]): CurrencyAmount[] {

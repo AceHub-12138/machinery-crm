@@ -6,11 +6,13 @@ import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
 
 import { LoadingSkeleton } from "./loading-skeleton";
 import { SurfaceCard } from "./surface-card";
+import { SingleLineMetricTitle } from "./single-line-metric-title";
 
 export type MetricCardProps = {
   icon?: ReactNode;
   number?: ReactNode;
   title: string;
+  shortTitle?: string;
   hint?: ReactNode;
   href?: string;
   loading?: boolean;
@@ -25,6 +27,7 @@ export function MetricCard({
   icon,
   number,
   title,
+  shortTitle,
   hint,
   href,
   loading = false,
@@ -57,7 +60,7 @@ export function MetricCard({
       ) : (
         <div className={surface === "dashboard" ? "relative" : "flex items-start justify-between gap-4"}>
           <div className={surface === "dashboard" ? "min-w-0 w-full" : "min-w-0"}>
-            <p className={surface === "dashboard" ? "pr-8 text-sm text-[var(--text-secondary)]" : "text-sm text-[var(--text-secondary)]"}>{title}</p>
+            {surface === "dashboard" ? <SingleLineMetricTitle title={title} shortTitle={shortTitle} hasIcon={Boolean(icon)} /> : <p className="text-sm text-[var(--text-secondary)]">{title}</p>}
             {number !== undefined && (
               <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)] tabular-nums">
                 {animateNumber && typeof number === "number" ? (
@@ -76,7 +79,7 @@ export function MetricCard({
             )}
           </div>
           {icon && (
-            <div className={surface === "dashboard" ? "absolute right-0 top-0 text-[var(--brand-orange)]" : "shrink-0 text-[var(--brand-orange)]"} aria-hidden="true">
+            <div className={surface === "dashboard" ? "absolute -right-1 top-0 text-[var(--brand-orange)]" : "shrink-0 text-[var(--brand-orange)]"} aria-hidden="true">
               {icon}
             </div>
           )}

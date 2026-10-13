@@ -67,6 +67,7 @@ const fieldClassName =
 
 type DashboardKpiCard = {
   title: string;
+  shortTitle?: string;
   number: ReactNode;
   href: string;
   icon: ReactNode;
@@ -195,14 +196,15 @@ export default function DashboardPage() {
   const kpiCards: DashboardKpiCard[] = data && kpiHrefs
     ? [
         { title: "客户总数", number: Number(data.stats.totalCustomers || 0), href: "/customers", icon: <Users className="size-6" /> },
-        { title: "本周期新增客户", number: Number(data.stats.periodNewCustomers || 0), href: kpiHrefs.periodNewCustomers, icon: <UserPlus className="size-6" /> },
+        { title: "本周期新增客户", shortTitle: "本期新增客户", number: Number(data.stats.periodNewCustomers || 0), href: kpiHrefs.periodNewCustomers, icon: <UserPlus className="size-6" /> },
         {
           title: "本周期合同金额",
+          shortTitle: "本期合同额",
           number: <CurrencyAmounts rows={dashboardAmounts(data.stats.amountsByCurrency, "periodContractAmount", data.stats.periodContractAmount)} />,
           href: kpiHrefs.periodContractAmount,
           icon: <FileText className="size-6" />,
         },
-        { title: "本周期发货记录", number: Number(data.stats.periodShipments || 0), href: kpiHrefs.periodShipments, icon: <Truck className="size-6" /> },
+        { title: "本周期发货记录", shortTitle: "本期发货", number: Number(data.stats.periodShipments || 0), href: kpiHrefs.periodShipments, icon: <Truck className="size-6" /> },
         { title: "逾期发货", number: Number(data.stats.overdueShipmentDue || 0), href: kpiHrefs.overdueShipmentDue, icon: <AlertTriangle className="size-6" /> },
         { title: "待跟进", number: Number(data.stats.sevenDayFollowUp || 0), href: "/reminders", icon: <Clock className="size-6" /> },
       ]

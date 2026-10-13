@@ -1,6 +1,7 @@
 "use client";
 
-import { formatMoney, formatPriceSnapshot } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
+import { PriceSnapshot } from "@/components/ui/price-snapshot";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -369,7 +370,7 @@ export default function CustomerDetailPage() {
                       <div className="mt-2 space-y-1">
                         {(quote.items?.length ? quote.items : [{ itemType: "MAIN", productNameSnapshot: quote.product?.translations?.[0]?.name, productModelSnapshot: quote.product?.model, quotedPrice: quote.quotedPrice, quantity: 1, factoryPriceSnapshot: quote.factoryPriceSnapshot }]).map((item: any, index: number) => (
                           <p key={item.id || index} className="text-xs text-gray-600">
-                            {item.itemType === "MAIN" ? "产品" : "选配"}：{item.productNameSnapshot || "-"} {item.productModelSnapshot || ""} · 单价 {formatMoney(item.quotedPrice, quote.currency)} × {item.quantity || 1} · 小计 {formatMoney(Number(item.quotedPrice || 0) * Number(item.quantity || 1), quote.currency)} · 出厂价 {formatPriceSnapshot(item.factoryPriceSnapshot)}
+                            {item.itemType === "MAIN" ? "产品" : "选配"}：{item.productNameSnapshot || "-"} {item.productModelSnapshot || ""} · 单价 {formatMoney(item.quotedPrice, quote.currency)} × {item.quantity || 1} · 小计 {formatMoney(Number(item.quotedPrice || 0) * Number(item.quantity || 1), quote.currency)} · 出厂价 <PriceSnapshot value={item.factoryPriceSnapshot} />
                           </p>
                         ))}
                       </div>

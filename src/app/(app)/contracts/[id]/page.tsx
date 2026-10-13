@@ -1,6 +1,7 @@
 "use client";
 
-import { formatMoney, formatPriceSnapshot } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
+import { PriceSnapshot } from "@/components/ui/price-snapshot";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -264,7 +265,7 @@ export default function ContractDetailPage() {
                     <span>单价：{formatMoney(item.contractPrice, contract.currency)}</span>
                     <span>数量：{item.quantity || 1}</span>
                     <span>小计：{formatMoney(Number(item.contractPrice || 0) * Number(item.quantity || 1), contract.currency)}</span>
-                    <span>出厂价快照：{formatPriceSnapshot(item.factoryPriceSnapshot)}</span>
+                    <span>出厂价快照：<PriceSnapshot value={item.factoryPriceSnapshot} /></span>
                   </div>
                 </div>
               ))}
