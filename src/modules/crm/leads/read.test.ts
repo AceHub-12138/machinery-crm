@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   leadCount: vi.fn(),
   leadFindFirst: vi.fn(),
   eventFindMany: vi.fn(),
+  lookupFindMany: vi.fn(),
   userFindMany: vi.fn(),
   transaction: vi.fn(),
   lockLead: vi.fn(),
@@ -57,6 +58,7 @@ describe("Lead 人类只读模块", () => {
     mocks.transaction.mockImplementation(async (callback) => callback({
       lead: { findFirst: mocks.leadFindFirst },
       leadFeedbackEvent: { findMany: mocks.eventFindMany },
+      leadContactLookup: { findMany: mocks.lookupFindMany },
       $queryRaw: mocks.lockLead,
     }));
   });
@@ -232,6 +234,7 @@ describe("Lead 人类只读模块", () => {
     const reviewedAt = new Date("2026-08-19T01:00:00.000Z");
     mocks.leadFindFirst.mockResolvedValue({
       id: "lead-sales",
+      phoneEvidence: { rawResponse: { private: "hidden" }, allPhones: ["secret"], sharedPhoneLeadCount: 2, sharedPhoneCustomer: "已有客户" },
       companyName: "销售本人线索",
       contactName: "李经理",
       phone: "13800000001",
@@ -275,6 +278,9 @@ describe("Lead 人类只读模块", () => {
       orderBy: [{ reviewedAt: "desc" }, { id: "desc" }],
     }));
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
+    expect(result.phoneEvidence).toEqual({ sharedPhoneLeadCount: 2, sharedPhoneCustomer: "已有客户", manuallyConfirmed: false });
+    expect(result.contactLookups).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain("rawResponse");
     expect(mocks.lockLead).toHaveBeenCalledTimes(1);
     expect(mocks.lockLead.mock.invocationCallOrder[0]).toBeLessThan(mocks.eventFindMany.mock.invocationCallOrder[0]);
     expect(result).toEqual(expect.objectContaining({
