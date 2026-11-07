@@ -31,7 +31,7 @@ describe("extractPhones", () => {
 describe("sanitizeLlmPhone", () => {
   it("接受手机与带区号座机", () => {
     expect(sanitizeLlmPhone("13812345678")).toBe("13812345678");
-    expect(sanitizeLlmPhone("+86 13812345678")).toBe("+86 13812345678");
+    expect(sanitizeLlmPhone("+86 13812345678")).toBe("13812345678");
     expect(sanitizeLlmPhone("0576-88012345")).toBe("0576-88012345");
   });
 
