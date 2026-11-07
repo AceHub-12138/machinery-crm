@@ -5,7 +5,8 @@
  */
 
 import { PROVINCE_CITY_MAP } from "@/lib/region-data";
-import { sanitizeLlmPhone } from "@/lib/lead-hunter/phone";
+import { sanitizeLlmPhone, extractEmails } from "@/lib/lead-hunter/phone";
+import type { LlmCaller } from "@/lib/lead-hunter/llm";
 import type { RoundSummary } from "@/lib/lead-hunter/types";
 import type { WebSearchResult } from "@/lib/lead-hunter/qianfan";
 
@@ -99,8 +100,8 @@ function validCity(province: string, value: unknown): string {
 
 /** 调 LLM 做单条线索分析并做结构与业务校验（不合法即抛错，由引擎按「AI 解析失败」统计） */
 export async function analyzeLead(
-  llm: (options: { system: string; user: string; maxTokens: number }) => Promise<unknown>,
-  input: { goal: string; keyword: string; item: WebSearchResult },
+  llm: LlmCaller,
+  input: { goal: string; keyword: string; item: WebSearchResult; signal?: AbortSignal },
 ): Promise<LeadAnalysis> {
   const pageText = [input.item.snippet, input.item.content].filter(Boolean).join("\n").slice(0, 3000);
   const user = [
@@ -111,7 +112,7 @@ export async function analyzeLead(
     `正文：${pageText}`,
   ].join("\n");
 
-  const parsed = await llm({ system: ANALYSIS_SYSTEM, user, maxTokens: 700 }) as Record<string, unknown>;
+  const parsed = await llm({ system: ANALYSIS_SYSTEM, user, maxTokens: 700, signal: input.signal }) as Record<string, unknown>;
   const aiScore = Number(parsed?.aiScore);
   if (!Number.isFinite(aiScore) || aiScore < 0 || aiScore > 100) throw new Error("评分无效");
   const companyName = String(parsed?.companyName ?? "").trim();
@@ -127,7 +128,7 @@ export async function analyzeLead(
     city: validCity(province, parsed?.city),
     contactName: String(parsed?.contactName ?? "").trim().slice(0, 64),
     phone: sanitizeLlmPhone(parsed?.phone),
-    email: EMAIL_RE.test(emailText) ? emailText : null,
+    email: EMAIL_RE.test(emailText) && extractEmails([input.item.title, input.item.snippet, input.item.content].join("\n")).includes(emailText.toLowerCase()) ? emailText.toLowerCase() : null,
   };
 }
 

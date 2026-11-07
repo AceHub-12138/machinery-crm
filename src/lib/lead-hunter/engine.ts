@@ -2,7 +2,7 @@
  * 获客执行引擎：任务创建后服务端异步执行（fire-and-forget，状态落库，前端轮询）。
  * 不做后台队列（单实例部署、量小）：服务重启会中断进行中的任务，
  * 由 markInterruptedIfStale 按 updatedAt 心跳超时兜底标 failed，页面允许"重新执行"。
- * 每轮循环：关键词生成/迭代 → 千帆搜索 → AI 抽取评分 → 去重 → 落候选；AUTO 模式尾部自动天眼查反查。
+ * 每轮循环：关键词生成/迭代 → 千帆搜索 → AI 抽取评分 → 去重 → 落候选；反查只能在入池后由管理员发起。
  */
 
 import type { Prisma, PrismaClient } from "@prisma/client";
@@ -11,13 +11,14 @@ import { companyDedupKey, normalizedCompanyName } from "@/lib/lead-hunter/dedup"
 import { createLlmCaller, type LlmCaller } from "@/lib/lead-hunter/llm";
 import { analyzeLead, extractKeywords, keywordPlannerPrompt } from "@/lib/lead-hunter/prompts";
 import { createFakeSearchClient, createQianfanSearchClient, type SearchClient, type WebSearchResult } from "@/lib/lead-hunter/qianfan";
-import { createTianyanchaClient, type TianyanchaClient } from "@/lib/lead-hunter/tianyancha";
-import { emptyProgress, emptyReport, type LeadHuntTaskConfig, type TaskProgress, type TaskReport } from "@/lib/lead-hunter/types";
+import { leadRuntimeFlags } from "@/lib/lead-hunter/runtime-flags";
+import { pagePhoneEvidence, verifiedPageContact } from "@/lib/lead-hunter/phone";
+import { findExistingLeadCustomer } from "@/lib/lead-hunter/existing-customer";
+import { LEAD_ADMIT_MIN_SCORE, leadHuntConfigSchema, emptyProgress, emptyReport, type LeadHuntTaskConfig, type TaskProgress, type TaskReport } from "@/lib/lead-hunter/types";
 
 export type LeadHunterDeps = {
   prisma: PrismaClient;
   search?: SearchClient;
-  tianyancha?: TianyanchaClient;
   llm?: LlmCaller;
   now?: () => Date;
 };
@@ -49,12 +50,8 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
   function searchClient(): SearchClient {
     if (deps.search) return deps.search;
     // 演示/本地联调用假搜索：不花千帆额度（上线包环境变量不含此项，默认走真实搜索）
-    if (process.env.LEAD_HUNTER_FAKE_SEARCH?.trim() === "1") return createFakeSearchClient();
+    if (leadRuntimeFlags().fakeSearchMode) return createFakeSearchClient();
     return createQianfanSearchClient();
-  }
-
-  function tianyanchaClient(): TianyanchaClient {
-    return deps.tianyancha ?? createTianyanchaClient({ now });
   }
 
   async function llmCaller(): Promise<LlmCaller> {
@@ -68,8 +65,8 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
     if (!task || task.status !== "running") return;
     if (runtime().has(taskId)) return;
     if (Date.now() - task.updatedAt.getTime() < STALE_RUNNING_MS) return;
-    await prisma.leadHuntTask.update({
-      where: { id: taskId },
+    await prisma.leadHuntTask.updateMany({
+      where: { id: taskId, status: "running", updatedAt: task.updatedAt },
       data: { status: "failed", error: "服务重启导致任务中断，可重新执行" },
     });
   }
@@ -79,7 +76,7 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
     const task = await prisma.leadHuntTask.findUnique({ where: { id: taskId } });
     if (!task || task.status !== "running") return;
 
-    const config = task.config as unknown as LeadHuntTaskConfig;
+    const config = leadHuntConfigSchema.parse(task.config);
     const controller = new AbortController();
     runtime().set(taskId, controller);
     const aborted = () => controller.signal.aborted;
@@ -94,7 +91,6 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
     try {
       const llm = await llmCaller();
       const search = searchClient();
-      const tianyancha = tianyanchaClient();
 
       const seenUrls = new Set<string>();
       const seenCompanies = new Set<string>();
@@ -114,11 +110,16 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
             const prompt = keywordPlannerPrompt(config.goal, round, lastSummary && round > 1
               ? { summary: lastSummary, lowScoreReasons: lowScoreReasonBuffer, usedQueries }
               : null);
-            currentKeywords = extractKeywords(await llm(prompt));
+            currentKeywords = extractKeywords(await llm({ ...prompt, signal: controller.signal }));
           } catch (error) {
             if (round === 1) throw error instanceof Error ? error : new Error("关键词生成失败");
             // 迭代轮 LLM 失败（已内部重试 1 次）：沿用上一轮关键词继续
           }
+        }
+        currentKeywords = [...new Set(currentKeywords)].filter((keyword) => !usedQueries.includes(keyword));
+        if (!currentKeywords.length) {
+          progress.roundSummaries.push({ round, keywords: [], candidates: 0, qualified: 0, parseFailed: 0, searchFailed: 0, note: "无新关键词，提前结束" });
+          break;
         }
         progress.currentKeywords = [...currentKeywords];
         for (const keyword of currentKeywords) {
@@ -130,9 +131,15 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
         progress.phase = "searching";
         await touch();
         const roundItems: ScoredItem[] = [];
+        let searchFailed = 0;
         for (const keyword of currentKeywords) {
           checkAborted();
-          const results = await search.searchWeb(keyword, config.pagesPerRound);
+          let results: WebSearchResult[];
+          try {
+            results = await search.searchWeb(keyword, config.pagesPerRound, controller.signal);
+          } catch {
+            checkAborted(); searchFailed += 1; continue;
+          }
           for (const item of results) {
             if (!item.title.trim() || !item.url.trim() || !item.content.trim()) continue;
             const normalizedUrl = item.url.replace(/#.*$/, "").replace(/\/$/, "");
@@ -140,6 +147,11 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
             seenUrls.add(normalizedUrl);
             roundItems.push({ item, keyword });
           }
+        }
+
+        if (searchFailed === currentKeywords.length) {
+          progress.roundSummaries.push({ round, keywords: [...currentKeywords], candidates: 0, qualified: 0, parseFailed: 0, searchFailed });
+          throw new Error("本轮所有关键词搜索失败");
         }
 
         // 3-5. 逐条 AI 抽取+评分，任务内与线索池双重去重后落候选
@@ -154,12 +166,13 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
           checkAborted();
           let analysis;
           try {
-            analysis = await analyzeLead(llm, { goal: config.goal, keyword: scored.keyword, item: scored.item });
+            analysis = await analyzeLead(llm, { goal: config.goal, keyword: scored.keyword, item: scored.item, signal: controller.signal });
           } catch {
             roundParseFailed += 1;
             continue; // AI 解析失败不入池（对齐原 n8n REJECTED_AI_PARSE 语义），仅计入统计
           }
-          if (!analysis.isCompany || !analysis.companyName) {
+          checkAborted();
+          if (!analysis.isCompany || !analysis.companyName || analysis.companyName.length > 100) {
             roundParseFailed += 1;
             continue;
           }
@@ -172,12 +185,23 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
           });
           if (existing) continue;
 
-          const qualified = analysis.aiScore >= config.passingScore;
-          const status = qualified ? (analysis.phone ? "PENDING_CONFIRM" : "NO_CONTACT") : "DISCARDED";
+          const dedupKey = companyDedupKey(analysis.companyName);
+          const otherCandidate = await prisma.leadHuntCandidate.findFirst({ where: { taskId: { not: taskId }, dedupKey, status: { not: "DISCARDED" } }, select: { id: true } });
+          if (otherCandidate) continue;
+          const pageText = [scored.item.title, scored.item.snippet, scored.item.content].join("\n");
+          analysis.phone = verifiedPageContact(analysis.phone, pageText);
+          const customer = await findExistingLeadCustomer(prisma, analysis.companyName, analysis.phone);
+          const qualified = analysis.aiScore >= LEAD_ADMIT_MIN_SCORE;
+          const status = customer ? "EXISTING_CUSTOMER" : qualified ? (analysis.phone ? "PENDING_CONFIRM" : "NO_CONTACT") : "DISCARDED";
           await prisma.leadHuntCandidate.create({
             data: {
               taskId,
               companyName: analysis.companyName,
+              dedupKey,
+              statusReason: customer ? customer.companyName.slice(0, 191) : null,
+              contactName: analysis.contactName || null,
+              phoneSource: analysis.phone ? "PAGE_TEXT" : null,
+              ...(analysis.phone ? { phoneEvidence: pagePhoneEvidence(scored.item.url, pageText, analysis.phone, now()) } : {}),
               sourceUrl: scored.item.url.slice(0, 2048),
               snippet: (scored.item.snippet || scored.item.content).slice(0, 5000),
               keywords: currentKeywords,
@@ -208,39 +232,14 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
           candidates: roundCandidates,
           qualified: roundQualified,
           parseFailed: roundParseFailed,
+          searchFailed,
         });
         await touch();
-      }
-
-      // 6. AUTO 模式尾部自动反查（受每日上限护栏约束；MANUAL 模式留给用户勾选）
-      if (config.lookupMode === "AUTO" && config.dailyLookupLimit > 0) {
-        progress.phase = "lookup";
-        await touch();
-        const pending = await prisma.leadHuntCandidate.findMany({
-          where: { taskId, status: "NO_CONTACT" },
-          orderBy: [{ score: "desc" }, { createdAt: "asc" }],
-        });
-        for (const candidate of pending) {
-          checkAborted();
-          if (tianyancha.todayCallCount() >= config.dailyLookupLimit) break;
-          report.lookupCalls += 1;
-          await prisma.leadHuntCandidate.update({ where: { id: candidate.id }, data: { status: "LOOKING_UP" } });
-          const lookup = await tianyancha.lookupCompany(candidate.companyName);
-          await prisma.leadHuntCandidate.update({
-            where: { id: candidate.id },
-            data: {
-              status: lookup.found && lookup.phone ? "LOOKUP_FOUND" : "LOOKUP_FAILED",
-              tianyancha: lookup.raw as Prisma.InputJsonValue,
-              ...(lookup.phone ? { phone: lookup.phone } : {}),
-            },
-          });
-          await touch();
-        }
       }
 
       progress.phase = "done";
       report.finishedAt = now().toISOString();
-      await prisma.leadHuntTask.update({ where: { id: taskId }, data: { status: "done", progress, report, error: null } });
+      await prisma.leadHuntTask.updateMany({ where: { id: taskId, status: "running" }, data: { status: "done", progress, report, error: null } });
     } catch (error) {
       const finishedAt = now().toISOString();
       if (aborted()) {
@@ -250,9 +249,9 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
         });
       } else {
         const message = error instanceof Error ? error.message : "未知错误";
-        console.error(`[lead-hunter] 任务 ${taskId} 失败：${message}`);
-        await prisma.leadHuntTask.update({
-          where: { id: taskId },
+        console.error("[lead-hunter] 任务失败", { taskId });
+        await prisma.leadHuntTask.updateMany({
+          where: { id: taskId, status: "running" },
           data: { status: "failed", error: message.slice(0, 190), progress, report: { ...report, finishedAt } },
         });
       }

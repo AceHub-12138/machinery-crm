@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionUser, isSuperAdmin } from "@/lib/permissions";
 import { createLeadHunterEngine } from "@/lib/lead-hunter/engine";
-import { createTianyanchaClient } from "@/lib/lead-hunter/tianyancha";
+import { leadRuntimeFlags } from "@/lib/lead-hunter/runtime-flags";
 import { leadHuntConfigSchema } from "@/lib/lead-hunter/types";
 import { isDomainError } from "@/modules/shared/domain-error";
 
@@ -37,7 +37,7 @@ export async function GET() {
   return NextResponse.json({
     tasks: tasks.map((task) => ({ ...task, admittedCount: admittedByTask.get(task.id) ?? 0 })),
     // 前端据此提示「真实搜索会消耗百度千帆每日额度」还是「假搜索演示模式」
-    fakeSearchMode: process.env.LEAD_HUNTER_FAKE_SEARCH?.trim() === "1",
+    ...leadRuntimeFlags(),
   });
 }
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 服务端异步执行：状态全部落库，前端每 3 秒轮询任务详情
-    createLeadHunterEngine({ prisma, tianyancha: createTianyanchaClient() }).startTask(task.id);
+    createLeadHunterEngine({ prisma }).startTask(task.id);
 
     return NextResponse.json({ id: task.id });
   } catch (error) {

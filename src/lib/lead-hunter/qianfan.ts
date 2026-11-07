@@ -13,18 +13,19 @@ export type WebSearchResult = {
 };
 
 export type SearchClient = {
-  searchWeb(keyword: string, topK: number): Promise<WebSearchResult[]>;
+  searchWeb(keyword: string, topK: number, signal?: AbortSignal): Promise<WebSearchResult[]>;
 };
 
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export function createQianfanSearchClient(fetchImpl: FetchLike = fetch): SearchClient {
   return {
-    async searchWeb(keyword, topK) {
+    async searchWeb(keyword, topK, signal) {
       const apiKey = process.env.QIANFAN_SEARCH_API_KEY?.trim();
       if (!apiKey) throw new Error("QIANFAN_SEARCH_API_KEY 未配置，无法执行真实搜索");
       const response = await fetchImpl("https://qianfan.baidubce.com/v2/ai_search/web_search", {
         method: "POST",
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
         headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
           messages: [{ role: "user", content: keyword }],
@@ -33,8 +34,7 @@ export function createQianfanSearchClient(fetchImpl: FetchLike = fetch): SearchC
         }),
       });
       if (!response.ok) {
-        const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
-        throw new Error(`千帆搜索失败 ${response.status}${detail ? `：${detail}` : ""}`);
+        throw new Error(`千帆搜索失败 ${response.status}`);
       }
       const data = await response.json() as { references?: unknown };
       const references = Array.isArray(data.references) ? data.references : [];

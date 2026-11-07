@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionUser, isSuperAdmin } from "@/lib/permissions";
 import { createLeadHunterEngine } from "@/lib/lead-hunter/engine";
-import { createTianyanchaClient } from "@/lib/lead-hunter/tianyancha";
+import { leadRuntimeFlags } from "@/lib/lead-hunter/runtime-flags";
 import { isDomainError } from "@/modules/shared/domain-error";
 
 /** 重新执行：以此任务的配置新建一个任务从头跑（旧任务的候选与报告原样保留，不删任何数据） */
@@ -24,7 +24,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
         createdById: user.id,
       },
     });
-    createLeadHunterEngine({ prisma, tianyancha: createTianyanchaClient() }).startTask(task.id);
+    createLeadHunterEngine({ prisma }).startTask(task.id);
 
     return NextResponse.json({ id: task.id });
   } catch (error) {

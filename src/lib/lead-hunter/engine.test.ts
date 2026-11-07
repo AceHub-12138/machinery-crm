@@ -3,7 +3,6 @@ import type { PrismaClient } from "@prisma/client";
 import { createLeadHunterEngine } from "@/lib/lead-hunter/engine";
 import { companyDedupKey } from "@/lib/lead-hunter/dedup";
 import type { SearchClient, WebSearchResult } from "@/lib/lead-hunter/qianfan";
-import type { TianyanchaClient } from "@/lib/lead-hunter/tianyancha";
 import type { LeadHuntTaskConfig } from "@/lib/lead-hunter/types";
 
 /** 引擎测试：全部依赖注入 fake（不连库、不出网），覆盖关键词迭代/评分过滤/去重/反查上限/中断兜底。 */
@@ -17,9 +16,6 @@ const baseConfig: LeadHuntTaskConfig = {
   maxRounds: 1,
   pagesPerRound: 1,
   keywordIterations: 0,
-  passingScore: 70,
-  dailyLookupLimit: 5,
-  lookupMode: "MANUAL",
 };
 
 type TaskRow = {
@@ -56,7 +52,9 @@ function createFakeDb() {
         return { count: 1 };
       }),
     },
+    $queryRaw: vi.fn(async () => []),
     leadHuntCandidate: {
+      findFirst: vi.fn(async () => null),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         candidateSeq += 1;
         const row = { id: `cand-${candidateSeq}`, leadId: null, ...data };
@@ -117,21 +115,6 @@ function createFakeDb() {
   return { prisma: prisma as unknown as PrismaClient, tasks, candidates, leads, operationLogs, addTask };
 }
 
-function createFakeTianyancha(results: Array<string | null>): { client: TianyanchaClient } {
-  let calls = 0;
-  const client: TianyanchaClient = {
-    lookupCompany: vi.fn(async () => {
-      const phone = results[calls] ?? null;
-      calls += 1;
-      return phone
-        ? { found: true, phone, legalPerson: "陈某某", regAddress: "浙江省宁波市鄞州区", raw: { mock: true } }
-        : { found: false, phone: null, legalPerson: null, regAddress: null, raw: { mock: true } };
-    }),
-    todayCallCount: () => calls,
-  };
-  return { client };
-}
-
 describe("lead-hunter engine", () => {
   it("多轮关键词迭代：第 2 轮规划输入带上第 1 轮关键词与达标反馈", async () => {
     const db = createFakeDb();
@@ -144,7 +127,7 @@ describe("lead-hunter engine", () => {
       .mockResolvedValueOnce({ isCompany: true, companyName: "宁波恒精传动科技有限公司", aiScore: 88, scoreReason: "行业匹配且有手机号", province: "浙江省", city: "宁波市", contactName: "王经理", phone: "13812345678", email: "" })
       .mockResolvedValueOnce({ keywords: ["插床 供应商"] });
 
-    const engine = createLeadHunterEngine({ prisma: db.prisma, search, llm, tianyancha: createFakeTianyancha([]).client });
+    const engine = createLeadHunterEngine({ prisma: db.prisma, search, llm });
     await engine.runTask("t1");
 
     const task = db.tasks.get("t1")!;
@@ -162,7 +145,7 @@ describe("lead-hunter engine", () => {
     db.addTask("t1", baseConfig);
     const search: SearchClient = {
       searchWeb: vi.fn(async () => [
-        searchResult({ url: "https://a.com/1", title: "甲公司", content: "c1" }),
+        searchResult({ url: "https://a.com/1", title: "甲公司", content: "c1 联系 13812345678" }),
         searchResult({ url: "https://b.com/2", title: "乙公司", content: "c2" }),
         searchResult({ url: "https://c.com/3", title: "丙公司", content: "c3" }),
       ]),
@@ -170,10 +153,10 @@ describe("lead-hunter engine", () => {
     const llm = vi.fn()
       .mockResolvedValueOnce({ keywords: ["k1"] })
       .mockResolvedValueOnce({ isCompany: true, companyName: "甲公司", aiScore: 85, scoreReason: "匹配", province: "浙江省", city: "", contactName: "", phone: "13812345678", email: "" })
-      .mockResolvedValueOnce({ isCompany: true, companyName: "乙公司", aiScore: 80, scoreReason: "匹配", province: "", city: "", contactName: "", phone: "", email: "" })
+      .mockResolvedValueOnce({ isCompany: true, companyName: "乙公司", aiScore: 88, scoreReason: "匹配", province: "", city: "", contactName: "", phone: "", email: "" })
       .mockResolvedValueOnce({ isCompany: true, companyName: "丙公司", aiScore: 60, scoreReason: "行业不匹配", province: "", city: "", contactName: "", phone: "", email: "" });
 
-    const engine = createLeadHunterEngine({ prisma: db.prisma, search, llm, tianyancha: createFakeTianyancha([]).client });
+    const engine = createLeadHunterEngine({ prisma: db.prisma, search, llm });
     await engine.runTask("t1");
 
     expect(db.tasks.get("t1")!.status).toBe("done");
@@ -203,35 +186,11 @@ describe("lead-hunter engine", () => {
       .mockResolvedValueOnce({ isCompany: true, companyName: "甲公司", aiScore: 90, scoreReason: "匹配", province: "", city: "", contactName: "", phone: "13812345678", email: "" })
       .mockResolvedValueOnce({ isCompany: true, companyName: "老客户机械有限公司", aiScore: 92, scoreReason: "匹配", province: "", city: "", contactName: "", phone: "", email: "" });
 
-    const engine = createLeadHunterEngine({ prisma: db.prisma, search, llm, tianyancha: createFakeTianyancha([]).client });
+    const engine = createLeadHunterEngine({ prisma: db.prisma, search, llm });
     await engine.runTask("t1");
 
     expect(db.candidates).toHaveLength(1);
     expect(db.candidates[0].companyName).toBe("甲公司");
-  });
-
-  it("AUTO 反查受每日上限约束：上限 1 时只调用 1 次天眼查", async () => {
-    const db = createFakeDb();
-    db.addTask("t1", { ...baseConfig, lookupMode: "AUTO", dailyLookupLimit: 1 });
-    const search: SearchClient = {
-      searchWeb: vi.fn(async () => [
-        searchResult({ url: "https://a.com/1", title: "甲公司", content: "c1" }),
-        searchResult({ url: "https://b.com/2", title: "乙公司", content: "c2" }),
-      ]),
-    };
-    const llm = vi.fn()
-      .mockResolvedValueOnce({ keywords: ["k1"] })
-      .mockResolvedValueOnce({ isCompany: true, companyName: "甲公司", aiScore: 90, scoreReason: "匹配", province: "浙江省", city: "", contactName: "", phone: "", email: "" })
-      .mockResolvedValueOnce({ isCompany: true, companyName: "乙公司", aiScore: 85, scoreReason: "匹配", province: "", city: "", contactName: "", phone: "", email: "" });
-    const tianyancha = createFakeTianyancha(["13957881234"]);
-
-    const engine = createLeadHunterEngine({ prisma: db.prisma, search, llm, tianyancha: tianyancha.client });
-    await engine.runTask("t1");
-
-    expect(tianyancha.client.lookupCompany).toHaveBeenCalledTimes(1);
-    expect(db.candidates.map((candidate) => candidate.status)).toEqual(["LOOKUP_FOUND", "NO_CONTACT"]);
-    expect(db.candidates[0].phone).toBe("13957881234");
-    expect((db.tasks.get("t1")!.report as { lookupCalls: number }).lookupCalls).toBe(1);
   });
 
   it("关键词规划首轮失败：任务 failed 并落错误信息", async () => {
@@ -242,7 +201,6 @@ describe("lead-hunter engine", () => {
       prisma: db.prisma,
       search: { searchWeb: vi.fn(async () => []) },
       llm,
-      tianyancha: createFakeTianyancha([]).client,
     });
     await engine.runTask("t1");
 
@@ -257,7 +215,7 @@ describe("lead-hunter engine", () => {
     db.addTask("t-stale", baseConfig, { updatedAt: new Date(Date.now() - 10 * 60 * 1000) });
     db.addTask("t-fresh", baseConfig);
     db.tasks.get("t-fresh")!.status = "done";
-    const engine = createLeadHunterEngine({ prisma: db.prisma, tianyancha: createFakeTianyancha([]).client });
+    const engine = createLeadHunterEngine({ prisma: db.prisma });
 
     await engine.markInterruptedIfStale("t-stale");
     await engine.markInterruptedIfStale("t-fresh");
@@ -265,5 +223,43 @@ describe("lead-hunter engine", () => {
     expect(db.tasks.get("t-stale")!.status).toBe("failed");
     expect(db.tasks.get("t-stale")!.error).toContain("服务重启");
     expect(db.tasks.get("t-fresh")!.status).toBe("done");
+  });
+
+  it("[AUDIT-E1] cancellation during the final scoring keeps cancelled", async () => {
+    const db = createFakeDb(); db.addTask("cancel", baseConfig);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockImplementationOnce(async () => {
+      await engine.cancelTask("cancel");
+      return { companyName: "甲公司", aiScore: 90 };
+    });
+    const engine = createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({})]) } });
+    await engine.runTask("cancel"); expect(db.tasks.get("cancel")!.status).toBe("cancelled"); expect(db.candidates).toHaveLength(0);
+  });
+  it("[AUDIT-E3] one failed search does not discard successful search results", async () => {
+    const db = createFakeDb(); db.addTask("partial", baseConfig);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["bad", "good"] }).mockResolvedValue({ companyName: "甲公司", aiScore: 90, phone: "13812345678" });
+    const search = { searchWeb: vi.fn().mockRejectedValueOnce(new Error("search down")).mockResolvedValueOnce([searchResult({ content: "原文没有电话" })]) };
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search }).runTask("partial");
+    expect(db.tasks.get("partial")!.status).toBe("done"); expect(db.candidates[0]).toMatchObject({ status: "NO_CONTACT", phone: null });
+    expect(db.tasks.get("partial")!.progress).toMatchObject({ roundSummaries: [expect.objectContaining({ searchFailed: 1 })] });
+  });
+  it("[AUDIT-E4] stops when all keywords were already used", async () => {
+    const db = createFakeDb(); db.addTask("once", { ...baseConfig, maxRounds: 3 });
+    const search = { searchWeb: vi.fn(async () => []) };
+    await createLeadHunterEngine({ prisma: db.prisma, search, llm: vi.fn().mockResolvedValue({ keywords: ["a", "b", "c"] }) }).runTask("once");
+    expect(search.searchWeb).toHaveBeenCalledTimes(3); expect(db.tasks.get("once")!.status).toBe("done");
+    expect(JSON.stringify(db.tasks.get("once")!.progress)).toContain("无新关键词");
+  });
+  it("[AUDIT-E5] records an existing CRM customer and never makes it admissible", async () => {
+    const db = createFakeDb(); db.addTask("customer", baseConfig);
+    vi.mocked(db.prisma.$queryRaw).mockResolvedValue([{ id: "customer-1", companyName: "甲公司" }]);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName: "甲公司", aiScore: 95 });
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({})]) } }).runTask("customer");
+    expect(db.candidates[0]).toMatchObject({ status: "EXISTING_CUSTOMER", statusReason: "甲公司", dedupKey: companyDedupKey("甲公司") });
+  });
+  it("skips oversized company names without failing the task", async () => {
+    const db = createFakeDb(); db.addTask("long", baseConfig);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName: "甲".repeat(101), aiScore: 95 });
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({})]) } }).runTask("long");
+    expect(db.candidates).toHaveLength(0); expect(db.tasks.get("long")!.status).toBe("done");
   });
 });
