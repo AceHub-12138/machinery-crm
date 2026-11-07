@@ -1,4 +1,5 @@
 "use client";
+import { ContactSource, ContactLookupButton, ContactLookupManager } from "@/components/leads/contact-verification";
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
@@ -35,6 +36,9 @@ function dateTime(value: string) {
 }
 
 export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boolean }) {
+  const [contactStatus, setContactStatus] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [companyNameDraft, setCompanyNameDraft] = useState("");
   const [items, setItems] = useState<HumanLeadListItem[]>([]);
   const [activeUsers, setActiveUsers] = useState<LeadUserSummary[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
@@ -70,6 +74,8 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
     else params.set("excludeInvalid", "1");
     if (aiScoreMin) params.set("aiScoreMin", aiScoreMin);
     if (aiScoreMax) params.set("aiScoreMax", aiScoreMax);
+    if (contactStatus) params.set("contactStatus", contactStatus);
+    if (companyName) params.set("companyName", companyName);
     if (searchKeyword) params.set("searchKeyword", searchKeyword);
     if (canFilterAssignee && assignedUserId) params.set("assignedUserId", assignedUserId);
     if (createdFrom) params.set("createdFrom", createdFrom);
@@ -85,7 +91,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
     } finally {
       setLoading(false);
     }
-  }, [aiScoreMax, aiScoreMin, assignedUserId, canFilterAssignee, createdFrom, createdTo, page, reviewStatus, searchKeyword]);
+  }, [contactStatus, companyName, aiScoreMax, aiScoreMin, assignedUserId, canFilterAssignee, createdFrom, createdTo, page, reviewStatus, searchKeyword]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -140,6 +146,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
   );
 
   function applyKeyword(event: FormEvent) {
+    setCompanyName(companyNameDraft.trim());
     event.preventDefault();
     resetSelectionForQuery();
     setSearchKeyword(keywordDraft.trim());
@@ -151,6 +158,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
   }
 
   function resetFilters() {
+    setContactStatus(""); setCompanyName(""); setCompanyNameDraft("");
     setKeywordDraft("");
     setSearchKeyword("");
     setReviewStatus("");
@@ -253,6 +261,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
           <div className="relative lg:col-span-3">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--text-tertiary)]" />
             <input aria-label="搜索关键词" className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-solid)] py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-orange)]" onChange={(event) => setKeywordDraft(event.target.value)} placeholder="搜索获客关键词" value={keywordDraft} />
+            <input aria-label="公司名搜索" className="mt-2 w-full rounded border border-[var(--border)] bg-transparent px-3 py-2 text-sm" maxLength={100} placeholder="搜索公司名" value={companyNameDraft} onChange={(event) => setCompanyNameDraft(event.target.value)} />
           </div>
           <select aria-label="反馈状态" className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-solid)] px-3 py-2 text-sm lg:col-span-2" onChange={(event) => { setReviewStatus(event.target.value); resetSelectionForQuery(); }} value={reviewStatus}>
             <option value="">全部反馈状态</option>
@@ -274,6 +283,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
         </form>
       </SurfaceCard>
 
+      {canFilterAssignee && <ContactLookupManager status={contactStatus} onStatus={(status) => { setContactStatus(status); resetSelectionForQuery(); }} selected={selectedLeads} onRefresh={load} />}
       {selectedLeads.length > 0 && (
         <SurfaceCard className="flex flex-col gap-3 p-4 xl:flex-row xl:items-end">
           <p className="shrink-0 pb-2 text-sm font-medium text-[var(--text-primary)]">已选择 {selectedLeads.length} 条</p>
@@ -321,7 +331,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
             <tbody>{items.map((lead) => <tr className="relative isolate border-b border-[var(--border)] hover:bg-[var(--surface-hover)]" key={lead.id}>
               <td className="w-[52px] whitespace-nowrap px-4 py-3 text-center">{highlightedLeadIds.has(lead.id) && <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[var(--brand-orange-soft)] opacity-0" data-assignment-highlight={lead.id} />}<input aria-label={`选择 ${lead.companyName}`} checked={selectedLeadIds.has(lead.id)} onChange={() => toggleLead(lead.id)} type="checkbox" /></td>
               <td className="w-[270px] px-4 py-3"><p className="truncate whitespace-nowrap font-medium text-[var(--text-primary)]" title={lead.companyName}>{lead.companyName}</p><p className="mt-1 truncate whitespace-nowrap text-xs text-[var(--text-tertiary)]" title={lead.contactName || undefined}>{lead.contactName || "未记录联系人"}</p></td>
-              <td className="w-[190px] whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]"><p>{lead.phone || "-"}</p><p className="mt-1 truncate text-xs" title={lead.email || undefined}>{lead.email || "-"}</p></td>
+              <td className="w-[190px] whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]"><p>{lead.phone || "-"}</p><ContactSource lead={lead} />{canFilterAssignee && !lead.phone && (!lead.contactStatus || ["PENDING_LOOKUP", "LOOKUP_FAILED", "LOOKING_UP"].includes(lead.contactStatus)) && <ContactLookupButton leadId={lead.id} onRefresh={load} />}<p className="mt-1 truncate text-xs" title={lead.email || undefined}>{lead.email || "-"}</p></td>
               <td className="w-[90px] whitespace-nowrap px-4 py-3 font-semibold tabular-nums">{lead.aiScore ?? "未评分"}</td>
               <td className="w-[110px] whitespace-nowrap px-4 py-3"><LeadStatusBadge status={lead.reviewStatus} /></td>
               <td className="max-w-[220px] truncate whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]" title={lead.searchKeyword || undefined}>{lead.searchKeyword || "-"}</td>

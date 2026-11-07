@@ -22,6 +22,8 @@ const TASK_STATUS_LABELS: Record<string, { text: string; className: string }> = 
 };
 
 const CANDIDATE_STATUS_LABELS: Record<string, { text: string; className: string }> = {
+  ALREADY_IN_POOL: { text: "已在线索池", className: "bg-gray-100 text-gray-600" },
+  EXISTING_CUSTOMER: { text: "已是客户", className: "bg-amber-50 text-amber-700" },
   PENDING_CONFIRM: { text: "待确认", className: "bg-amber-50 text-amber-700" },
   ADMITTED: { text: "已入池", className: "bg-emerald-50 text-emerald-700" },
   NO_CONTACT: { text: "无联系方式-待反查", className: "bg-sky-50 text-sky-700" },
@@ -39,7 +41,7 @@ const PHASE_LABELS: Record<string, string> = {
   done: "已完成",
 };
 
-const ADMITTABLE = ["PENDING_CONFIRM", "NO_CONTACT", "LOOKUP_FOUND", "LOOKUP_FAILED"];
+const ADMITTABLE = ["PENDING_CONFIRM", "NO_CONTACT"];
 
 type TaskListItem = {
   id: string;
@@ -59,9 +61,6 @@ type TaskConfig = {
   maxRounds: number;
   pagesPerRound: number;
   keywordIterations: number;
-  passingScore: number;
-  dailyLookupLimit: number;
-  lookupMode: "MANUAL" | "AUTO";
 };
 
 type TaskProgress = {
@@ -69,7 +68,7 @@ type TaskProgress = {
   totalRounds: number;
   phase: string;
   currentKeywords: string[];
-  roundSummaries: Array<{ round: number; keywords: string[]; candidates: number; qualified: number; parseFailed: number }>;
+  roundSummaries: Array<{ round: number; keywords: string[]; candidates: number; qualified: number; parseFailed: number; searchFailed?: number; note?: string }>;
 };
 
 type TaskReport = {
@@ -87,6 +86,9 @@ type Candidate = {
   score: number | null;
   scoreReason: string | null;
   phone: string | null;
+  phoneSource?: string | null;
+  phoneEvidence?: { excerpt?: string };
+  statusReason?: string | null;
   email: string | null;
   province: string | null;
   city: string | null;
@@ -114,9 +116,6 @@ const defaultForm: TaskConfig = {
   maxRounds: 3,
   pagesPerRound: 3,
   keywordIterations: 2,
-  passingScore: 70,
-  dailyLookupLimit: 20,
-  lookupMode: "MANUAL",
 };
 
 function formatTime(value: string | null) {
@@ -132,6 +131,7 @@ function Badge({ status, labels }: { status: string; labels: Record<string, { te
 export function LeadHunterClient() {
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [fakeSearchMode, setFakeSearchMode] = useState(false);
+  const [tycMockMode, setTycMockMode] = useState(false);
   const [form, setForm] = useState<TaskConfig>(defaultForm);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -146,6 +146,7 @@ export function LeadHunterClient() {
       const data = await response.json();
       setTasks(data.tasks ?? []);
       setFakeSearchMode(Boolean(data.fakeSearchMode));
+      setTycMockMode(Boolean(data.tycMockMode));
     } catch {
       // 瞬时网络/服务抖动：保持当前列表，下次刷新/轮询自愈
     }
@@ -158,7 +159,7 @@ export function LeadHunterClient() {
       if (!response.ok) return;
       const data = await response.json();
       setDetail(data);
-      setChecked(new Set());
+      setChecked((previous) => silent ? new Set([...previous].filter((id) => (data.task?.candidates ?? []).some((candidate: Candidate) => candidate.id === id && ADMITTABLE.includes(candidate.status) && (candidate.score ?? 0) >= 85))) : new Set());
     } catch {
       // 瞬时网络/服务抖动：保持当前详情，下次轮询自愈
     }
@@ -237,14 +238,9 @@ export function LeadHunterClient() {
 
   const candidates = useMemo(() => detail?.task.candidates ?? [], [detail]);
   const checkedAdmittable = useMemo(
-    () => candidates.filter((candidate) => checked.has(candidate.id) && ADMITTABLE.includes(candidate.status)),
+    () => candidates.filter((candidate) => checked.has(candidate.id) && ADMITTABLE.includes(candidate.status) && (candidate.score ?? 0) >= 85),
     [candidates, checked],
   );
-  const checkedLookupable = useMemo(
-    () => candidates.filter((candidate) => checked.has(candidate.id) && candidate.status === "NO_CONTACT"),
-    [candidates, checked],
-  );
-
   const toggleChecked = (candidateId: string) => {
     setChecked((prev) => {
       const next = new Set(prev);
@@ -252,27 +248,6 @@ export function LeadHunterClient() {
       else next.add(candidateId);
       return next;
     });
-  };
-
-  const reverseLookup = async () => {
-    if (checkedLookupable.length < 1 || !detail) return;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const response = await fetch(`/api/lead-hunter/tasks/${detail.task.id}/reverse-lookup`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ candidateIds: checkedLookupable.map((candidate) => candidate.id) }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "反查失败");
-      setMessage({ kind: "ok", text: `反查完成：成功 ${data.found} 条、无果 ${data.failed} 条` });
-      await loadDetail(detail.task.id, true);
-    } catch (error) {
-      setMessage({ kind: "err", text: error instanceof Error ? error.message : "反查失败" });
-    } finally {
-      setBusy(false);
-    }
   };
 
   const admit = async () => {
@@ -287,8 +262,10 @@ export function LeadHunterClient() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "入池失败");
-      const assigned = data.results?.filter((item: { assignedUserId: string | null }) => item.assignedUserId).length ?? 0;
-      setMessage({ kind: "ok", text: `已入池 ${data.admitted} 条，其中 ${assigned} 条已按省份自动分配销售；可在「AI 线索池」查看` });
+      const rows = (data.results ?? []) as Array<{ candidateId: string; status: string; reason: string }>;
+      const already = rows.filter((row) => row.status === "ALREADY_IN_POOL").length;
+      const rejected = rows.filter((row) => row.status === "REJECTED").length;
+      setMessage({ kind: rejected ? "err" : "ok", text: `成功 ${data.admitted} 条，已在池 ${already} 条，拒绝 ${rejected} 条。` + rows.map((row) => `${candidates.find((candidate) => candidate.id === row.candidateId)?.companyName || row.candidateId}：${row.reason}`).join("；") });
       await Promise.all([loadDetail(detail.task.id, true), loadTasks()]);
     } catch (error) {
       setMessage({ kind: "err", text: error instanceof Error ? error.message : "入池失败" });
@@ -316,6 +293,8 @@ export function LeadHunterClient() {
         </div>
       )}
 
+      {(fakeSearchMode || tycMockMode) && <div role="alert" className="rounded-lg bg-amber-100 p-4 text-amber-900">当前启用了 {fakeSearchMode ? "假搜索" : ""} {tycMockMode ? "天眼查模拟" : ""}模式，模拟反查数据不可采用。</div>}
+      <p className="text-sm">AI 评分 ≥ 85 分可入池；没有电话的线索入池后，请到「AI 线索池 › 待反查」由管理员人工反查。</p>
       {/* 区 1：新建任务 */}
       <div className={cardClass}>
         <h2 className="text-base font-semibold">新建获客任务</h2>
@@ -345,24 +324,6 @@ export function LeadHunterClient() {
               <input type="number" min={0} max={3} className={inputClass} value={form.keywordIterations}
                 onChange={(event) => setForm({ ...form, keywordIterations: Number(event.target.value) })} />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">评分及格线（0-100）</label>
-              <input type="number" min={0} max={100} className={inputClass} value={form.passingScore}
-                onChange={(event) => setForm({ ...form, passingScore: Number(event.target.value) })} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">天眼查每日反查上限</label>
-              <input type="number" min={0} max={200} className={inputClass} value={form.dailyLookupLimit}
-                onChange={(event) => setForm({ ...form, dailyLookupLimit: Number(event.target.value) })} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">反查模式</label>
-              <select className={inputClass} value={form.lookupMode}
-                onChange={(event) => setForm({ ...form, lookupMode: event.target.value as "MANUAL" | "AUTO" })}>
-                <option value="MANUAL">人工勾选后反查（推荐）</option>
-                <option value="AUTO">自动反查（按上限）</option>
-              </select>
-            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" className={primaryButtonClass} disabled={busy || form.goal.trim().length < 5} onClick={() => void createTask()}>
@@ -372,7 +333,6 @@ export function LeadHunterClient() {
               {fakeSearchMode
                 ? "当前为演示假搜索模式：不消耗百度额度，返回固定样例数据。"
                 : "真实搜索：每次任务约消耗百度搜索「轮数 × 每轮关键词数(3~5)」次，请留意每日免费额度。"}
-              {form.lookupMode === "AUTO" && " 自动反查将按每日上限自动调用天眼查。"}
             </p>
           </div>
         </div>
@@ -475,7 +435,7 @@ export function LeadHunterClient() {
                       <td className="py-1 pr-3">{summary.keywords.join("、")}</td>
                       <td className="py-1 pr-3">{summary.candidates}</td>
                       <td className="py-1 pr-3">{summary.qualified}</td>
-                      <td className="py-1">{summary.parseFailed}</td>
+                      <td className="py-1">{summary.parseFailed} · 搜索失败 {summary.searchFailed ?? 0}{summary.note && <p>{summary.note}</p>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -485,13 +445,10 @@ export function LeadHunterClient() {
 
           {/* 候选清单 */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button type="button" className={secondaryButtonClass} disabled={busy || checkedLookupable.length < 1} onClick={() => void reverseLookup()}>
-              反查电话（已勾 {checkedLookupable.length} 条待反查）
-            </button>
             <button type="button" className={primaryButtonClass} disabled={busy || checkedAdmittable.length < 1} onClick={() => void admit()}>
               入池（已勾 {checkedAdmittable.length} 条）
             </button>
-            <button type="button" className={secondaryButtonClass} onClick={() => setChecked(new Set(candidates.filter((candidate) => ADMITTABLE.includes(candidate.status)).map((candidate) => candidate.id)))}>
+            <button type="button" className={secondaryButtonClass} onClick={() => setChecked(new Set(candidates.filter((candidate) => ADMITTABLE.includes(candidate.status) && (candidate.score ?? 0) >= 85).map((candidate) => candidate.id)))}>
               全选可入池
             </button>
             <button type="button" className={secondaryButtonClass} onClick={() => setChecked(new Set())}>取消勾选</button>
@@ -517,7 +474,7 @@ export function LeadHunterClient() {
                 </thead>
                 <tbody>
                   {candidates.map((candidate) => {
-                    const checkable = ADMITTABLE.includes(candidate.status);
+                    const checkable = ADMITTABLE.includes(candidate.status) && (candidate.score ?? 0) >= 85;
                     return (
                       <tr key={candidate.id} className="border-b border-[var(--border)] last:border-0 align-top">
                         <td className="py-2 pr-2">
@@ -536,9 +493,9 @@ export function LeadHunterClient() {
                         </td>
                         <td className="py-2 pr-3 font-medium">{candidate.score ?? "—"}</td>
                         <td className="max-w-64 py-2 pr-3 text-xs text-gray-500">{candidate.scoreReason ?? "—"}</td>
-                        <td className="py-2 pr-3 whitespace-nowrap">{candidate.phone ?? "—"}</td>
+                        <td className="py-2 pr-3 whitespace-nowrap">{candidate.phone ?? "—"}{candidate.phoneSource === "PAGE_TEXT" && <span className="ml-1 text-xs text-emerald-600" title={candidate.phoneEvidence?.excerpt}>网页原文</span>}</td>
                         <td className="py-2 pr-3 whitespace-nowrap text-gray-500">{[candidate.province, candidate.city].filter(Boolean).join(" ") || "—"}</td>
-                        <td className="py-2 pr-3"><Badge status={candidate.status} labels={CANDIDATE_STATUS_LABELS} /></td>
+                        <td className="py-2 pr-3"><Badge status={candidate.status} labels={CANDIDATE_STATUS_LABELS} />{candidate.statusReason && <p className="text-xs text-amber-700">{candidate.statusReason}</p>}</td>
                         <td className="py-2 text-gray-500">{candidate.round ?? "—"}</td>
                       </tr>
                     );
