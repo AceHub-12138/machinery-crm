@@ -260,3 +260,11 @@
 - CRM「平台管理 → Agent 管理」（仅超管）：Agent 账号新增/编辑/重置密码/停用启用（软删，只加不删）；模型与 API Key 多套配置、测试连接（编辑时 Key 留空复用存量密钥但按表单地址/模型测试）、一键切换生效（即时生效无需重新部署），env 配置永远兜底。
 - 门禁：tsc 0 错、vitest 864/864、eslint 0 错（599 条既有 warning）、next build 通过；浏览器端到端验收（登录页布局/双身份登录/知识问答/业务隔离/退出/Agent 管理页）全部通过。
 - 待办：用户 localhost 审核确认 → 出部署包（含 01/02 SQL 与部署说明）→ 挂 ai.dachuan.pro 子域名（NEXT_PUBLIC_XIAOCHUAN_URL 构建期改写 + Cookie 域 .dachuan.pro，员工会被登出一次）→ 智谱搜索/网页读取 MCP 接入。
+
+## 2026-11-06｜AI 获客联系方式核验（独立分支，待复审和部署）
+
+- 用户确认以 `github/main@5d6941e0b82a5a46e76cce4227391bac5ea1650e` 为基线，分支 `codex/lead-contact-verification`，独立 worktree；原本地 `k3/sales-screen-platform@57af5403` 不变。
+- 固定 85 分入池；无电话不自动分配；管理员在线索池手动反查，名称不符或经营状态未知进入人工确认。AI 电话、邮箱必须通过原文核对；模拟反查不回填 Lead。
+- 下线旧 N8N/FastGPT Lead 写入入口，历史表、migration、数据及 MCP 只读功能保留。归档文档位于 `docs/archive/n8n-lead-pipeline/`。
+- 新增迁移 `20261107010000_add_lead_contact_verification`，未在任何数据库执行。仅生成和校验 Prisma Client，不读取运行时密钥。
+- 未连接生产、未请求真实千帆/大模型/天眼查、未部署。验收数字及限制以 `docs/lead-contact-verification/README.md` 和 evidence 为准。

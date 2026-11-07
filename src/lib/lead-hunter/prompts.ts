@@ -114,7 +114,7 @@ export async function analyzeLead(
 
   const parsed = await llm({ system: ANALYSIS_SYSTEM, user, maxTokens: 700, signal: input.signal }) as Record<string, unknown>;
   const aiScore = Number(parsed?.aiScore);
-  if (!Number.isFinite(aiScore) || aiScore < 0 || aiScore > 100) throw new Error("评分无效");
+  if (!Number.isInteger(aiScore) || aiScore < 0 || aiScore > 100) throw new Error("评分无效");
   const companyName = String(parsed?.companyName ?? "").trim();
   const isCompany = parsed?.isCompany !== false && Boolean(companyName);
   const province = validProvince(parsed?.province);

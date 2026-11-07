@@ -2,7 +2,7 @@
 
 本目录只用于真实链路隔离验收，不是生产部署模板。默认模式是 `MCP_TOOL_MODE=IDENTITY_POC`；第一阶段完整 PASS 后，可仅在该隔离环境把模式切换为 `FULL_READ_ONLY`，验证身份工具加 24 个业务工具的 25 项目录。
 
-批次 04 另提供 `lead-e2e` Compose profile：增加只暴露 `lead_upsert` 的 `lead-mcp`、模型无关固定评分 mock 和 Lead E2E Runner。FastGPT 的 SERVICE 私钥来自 `.lead-service-private-jwk` Compose Secret；该文件与运行时 env 都被 Git 忽略，Lead MCP 只收到公钥。profile 不改变默认身份/只读验收目录。
+2026-11：获客专用 Compose profile、服务和运行脚本已移除。这里只用于人类身份与只读 Agent 网关验收。历史获客说明已归档，不能照旧执行。
 
 ## 固定版本与边界
 
@@ -74,17 +74,7 @@ Linux：
 ./deploy/identity-acceptance/accept.sh
 ```
 
-完成默认栈启动后，可在同一隔离环境执行 Lead 端到端验收：
-
-```powershell
-.\deploy\identity-acceptance\accept-lead-e2e.ps1
-```
-
-```bash
-./deploy/identity-acceptance/accept-lead-e2e.sh
-```
-
-该流程通过 FastGPT 官方 API 创建仅供 CI 的工作流和应用 Key，调用内部 DeepSeek/OpenAI Chat Completions 兼容 mock，再由 FastGPT 签发 SERVICE 断言调用 `lead_upsert`。它验证创建、同键重放、严格公司名指纹命中后合并同一 Lead、关键词累积、非法评分整次拒绝、模型/解析器版本落库和写审计。mock 只是 CI 的确定性替身，不限制生产选择 DeepSeek 或其他模型。
+获客端到端验收已下线；历史说明已归档。
 
 FULL_READ_ONLY 验收前，仅修改被 Git 忽略的隔离 `.env.identity-acceptance`，重建 CRM 和验收 Runner 镜像后执行：
 

@@ -185,6 +185,7 @@ describe("admitCandidates 入池分单", () => {
 
     expect(db.leads.size).toBe(1);
     expect(result.results[0].replay).toBe(true);
+    expect(db.candidates[0].status).toBe("ADMITTED");
   });
 
   it("低分归档候选不允许入池", async () => {
@@ -209,6 +210,14 @@ describe("admitCandidates 入池分单", () => {
     expect(result.results.map((row) => row.status)).toEqual(["ADMITTED", "REJECTED"]);
     expect([...db.leads.values()][0]).toMatchObject({ contactStatus: "PENDING_LOOKUP", assignedUserId: null, contactName: "王经理" });
     expect(db.operationLogs[0].action).toBe("AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT");
+  });
+  it("recovers a P2002 company-key race and continues with the next candidate", async () => {
+    const db = createFakeDb(); db.addTask("t1", baseConfig); db.addCandidate("race", "t1"); db.addCandidate("next", "t1", { companyName: "乙公司" });
+    vi.mocked(db.prisma.lead.findFirst).mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "existing", assignedUserId: null } as never);
+    vi.mocked(db.prisma.lead.create).mockRejectedValueOnce({ code: "P2002" });
+    const result = await admitCandidates(buildUser(), "t1", ["race", "next"], { prisma: db.prisma });
+    expect(result.results[0]).toMatchObject({ status: "ALREADY_IN_POOL", leadId: "existing" });
+    expect(result.results[1].status).toBe("ADMITTED");
   });
   it("rechecks historical phone evidence and drops an invented number", async () => {
     const db = createFakeDb(); db.addTask("t1", baseConfig); db.addCandidate("old", "t1", { snippet: "正文没有电话" });

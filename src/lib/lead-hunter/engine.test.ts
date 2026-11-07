@@ -53,6 +53,13 @@ function createFakeDb() {
       }),
     },
     $queryRaw: vi.fn(async () => []),
+    $executeRaw: vi.fn(async (_sql: TemplateStringsArray, progress: string, report: string, updatedAt: Date, id: string) => {
+      const task = tasks.get(id);
+      if (!task || task.status !== "running") return 0;
+      task.progress = JSON.parse(progress);
+      task.report = { ...JSON.parse(report), admitted: (task.report as { admitted?: number } | null)?.admitted ?? 0 };
+      task.updatedAt = updatedAt; return 1;
+    }),
     leadHuntCandidate: {
       findFirst: vi.fn(async () => null),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -116,6 +123,17 @@ function createFakeDb() {
 }
 
 describe("lead-hunter engine", () => {
+  it("[AUDIT-E2] an invented AI phone becomes a NO_CONTACT candidate", async () => {
+    const db = createFakeDb(); db.addTask("evidence", baseConfig);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName: "甲公司", aiScore: 90, phone: "13812345678" });
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({ content: "这里没有电话" })]) } }).runTask("evidence");
+    expect(db.candidates[0]).toMatchObject({ phone: null, status: "NO_CONTACT", phoneSource: null });
+  });
+  it("task heartbeat and completion preserve the admitted count updated by admission", async () => {
+    const db = createFakeDb(); db.addTask("count", baseConfig); db.tasks.get("count")!.report = { admitted: 3 };
+    await createLeadHunterEngine({ prisma: db.prisma, llm: vi.fn().mockResolvedValue({ keywords: ["k"] }), search: { searchWeb: vi.fn(async () => []) } }).runTask("count");
+    expect(db.tasks.get("count")!.report).toMatchObject({ admitted: 3 });
+  });
   it("多轮关键词迭代：第 2 轮规划输入带上第 1 轮关键词与达标反馈", async () => {
     const db = createFakeDb();
     db.addTask("t1", { ...baseConfig, maxRounds: 2, keywordIterations: 1 });

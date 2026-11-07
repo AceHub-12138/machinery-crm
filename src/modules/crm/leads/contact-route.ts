@@ -6,10 +6,14 @@ export async function contactAdminRoute(action: (user: SessionUser, signal: Abor
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const user = await getSessionUser();
-    requireContactAdmin(user);
     const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new DomainError("反查请求超时，请刷新状态后重试", 504)); }, 24_000); });
-    return NextResponse.json(await Promise.race([action(user!, controller.signal), timeout]));
+    const work = async () => {
+      const user = await getSessionUser();
+      requireContactAdmin(user);
+      controller.signal.throwIfAborted();
+      return action(user!, controller.signal);
+    };
+    return NextResponse.json(await Promise.race([work(), timeout]));
   } catch (error) {
     if (isDomainError(error)) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("[lead-contact] 请求失败", { name: error instanceof Error ? error.name : "UnknownError" });

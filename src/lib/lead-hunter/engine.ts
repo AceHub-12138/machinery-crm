@@ -86,7 +86,13 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
 
     const progress: TaskProgress = emptyProgress(config);
     const report: TaskReport = emptyReport(task.createdAt.toISOString());
-    const touch = () => prisma.leadHuntTask.update({ where: { id: taskId }, data: { progress, report } });
+    // JSON 字段中的 admitted 由入池事务单独原子累加；心跳不能用本地旧值覆盖它。
+    const touch = () => prisma.$executeRaw`
+      UPDATE lead_hunt_tasks SET progress = ${JSON.stringify(progress)},
+        report = JSON_SET(${JSON.stringify(report)}, '$.admitted', COALESCE(JSON_EXTRACT(report, '$.admitted'), 0)),
+        updatedAt = ${now()}
+      WHERE id = ${taskId} AND status = 'running'
+    `;
 
     try {
       const llm = await llmCaller();
@@ -203,7 +209,7 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
               phoneSource: analysis.phone ? "PAGE_TEXT" : null,
               ...(analysis.phone ? { phoneEvidence: pagePhoneEvidence(scored.item.url, pageText, analysis.phone, now()) } : {}),
               sourceUrl: scored.item.url.slice(0, 2048),
-              snippet: (scored.item.snippet || scored.item.content).slice(0, 5000),
+              snippet: pageText.slice(0, 5000),
               keywords: currentKeywords,
               round,
               score: analysis.aiScore,
@@ -239,20 +245,23 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
 
       progress.phase = "done";
       report.finishedAt = now().toISOString();
-      await prisma.leadHuntTask.updateMany({ where: { id: taskId, status: "running" }, data: { status: "done", progress, report, error: null } });
+      await touch();
+      await prisma.leadHuntTask.updateMany({ where: { id: taskId, status: "running" }, data: { status: "done", error: null } });
     } catch (error) {
       const finishedAt = now().toISOString();
+      report.finishedAt = finishedAt;
+      await touch();
       if (aborted()) {
         await prisma.leadHuntTask.updateMany({
           where: { id: taskId, status: "running" },
-          data: { status: "cancelled", progress, report: { ...report, finishedAt }, error: "用户取消" },
+          data: { status: "cancelled", error: "用户取消" },
         });
       } else {
         const message = error instanceof Error ? error.message : "未知错误";
         console.error("[lead-hunter] 任务失败", { taskId });
         await prisma.leadHuntTask.updateMany({
           where: { id: taskId, status: "running" },
-          data: { status: "failed", error: message.slice(0, 190), progress, report: { ...report, finishedAt } },
+          data: { status: "failed", error: message.slice(0, 190) },
         });
       }
     } finally {

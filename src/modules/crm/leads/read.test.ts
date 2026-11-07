@@ -109,6 +109,12 @@ describe("Lead 人类只读模块", () => {
       where: { reviewStatus: "INVALID" },
     }));
   });
+  it("combines contact and company filters with sales ownership, and rejects unknown statuses", async () => {
+    mocks.leadFindMany.mockResolvedValue([]); mocks.leadCount.mockResolvedValue(0);
+    await listHumanLeads(sales, new URLSearchParams({ contactStatus: "LEGACY", companyName: "甲" }));
+    expect(mocks.leadFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { assignedUserId: sales.id, contactStatus: null, companyName: { contains: "甲" } } }));
+    await expect(listHumanLeads(admin, new URLSearchParams({ contactStatus: "invented" }))).rejects.toMatchObject({ status: 400 });
+  });
 
   it("SALES 列表只查询本人 Lead 并映射指派用户", async () => {
     mocks.leadFindMany.mockResolvedValue([{

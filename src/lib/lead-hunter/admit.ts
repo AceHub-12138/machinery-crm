@@ -21,8 +21,8 @@ export async function admitCandidates(user: SessionUser, taskId: string, candida
   const results: AdmitResultItem[] = [];
   for (const candidateId of [...new Set(candidateIds)]) {
     const rejected = (reason: string): AdmitResultItem => ({ candidateId, status: "REJECTED", reason, leadId: null, assignedUserId: null, replay: false });
-    const duplicate = async (tx: Prisma.TransactionClient, lead: { id: string; assignedUserId: string | null }) => {
-      await tx.leadHuntCandidate.update({ where: { id: candidateId }, data: { status: "ALREADY_IN_POOL", leadId: lead.id } });
+    const duplicate = async (tx: Prisma.TransactionClient, lead: { id: string; assignedUserId: string | null }, wasAdmitted = false) => {
+      if (!wasAdmitted) await tx.leadHuntCandidate.update({ where: { id: candidateId }, data: { status: "ALREADY_IN_POOL", leadId: lead.id } });
       return { candidateId, status: "ALREADY_IN_POOL" as const, reason: "已在线索池", leadId: lead.id, assignedUserId: lead.assignedUserId, replay: true };
     };
     try {
@@ -33,7 +33,7 @@ export async function admitCandidates(user: SessionUser, taskId: string, candida
         const idempotencyKey = "lead-hunter-" + candidate.id;
         const dedupKey = companyDedupKey(candidate.companyName);
         const known = await tx.lead.findFirst({ where: { OR: [{ idempotencyKey }, { dedupKey }] }, select: { id: true, assignedUserId: true } });
-        if (known && ["ADMITTED", "ALREADY_IN_POOL", "PENDING_CONFIRM", "NO_CONTACT"].includes(candidate.status)) return duplicate(tx, known);
+        if (known && ["ADMITTED", "ALREADY_IN_POOL", "PENDING_CONFIRM", "NO_CONTACT"].includes(candidate.status)) return duplicate(tx, known, candidate.status === "ADMITTED");
         if (candidate.score === null || candidate.score < LEAD_ADMIT_MIN_SCORE) return rejected("AI 评分必须 ≥ 85 分");
         if (!["PENDING_CONFIRM", "NO_CONTACT"].includes(candidate.status)) return rejected("状态不允许入池：" + candidate.status);
         const evidence = candidate.phoneEvidence && typeof candidate.phoneEvidence === "object" && !Array.isArray(candidate.phoneEvidence) ? candidate.phoneEvidence : null;

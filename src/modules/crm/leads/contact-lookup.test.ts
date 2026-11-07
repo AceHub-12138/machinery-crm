@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { SessionUser } from "@/lib/permissions";
 import { beijingQuotaDate, confirmLeadContact, lookupLeadContact, reserveLookupQuota, classifyLookup } from "./contact-lookup";
 import { parseTianyanchaResponse, type TianyanchaLookup } from "@/lib/lead-hunter/tianyancha";
+import { admitCandidates } from "@/lib/lead-hunter/admit";
 const admin: SessionUser = { id: "admin", role: "SUPER_ADMIN", region: "", territories: [], viewScope: "ALL" };
 const at = new Date("2026-11-06T16:00:00.000Z");
 type Row = Record<string, unknown>;
@@ -41,6 +42,7 @@ function fakeDb() {
     user: { findMany: vi.fn(async () => [{ id: "sales", role: "SALES", isActive: true, territories: [{ province: "浙江省", cities: [] }] }]) },
     customer: { findFirst: vi.fn(async () => null) }, operationLog: { create: vi.fn(async ({ data }: { data: Row }) => { logs.push(data); return data; }) },
     $executeRaw: vi.fn(async (sql: TemplateStringsArray, date: string, limit?: number) => {
+      if (sql.join("").includes("UPDATE lead_hunt_tasks")) return 1;
       if (sql.join("").includes("INSERT IGNORE")) { if (!quotas.has(date)) quotas.set(date, 0); return 1; }
       if ((quotas.get(date) ?? 0) >= (limit ?? 0)) return 0;
       quotas.set(date, (quotas.get(date) ?? 0) + 1); return 1;
@@ -59,6 +61,15 @@ function deps(f: ReturnType<typeof fakeDb>, value: TianyanchaLookup = result()) 
 }
 afterEach(() => vi.unstubAllEnvs());
 describe("Lead contact lookup transactions", () => {
+  it("[AUDIT-A5] a contactless admitted candidate can subsequently be looked up in the Lead pool", async () => {
+    const f = fakeDb(); f.leads.splice(0);
+    const candidate = { id: "candidate", taskId: "task", companyName: "甲公司", status: "NO_CONTACT", score: 88, phone: null, email: null, snippet: "甲公司扩产", phoneEvidence: null, contactName: "王经理", sourceUrl: null, keywords: [], province: "浙江省", city: null, scoreReason: "扩产" };
+    Object.assign(f.db, { leadHuntTask: { findUnique: vi.fn(async () => ({ id: "task" })) }, leadHuntCandidate: { findUnique: vi.fn(async () => ({ ...candidate })), update: vi.fn(async ({ data }) => Object.assign(candidate, data)) }, $queryRaw: vi.fn(async () => []) });
+    const admitted = await admitCandidates(admin, "task", ["candidate"], { prisma: f.db });
+    expect(f.leads[0]).toMatchObject({ contactStatus: "PENDING_LOOKUP", phone: null, assignedUserId: null });
+    await lookupLeadContact(admin, admitted.results[0].leadId!, {}, deps(f));
+    expect(f.leads[0]).toMatchObject({ phone: "13800001111", assignedUserId: "sales", contactStatus: "HAS_CONTACT" });
+  });
   it("[AUDIT-A5] matching active lookup fills phone and assigns by province", async () => {
     const f = fakeDb(); await lookupLeadContact(admin, "l1", {}, deps(f));
     expect(f.leads[0]).toMatchObject({ phone: "13800001111", contactStatus: "HAS_CONTACT", assignedUserId: "sales", phoneSource: "TIANYANCHA" });
@@ -68,6 +79,12 @@ describe("Lead contact lookup transactions", () => {
     const f = fakeDb(); await lookupLeadContact(admin, "l1", { queryName: "乙公司" }, deps(f, result("乙公司")));
     expect(f.leads[0]).toMatchObject({ phone: null, contactStatus: "NEEDS_CONFIRM" });
     expect(f.lookups[0].status).toBe("NEEDS_CONFIRM");
+  });
+  it("revalidates the current company identity if a lead was renamed while the provider was running", async () => {
+    const f = fakeDb(); const d = deps(f);
+    d.client.lookupCompany.mockImplementationOnce(async () => { f.leads[0].companyName = "乙公司"; return result("甲公司"); });
+    await lookupLeadContact(admin, "l1", {}, d);
+    expect(f.leads[0]).toMatchObject({ phone: null, contactStatus: "NEEDS_CONFIRM" });
   });
   it("[AUDIT-T4] inactive mismatch is NOT_FOUND without a confirmation queue", async () => {
     const f = fakeDb(); await lookupLeadContact(admin, "l1", {}, deps(f, result("乙公司", "注销")));
@@ -84,6 +101,18 @@ describe("Lead contact lookup transactions", () => {
     expect(f.leads[0].contactStatus).toBe("LOOKUP_FAILED"); expect(f.lookups[0].status).toBe("FAILED");
     Object.assign(f.leads[0], { contactStatus: "LOOKING_UP", contactStatusUpdatedAt: new Date(at.getTime() - 120_001) });
     await lookupLeadContact(admin, "l1", {}, deps(f)); expect(f.leads[0].contactStatus).toBe("HAS_CONTACT");
+  });
+  it("a stale provider result cannot overwrite the request that reclaimed its lock", async () => {
+    const f = fakeDb(); const firstDeps = deps(f);
+    let release!: (value: TianyanchaLookup) => void; let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => { markStarted = resolve; });
+    firstDeps.client.lookupCompany.mockImplementationOnce(() => { markStarted(); return new Promise<TianyanchaLookup>((resolve) => { release = resolve; }); });
+    const first = lookupLeadContact(admin, "l1", {}, firstDeps);
+    const assertion = expect(first).rejects.toMatchObject({ status: 409 });
+    await started;
+    await lookupLeadContact(admin, "l1", {}, { ...deps(f, result("甲公司", "存续", "13800002222")), now: () => new Date(at.getTime() + 121_000) });
+    release(result()); await assertion;
+    expect(f.leads[0]).toMatchObject({ phone: "13800002222", contactStatus: "HAS_CONTACT" });
   });
   it("[AUDIT-T2] changes date at Beijing midnight and mock calls use no quota or Lead contacts", async () => {
     expect(beijingQuotaDate(new Date("2026-11-06T15:59:59Z"))).toBe("2026-11-06");

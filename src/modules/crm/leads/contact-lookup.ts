@@ -122,15 +122,16 @@ export async function lookupLeadContact(user: SessionUser, leadId: string, input
     lookupId = record.id;
     const result = cached ? fromCache(cached) : await (deps?.client ?? createTianyanchaClient()).lookupCompany(queryName, deps?.signal);
     deps?.signal?.throwIfAborted();
-    const outcome = classifyLookup(original.companyName, result);
     return await db.$transaction(async (tx) => {
+      deps?.signal?.throwIfAborted();
       // 旧超时请求不得覆盖接手此线索的新请求。
       const ownership = await tx.lead.updateMany({ where: owner, data: { contactStatusUpdatedAt: lockedAt } });
       if (!ownership.count) throw new DomainError("反查已超时并被其他请求接管", 409);
       const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
+      const outcome = classifyLookup(lead.companyName, result);
       const finishedAt = now();
       const row = await tx.leadContactLookup.update({ where: { id: record.id }, data: {
-        status: outcome.status, reason: outcome.reason, matchedName: result.companyName, tycCompanyId: result.tycCompanyId,
+        status: outcome.status, reason: body.queryName ? "管理员指定查询名" + (outcome.reason ? "；" + outcome.reason : "") : outcome.reason, matchedName: result.companyName, tycCompanyId: result.tycCompanyId,
         creditCode: result.creditCode, regStatus: result.regStatus, phones: result.phones, emails: result.emails,
         rawResponse: result.raw as Prisma.InputJsonValue, isMock: result.isMock, finishedAt,
       } });
@@ -138,6 +139,7 @@ export async function lookupLeadContact(user: SessionUser, leadId: string, input
       if (outcome.status === "FOUND" || (outcome.status === "NOT_FOUND" && safeIdentity)) await applyContact(tx, user, lead, row.id, queryName, result, false, finishedAt);
       else await tx.lead.update({ where: { id: leadId }, data: { contactStatus: outcome.status === "NEEDS_CONFIRM" ? "NEEDS_CONFIRM" : "LOOKUP_FAILED", contactStatusUpdatedAt: finishedAt } });
       await writeOperationLog(tx, { userId: user.id, action: "LEAD_CONTACT_LOOKUP|result=" + outcome.status, entityType: "Lead", entityId: leadId, afterData: { lookupId: row.id, charged, isMock: result.isMock } });
+      deps?.signal?.throwIfAborted();
       return { lookupId: row.id, ...outcome, isMock: result.isMock, charged };
     }, { maxWait: 2000, timeout: 5000 });
   } catch (error) {

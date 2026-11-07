@@ -15,6 +15,14 @@ const routes = [
 ];
 beforeEach(() => { vi.clearAllMocks(); for (const fn of [mocks.lookup, mocks.confirm, mocks.list, mocks.quota]) fn.mockResolvedValue({ ok: true }); });
 describe("contact verification API permissions", () => {
+  it("bounds the complete handler including an unresponsive session lookup to 24 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.user.mockReturnValue(new Promise(() => {}));
+      const pending = quota(); await vi.advanceTimersByTimeAsync(24_000);
+      expect((await pending).status).toBe(504); expect(mocks.quota).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
   it.each([null, "SALES", "FOREIGN_TRADE", "WAREHOUSE", "PURCHASE", "SUPER_ADMIN"])("enforces handler authorization for %s on all four endpoints", async (role) => {
     mocks.user.mockResolvedValue(role ? { id: "u", role } : null);
     for (const route of routes) expect((await route()).status).toBe(role === null ? 401 : role === "SUPER_ADMIN" ? 200 : 403);

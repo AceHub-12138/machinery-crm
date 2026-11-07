@@ -61,7 +61,7 @@ Compose/Kubernetes 必须引用这个不可变标签或进一步固定 digest，
 
 MCP 固定的 `Authorization` 服务 Key仍由 FastGPT MCP Server 配置提供。人类工作流发送用户断言，allowlist Lead 工作流发送 SERVICE 断言；两者互斥，requestId 始终只用于追踪。
 
-Lead 生产链路拆为 `workflows/lead-score-agent-v1.json` 与 `workflows/lead-write-agent-v1.json`。评分应用采用模型无关契约且没有 MCP 权限；写应用整页校验后一次调用 `lead_upsert`，并且是唯一加入 SERVICE 应用 allowlist 的 Lead 应用。首发可以绑定 DeepSeek，也可切换其他支持严格 JSON 的模型；更换时只升级评分应用、更新 `sourceModelVersion` 并重新验收。
+旧获客工作流及其应用均已停用；请勿再创建或启用它们。历史说明见 docs/archive/n8n-lead-pipeline/。
 
 
 ## 2026-11 获客链路下线
