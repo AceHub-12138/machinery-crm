@@ -1789,4 +1789,3 @@ Calling setState synchronously within an effect body causes cascading renders th
   234:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 ✖ 622 problems (0 errors, 622 warnings)
-

@@ -82,7 +82,7 @@ Prisma 校验/生成及 SQL 契约测试通过。**没有执行数据库 up/down
 
 构建仍有 1 条 Turbopack NFT 文件追踪警告，指向未修改的 next.config.ts → uploads 路径，以及既有 middleware 弃用提示。未宣称这些警告全部消失。
 
-日志仅把本机 worktree 绝对路径替换成 `<workspace>`，其余内容保留；空文件代表该命令无诊断输出，退出码另记录于 [verification.json](verification.json)。Windows 全量测试需要把 Git 的 usr/bin 加入当前进程 PATH，以供现有 gzip/Bash 用例使用；未修改原有用例绕过检查。依赖仅按冻结锁文件离线安装，忽略安装脚本，未更改版本。
+日志把本机 worktree 绝对路径替换成 `<workspace>`，并规范行尾空白及末尾空行；诊断正文未改写；空文件代表该命令无诊断输出，退出码另记录于 [verification.json](verification.json)。Windows 全量测试需要把 Git 的 usr/bin 加入当前进程 PATH，以供现有 gzip/Bash 用例使用；未修改原有用例绕过检查。依赖仅按冻结锁文件离线安装，忽略安装脚本，未更改版本。
 
 ## 7. 与原方案的差异和未完成项
 
