@@ -135,3 +135,8 @@ Linux 分别使用 `rollback.sh` 和 `rollback.sh --purge-isolated-data`。隔�
 ## 第二阶段准入记录
 
 只有同时具备以下证据才能把 `MCP_TOOL_MODE` 改为 `FULL_READ_ONLY` 并开始独立第二个 Commit：镜像 revision/测试标签与本地 `sha256` image ID、Compose 全服务健康、上述九组检查全部 PASS、OperationLog 抽检、日志敏感信息扫描为零、明确记录验收时间和操作者。FastGPT 定向测试不可跳过；自动化单测通过或直接 MCP 调用通过均不能替代真实 CRM → Gateway → FastGPT → MCP 链路。
+
+
+## 2026-11 获客链路下线
+
+N8N/FastGPT Lead 应用已停用，lead 专用工作流与验收入口已移除；此目录仅维护人类身份与只读 Agent 网关。历史 SERVICE 补丁为可追溯兼容代码，未配置应用 allowlist，不会启用获客写入。历史说明不再作为上线指引。

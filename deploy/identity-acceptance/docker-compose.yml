@@ -23,7 +23,7 @@ services:
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes", "--save", "60", "1"]
     volumes:
       - identity-redis:/data
-    networks: [identity-data, lead-auth]
+    networks: [identity-data]
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep PONG"]
       interval: 5s
@@ -68,61 +68,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
-
-  lead-mcp:
-    image: ${CRM_IMAGE}
-    environment:
-      NODE_ENV: production
-      PORT: 3012
-      HOSTNAME: 0.0.0.0
-      AUTH_SECRET: ${AUTH_SECRET}
-      MCP_TOOL_MODE: LEAD_WRITE_INTERNAL
-      MCP_COMMAND_API_KEYS_JSON: '[{"name":"fastgpt-lead-acceptance","keyHash":"${MCP_LEAD_SERVICE_KEY_HASH}"}]'
-      MCP_API_KEYS_JSON: ${MCP_API_KEYS_JSON}
-      MCP_COMMAND_TOOL_ALLOWLIST: lead_upsert
-      MCP_COMMAND_PRINCIPAL_ALLOWLIST: ${LEAD_SERVICE_ASSERTION_PRINCIPAL_ID}
-      MCP_COMMAND_DATABASE_URL: ${MCP_COMMAND_DATABASE_URL}
-      MCP_AUDIT_DATABASE_URL: ${MCP_AUDIT_DATABASE_URL}
-      MCP_AUDIT_USER_ID: ${MCP_AUDIT_USER_ID}
-      MCP_ALLOWED_HOSTS: lead-mcp:3012
-      MCP_ALLOWED_ORIGINS: http://fastgpt:3000
-      MCP_LEGACY_USER_BOUND_AUTH: "false"
-      MCP_QUERY_TIMEOUT_MS: 5000
-      AGENT_AUTH_AUDIENCE: ${AGENT_AUTH_AUDIENCE}
-      AGENT_AUTH_PUBLIC_KEYS_JSON: ${AGENT_AUTH_PUBLIC_KEYS_JSON}
-      LEAD_WRITER_AUTH_ISSUER: ${LEAD_WRITER_AUTH_ISSUER}
-      LEAD_WRITER_AUTH_AUDIENCE: ${LEAD_WRITER_AUTH_AUDIENCE}
-      LEAD_WRITER_AUTH_TOKEN_TTL_SECONDS: ${LEAD_WRITER_AUTH_TOKEN_TTL_SECONDS}
-      LEAD_WRITER_AUTH_KEYS_JSON: ${LEAD_WRITER_AUTH_KEYS_JSON}
-      LEAD_WRITER_AUTH_REDIS_URL: ${LEAD_WRITER_AUTH_REDIS_URL}
-      LEAD_WRITER_AUTH_REDIS_PREFIX: ${LEAD_WRITER_AUTH_REDIS_PREFIX}
-      LEAD_WRITER_AUTH_RATE_LIMIT_PER_MINUTE: ${LEAD_WRITER_AUTH_RATE_LIMIT_PER_MINUTE}
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      identity-redis:
-        condition: service_healthy
-    networks: [identity-data, lead-auth]
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3012/api/mcp/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-    profiles: [lead-e2e]
-
-  lead-llm-mock:
-    image: dachuanpro-identity-acceptance-runner:1.0.0
-    command: ["node", "scripts/lead-llm-mock.mjs"]
-    environment:
-      LEAD_LLM_MOCK_HOST: 0.0.0.0
-      LEAD_LLM_MOCK_PORT: 4010
-    networks: [lead-auth]
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4010/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    profiles: [lead-e2e]
 
   fastgpt-mongo:
     image: mongo:5.0.32
@@ -204,7 +149,7 @@ services:
       CHECK_INTERNAL_IP: "false"
     security_opt:
       - no-new-privileges:true
-    networks: [fastgpt-data, lead-auth]
+    networks: [fastgpt-data]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -311,22 +256,11 @@ services:
       LOG_ENABLE_CONSOLE: "true"
       LOG_CONSOLE_LEVEL: info
       HOSTNAME: 0.0.0.0
-      LEAD_SERVICE_ASSERTION_ENABLED: ${LEAD_SERVICE_ASSERTION_ENABLED}
-      LEAD_SERVICE_ASSERTION_APP_IDS: ${LEAD_SERVICE_ASSERTION_APP_IDS}
-      LEAD_SERVICE_ASSERTION_ISSUER: ${LEAD_SERVICE_ASSERTION_ISSUER}
-      LEAD_SERVICE_ASSERTION_AUDIENCE: ${LEAD_SERVICE_ASSERTION_AUDIENCE}
-      LEAD_SERVICE_ASSERTION_TOKEN_TTL_SECONDS: ${LEAD_SERVICE_ASSERTION_TOKEN_TTL_SECONDS}
-      LEAD_SERVICE_ASSERTION_ACTIVE_KID: ${LEAD_SERVICE_ASSERTION_ACTIVE_KID}
-      LEAD_SERVICE_ASSERTION_PRIVATE_JWK_FILE: /run/secrets/lead_service_private_jwk
-      LEAD_SERVICE_ASSERTION_PRINCIPAL_ID: ${LEAD_SERVICE_ASSERTION_PRINCIPAL_ID}
-      LEAD_SERVICE_ASSERTION_REDIS_URL: ${LEAD_SERVICE_ASSERTION_REDIS_URL}
-      LEAD_SERVICE_ASSERTION_REDIS_PREFIX: ${LEAD_SERVICE_ASSERTION_REDIS_PREFIX}
-      LEAD_SERVICE_ASSERTION_RATE_LIMIT_PER_MINUTE: ${LEAD_SERVICE_ASSERTION_RATE_LIMIT_PER_MINUTE}
       AGENT_AUTH_AUDIENCE: ${AGENT_AUTH_AUDIENCE}
       AGENT_AUTH_PUBLIC_KEYS_JSON: ${AGENT_AUTH_PUBLIC_KEYS_JSON}
       AGENT_AUTH_REDIS_PREFIX: ${AGENT_AUTH_REDIS_PREFIX}
-      NO_PROXY: localhost,127.0.0.1,nginx,crm,lead-mcp,lead-llm-mock,identity-redis,mysql,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-minio,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,host.docker.internal
-      no_proxy: localhost,127.0.0.1,nginx,crm,lead-mcp,lead-llm-mock,identity-redis,mysql,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-minio,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,host.docker.internal
+      NO_PROXY: localhost,127.0.0.1,nginx,crm,identity-redis,mysql,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-minio,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,host.docker.internal
+      no_proxy: localhost,127.0.0.1,nginx,crm,identity-redis,mysql,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-minio,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,host.docker.internal
     depends_on:
       fastgpt-mongo:
         condition: service_healthy
@@ -342,11 +276,7 @@ services:
         condition: service_healthy
       fastgpt-aiproxy:
         condition: service_healthy
-    networks: [identity-app, fastgpt-data, lead-auth]
-    secrets:
-      - source: lead_service_private_jwk
-        target: lead_service_private_jwk
-        mode: 0400
+    networks: [identity-app, fastgpt-data]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/"]
       interval: 15s
@@ -391,35 +321,12 @@ services:
     networks: [identity-app, identity-data, fastgpt-data]
     profiles: [acceptance]
 
-  lead-e2e-runner:
-    image: dachuanpro-identity-acceptance-runner:1.0.0
-    env_file: .env.identity-acceptance
-    environment:
-      LEAD_E2E_FASTGPT_URL: http://fastgpt:3000/api/v1/chat/completions
-      LEAD_E2E_DATABASE_URL: ${DATABASE_URL}
-    command: ["corepack", "pnpm", "exec", "tsx", "scripts/run-lead-e2e-acceptance.ts"]
-    depends_on:
-      fastgpt:
-        condition: service_healthy
-      lead-mcp:
-        condition: service_healthy
-      lead-llm-mock:
-        condition: service_healthy
-    networks: [identity-data, fastgpt-data, lead-auth]
-    profiles: [lead-e2e]
-
 networks:
   identity-app:
   identity-data:
     internal: true
   fastgpt-data:
     internal: true
-  lead-auth:
-    internal: true
-
-secrets:
-  lead_service_private_jwk:
-    file: ./.lead-service-private-jwk
 
 volumes:
   identity-mysql:

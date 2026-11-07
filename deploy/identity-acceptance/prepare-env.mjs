@@ -9,8 +9,6 @@ const output = resolve(outputArg);
 const secret = (bytes = 32) => randomBytes(bytes).toString("base64url");
 const serviceKey = `dcp_accept_${secret(32)}`;
 const serviceHash = createHash("sha256").update(serviceKey).digest("hex");
-const leadServiceKey = `dcp_lead_accept_${secret(32)}`;
-const leadServiceHash = createHash("sha256").update(leadServiceKey).digest("hex");
 const mysqlPassword = secret(24);
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 const keys = JSON.stringify([{
@@ -22,26 +20,17 @@ const humanPublicKeys = JSON.stringify([{
   kid: "identity-acceptance-1",
   publicJwk: publicKey.export({ format: "jwk" }),
 }]);
-const leadKeys = generateKeyPairSync("ed25519");
-const leadPublicKeys = JSON.stringify([{
-  kid: "lead-service-acceptance-1",
-  publicJwk: leadKeys.publicKey.export({ format: "jwk" }),
-}]);
 const replacements = {
   GENERATE_MYSQL_PASSWORD: mysqlPassword,
   GENERATE_MYSQL_ROOT_PASSWORD: secret(24),
   GENERATE_MCP_QUERY_DB_PASSWORD: secret(24),
   GENERATE_MCP_AUDIT_DB_PASSWORD: secret(24),
-  GENERATE_MCP_COMMAND_DB_PASSWORD: secret(24),
   GENERATE_REDIS_PASSWORD: secret(24),
   GENERATE_AUTH_SECRET: secret(48),
   GENERATE_MCP_SERVICE_KEY_HASH: serviceHash,
   GENERATE_MCP_SERVICE_KEY: serviceKey,
-  GENERATE_MCP_LEAD_SERVICE_KEY_HASH: leadServiceHash,
-  GENERATE_MCP_LEAD_SERVICE_KEY: leadServiceKey,
   GENERATE_AGENT_AUTH_KEYS_JSON: keys,
   GENERATE_AGENT_AUTH_PUBLIC_KEYS_JSON: humanPublicKeys,
-  GENERATE_LEAD_WRITER_AUTH_KEYS_JSON: leadPublicKeys,
   GENERATE_ACCEPTANCE_USER_PASSWORD: `Acceptance!${secret(18)}`,
   GENERATE_FASTGPT_ROOT_PASSWORD: `FastGPT!${secret(18)}`,
   GENERATE_FASTGPT_ROOT_KEY: secret(32),
@@ -80,10 +69,4 @@ if (requestedToolMode) {
   }
 }
 writeFileSync(output, content, { encoding: "utf8", flag: "wx", mode: 0o600 });
-const leadPrivateKeyOutput = resolve(output, "..", ".lead-service-private-jwk");
-writeFileSync(leadPrivateKeyOutput, JSON.stringify(leadKeys.privateKey.export({ format: "jwk" })), {
-  encoding: "utf8",
-  flag: "wx",
-  mode: 0o600,
-});
 console.log(`Created isolated environment file: ${output}`);

@@ -3,8 +3,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createMcpToolErrorResult, MCP_IDENTITY_TOOL_NAME, McpToolError, registerMcpTools } from "@/lib/mcp/tools";
 import { AgentAssertionError } from "@/lib/agent-auth/token";
-import { registerMcpCommandTools } from "@/lib/mcp/command-tools";
-import { LeadWriterRateLimitError } from "@/lib/agent-auth/service-runtime";
 
 // AGENT_ACCOUNT：Agent 独立账号（非 CRM 员工）。不参与任何业务工具角色矩阵，
 // canCallMcpBusinessTool 对它恒为 false —— 业务工具不下发、调用再校验必拒，双保险。
@@ -28,18 +26,6 @@ export function isMcpStaffUser(user: McpUser): user is McpStaffUser {
   return user.role !== "AGENT_ACCOUNT";
 }
 
-export type McpServicePrincipal = {
-  principalType: "SERVICE";
-  principalId: string;
-  scopes: string[];
-  jti: string;
-};
-
-export type McpCommandContext = {
-  requestId: string;
-  principal: McpServicePrincipal;
-};
-
 export type McpApiKeyConfig = {
   name: string;
   userId?: string;
@@ -51,15 +37,12 @@ export type McpApplicationConfig = {
   rejectedAuditUserId: string;
   queryDatabaseUrl?: string;
   auditDatabaseUrl?: string;
-  commandDatabaseUrl?: string;
   allowedHosts: string[];
   allowedOrigins: string[];
   legacyUserBindingEnabled?: boolean;
-  toolMode?: "identity-poc" | "full-read-only" | "lead-write-internal";
+  toolMode?: "identity-poc" | "full-read-only";
   allowedBusinessToolNames?: string[];
   allowedBusinessToolRoles?: McpRole[];
-  allowedCommandToolNames?: string[];
-  allowedServicePrincipalIds?: string[];
   queryTimeoutMs?: number;
   diagnosticLogging?: boolean;
 };
@@ -81,7 +64,6 @@ export type McpDataSource = {
   findUser?(userId: string): Promise<McpUser | null>;
   findActiveUser?(userId: string): Promise<McpUser | null>;
   execute(toolName: string, args: Record<string, unknown>, user: McpUser): Promise<unknown>;
-  executeCommand?(toolName: string, args: Record<string, unknown>, context: McpCommandContext): Promise<unknown>;
   writeAudit(input: McpAuditInput): Promise<void>;
 };
 
@@ -89,15 +71,10 @@ export type McpIdentityVerifier = {
   verify(assertion: string): Promise<{ userId: string; jti: string }>;
 };
 
-export type McpServiceIdentityVerifier = {
-  verify(assertion: string): Promise<McpServicePrincipal>;
-};
-
 export type McpApplicationDependencies = {
   config: McpApplicationConfig;
   dataSource: McpDataSource;
   identityVerifier?: McpIdentityVerifier;
-  serviceIdentityVerifier?: McpServiceIdentityVerifier;
   now?: () => Date;
 };
 
@@ -376,9 +353,7 @@ export function createMcpRequestHandler(dependencies: McpApplicationDependencies
 
     let userId: string | undefined;
     let user: McpUser | null = null;
-    const commandMode = dependencies.config.toolMode === "lead-write-internal";
     const assertion = request.headers.get("x-dachuan-user-assertion")?.trim();
-    const serviceAssertion = request.headers.get("x-dachuan-service-assertion")?.trim();
     const useLegacyIdentity = dependencies.config.legacyUserBindingEnabled === true && !assertion;
     const requiresUserIdentity = !SERVICE_IDENTITY_METHODS.has(rpcRequest.method || "");
 
@@ -390,40 +365,19 @@ export function createMcpRequestHandler(dependencies: McpApplicationDependencies
     if (
       requestedToolName
       && requestedToolName !== MCP_IDENTITY_TOOL_NAME
-      && ((commandMode
-        && dependencies.config.allowedCommandToolNames
-        && !dependencies.config.allowedCommandToolNames.includes(requestedToolName))
-        || (!commandMode
-          && dependencies.config.allowedBusinessToolNames
-          && !dependencies.config.allowedBusinessToolNames.includes(requestedToolName)))
+      && dependencies.config.allowedBusinessToolNames
+      && !dependencies.config.allowedBusinessToolNames.includes(requestedToolName)
     ) {
       return rejectWithAudit(403, -32003, "MCP tool is not enabled", apiKey.name, "TOOL_NOT_ALLOWED");
     }
 
-    let servicePrincipal: McpServicePrincipal | null = null;
-    if (commandMode && requiresUserIdentity) {
-      if (!serviceAssertion) {
-        return rejectWithAudit(400, -32600, "Missing X-Dachuan-Service-Assertion", apiKey.name, "SERVICE_ASSERTION_MISSING");
-      }
-      if (!dependencies.serviceIdentityVerifier) {
-        return rejectWithAudit(503, -32603, "MCP service identity verifier is unavailable", apiKey.name, "SERVICE_IDENTITY_VERIFIER_UNAVAILABLE");
-      }
-      try {
-        servicePrincipal = await dependencies.serviceIdentityVerifier.verify(serviceAssertion);
-      } catch (error) {
-        if (error instanceof LeadWriterRateLimitError) {
-          return rejectWithAudit(429, -32029, "Lead writer rate limit exceeded", apiKey.name, "SERVICE_RATE_LIMITED");
-        }
-        const reason = error instanceof AgentAssertionError ? error.code : "ASSERTION_INVALID";
-        return rejectWithAudit(401, -32001, "Invalid service assertion", apiKey.name, reason);
-      }
-    } else if (useLegacyIdentity) {
+    if (useLegacyIdentity) {
       userId = apiKey.userId;
       if (!userId) {
         return rejectWithAudit(403, -32003, "Legacy MCP identity is not configured", apiKey.name, "LEGACY_IDENTITY_MISSING");
       }
     } else {
-      if (requiresUserIdentity && !commandMode) {
+      if (requiresUserIdentity) {
         if (!assertion) {
           return rejectWithAudit(400, -32600, "Missing X-Dachuan-User-Assertion", apiKey.name, "ASSERTION_MISSING");
         }
@@ -460,16 +414,6 @@ export function createMcpRequestHandler(dependencies: McpApplicationDependencies
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
-    if (commandMode) {
-      registerMcpCommandTools(server, {
-        requestId,
-        principal: servicePrincipal,
-        dataSource: dependencies.dataSource,
-        now,
-        allowedCommandToolNames: dependencies.config.allowedCommandToolNames,
-        allowedServicePrincipalIds: dependencies.config.allowedServicePrincipalIds,
-      });
-    } else {
       registerMcpTools(server, {
         requestId,
         user,
@@ -481,7 +425,6 @@ export function createMcpRequestHandler(dependencies: McpApplicationDependencies
         queryTimeoutMs: dependencies.config.queryTimeoutMs ?? 5_000,
         diagnosticLogging: dependencies.config.diagnosticLogging === true,
       });
-    }
 
     let response: Response;
     try {
