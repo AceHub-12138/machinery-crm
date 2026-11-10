@@ -61,6 +61,16 @@ function deps(f: ReturnType<typeof fakeDb>, value: TianyanchaLookup = result()) 
 }
 afterEach(() => vi.unstubAllEnvs());
 describe("Lead contact lookup transactions", () => {
+  it.each([null, "", "   "])("[F2] 无企业名称 %s 禁止采用，仍可驳回", async (matchedName) => {
+    const f = fakeDb(); await lookupLeadContact(admin, "l1", {}, deps(f, result("")));
+    f.lookups[0].matchedName = matchedName;
+    const before = structuredClone({ leads: f.leads, lookups: f.lookups, logs: f.logs });
+    await expect(confirmLeadContact(admin, String(f.lookups[0].id), { decision: "ADOPT" }, deps(f))).rejects.toMatchObject({ status: 409 });
+    expect({ leads: f.leads, lookups: f.lookups, logs: f.logs }).toEqual(before);
+    await confirmLeadContact(admin, String(f.lookups[0].id), { decision: "REJECT" }, deps(f));
+    expect(f.lookups[0].status).toBe("REJECTED");
+    expect(f.leads[0]).toMatchObject({ phone: null, contactStatus: "LOOKUP_FAILED", assignedUserId: null });
+  });
   it("[AUDIT-A5] a contactless admitted candidate can subsequently be looked up in the Lead pool", async () => {
     const f = fakeDb(); f.leads.splice(0);
     const candidate = { id: "candidate", taskId: "task", companyName: "甲公司", status: "NO_CONTACT", score: 88, phone: null, email: null, snippet: "甲公司扩产", phoneEvidence: null, contactName: "王经理", sourceUrl: null, keywords: [], province: "浙江省", city: null, scoreReason: "扩产" };

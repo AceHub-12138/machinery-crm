@@ -1,0 +1,2 @@
+PASS: final build CSS embeds all five real Geist WOFF2 assets; decoded bytes, wOF2 headers and SHA-256 match local originals.
+正式发布以 Linux CI 构建为准。

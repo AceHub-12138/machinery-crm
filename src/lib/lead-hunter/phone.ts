@@ -1,3 +1,5 @@
+import { normalizedCompanyName } from "./dedup";
+
 /** 只提取原文和结构化字段中的号码；AI 输出仅用于选择原文号码。 */
 export type ExtractedPhone = { value: string; kind: "mobile" | "landline" };
 const MOBILE = /(?<![\dA-Za-z])(?:\+?86[-\s]?)?1[3-9]\d{9}(?!\d)/g;
@@ -21,7 +23,22 @@ export function splitAndSanitizePhones(raw: unknown): ExtractedPhone[] {
   }).sort((a, b) => Number(b.kind === "mobile") - Number(a.kind === "mobile"));
 }
 export function extractPhones(text: string): ExtractedPhone[] {
-  return splitAndSanitizePhones([...(text.match(MOBILE) ?? []), ...(text.match(LANDLINE) ?? [])]);
+  return splitAndSanitizePhones(pagePhoneMatches(text).map((match) => match[0]));
+}
+function pagePhoneMatches(text: string) {
+  let previous: RegExpMatchArray | undefined;
+  let previousWasFax = false;
+  return [...text.matchAll(MOBILE), ...text.matchAll(LANDLINE)].sort((a, b) => a.index! - b.index!).filter((match) => {
+    // 表格转文字常把标签拆成空格、换行、制表符；先限原文 30 字，再去空白。
+    const prefix = Array.from(text.slice(0, match.index)).slice(-30).join("").replace(/[\s\u3000\u00a0]+/gu, "");
+    const faxLabel = /(?:传真(?:号码|号)?|fax(?:no|number)?)[\p{P}\p{S}]*(?:[为是][\p{P}\p{S}]*)?(?:fax(?:no|number)?[\p{P}\p{S}]*)?(?:[为是][\p{P}\p{S}]*)?$/iu.test(prefix);
+    const continuesFax = previousWasFax && previous !== undefined
+      // 传真列表只在同一行传递；标签自身仍允许跨行空白。
+      && /^(?:[^\S\r\n]|[/、,，;；])+$/u.test(text.slice(previous.index! + previous[0].length, match.index));
+    previousWasFax = faxLabel || continuesFax;
+    previous = match;
+    return !previousWasFax;
+  });
 }
 export function sanitizeLlmPhone(value: unknown): string | null {
   return typeof value === "string" ? cleanPhone(value.trim())?.value ?? null : null;
@@ -33,14 +50,73 @@ export function sanitizeEmails(raw: unknown): string[] {
 export function extractEmails(text: string): string[] {
   return sanitizeEmails(text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? []);
 }
-export function verifiedPageContact(pointer: unknown, pageText: string) {
-  const normalized = sanitizeLlmPhone(pointer);
-  return normalized ? extractPhones(pageText).find((phone) => phoneKey(phone.value) === phoneKey(normalized))?.value ?? null : null;
+function companyPhoneMatch(pageText: string, phone: string, companyName: string) {
+  const fullName = normalizedCompanyName(companyName);
+  if (!fullName) return null;
+  const body = fullName.replace(/(?:(?:股份有限公司|有限责任公司|有限公司|集团|公司|厂))+$/u, "");
+  const names = [fullName, ...(Array.from(body).length >= 4 ? [body] : [])];
+  const companyMentions = (text: string) => {
+    const normalized = normalizedCompanyName(text);
+    const targetRanges = names.flatMap((name) => {
+      const ranges: { start: number; end: number; isBody: boolean }[] = [];
+      for (let start = normalized.indexOf(name); start >= 0; start = normalized.indexOf(name, start + 1)) {
+        ranges.push({ start, end: start + name.length, isBody: name === body && Array.from(body).length >= 4 });
+      }
+      return ranges;
+    });
+    // 只识别有限公司类全称，避免把“公司地址/公司电话/厂址”当成另一企业。
+    // 已知局限：名录只写“××厂”或简称、没有有限公司类全称时，无法区分归属。
+    // 用后缀位置归属目标区间，避免把“欢迎访问/版权所有/2024”等前缀吞进企业名。
+    return [...normalized.matchAll(/股份有限公司|有限责任公司|集团有限公司|有限公司/gu)]
+      .filter((entry) => /[\p{Script=Han}a-z0-9]{2}$/u.test(normalized.slice(0, entry.index)))
+      .map((entry) => {
+        const start = entry.index!;
+        const end = start + entry[0].length;
+        // 至少四字主体紧接其他有限公司类后缀时，也属于目标；中间夹字则不接受。
+        return { start, end, isTarget: targetRanges.some((range) => (range.start <= start && end <= range.end)
+          || (range.isBody && range.end === start)) };
+      });
+  };
+  for (const match of pagePhoneMatches(pageText)) {
+    const value = sanitizeLlmPhone(match[0]);
+    if (!value || phoneKey(value) !== phoneKey(phone)) continue;
+    // 在原文上取前后各 80 字，再规范化比对，避免标点被去掉后扩大范围。
+    const rawBefore = pageText.slice(0, match.index);
+    const rawAfter = pageText.slice(match.index + match[0].length);
+    const before = Array.from(rawBefore).slice(-80).join("");
+    const after = Array.from(rawAfter).slice(0, 80).join("");
+    // 先按原文分条；逗号、顿号、空格、冒号和括号不分条。
+    const entryBefore = rawBefore.split(/[\n\r。；;|]/u).pop()!;
+    const entryAfter = rawAfter.split(/[\n\r。；;|]/u, 1)[0];
+    const entryHasCompany = companyMentions(entryBefore + match[0] + entryAfter).length > 0;
+    // 本条无全称才保留第二轮跨条目行为，支持“公司名单独一行、后续行电话”。
+    const scopeBefore = entryHasCompany ? Array.from(entryBefore).slice(-80).join("") : before;
+    const scopeAfter = entryHasCompany ? Array.from(entryAfter).slice(0, 80).join("") : after;
+    const beforeText = normalizedCompanyName(scopeBefore);
+    const afterText = normalizedCompanyName(scopeAfter);
+    const beforeCompanies = companyMentions(scopeBefore);
+    const afterCompanies = companyMentions(scopeAfter);
+    const targetBefore = Math.max(...names.map((name) => beforeText.lastIndexOf(name)));
+    const targetAfter = Math.min(...names.map((name) => afterText.indexOf(name)).filter((index) => index >= 0));
+    const precedingTarget = targetBefore >= 0 && !beforeCompanies.some((company) => !company.isTarget && company.end > targetBefore);
+    const nearestBefore = beforeCompanies[beforeCompanies.length - 1];
+    const followingTarget = Number.isFinite(targetAfter) && (!nearestBefore || nearestBefore.isTarget)
+      && !afterCompanies.some((company) => !company.isTarget && company.start <= targetAfter);
+    if (precedingTarget || followingTarget) {
+      return { value, excerpt: before + match[0] + after };
+    }
+  }
+  return null;
 }
-export function pagePhoneEvidence(sourceUrl: string | null, text: string, phone: string, now = new Date()) {
-  const match = [...text.matchAll(MOBILE), ...text.matchAll(LANDLINE)].find((entry) => {
-    const value = sanitizeLlmPhone(entry[0]); return value && phoneKey(value) === phoneKey(phone);
-  });
-  const index = match?.index ?? 0;
-  return { sourceUrl, excerpt: text.slice(Math.max(0, index - 40), index + (match?.[0].length ?? phone.length) + 40), extractedAt: now.toISOString() };
+/** 网页号码的前后各 80 字内必须出现目标公司全称或至少 4 字的名称主体。 */
+export function phoneNearCompany(pageText: string, phone: string, companyName: string): boolean {
+  return companyPhoneMatch(pageText, phone, companyName) !== null;
+}
+export function verifiedPageContact(pointer: unknown, pageText: string, companyName: string) {
+  const normalized = sanitizeLlmPhone(pointer);
+  return normalized ? companyPhoneMatch(pageText, normalized, companyName)?.value ?? null : null;
+}
+export function pagePhoneEvidence(sourceUrl: string | null, text: string, phone: string, companyName: string, now = new Date()) {
+  const match = companyPhoneMatch(text, phone, companyName);
+  return match ? { sourceUrl, excerpt: match.excerpt, extractedAt: now.toISOString() } : null;
 }

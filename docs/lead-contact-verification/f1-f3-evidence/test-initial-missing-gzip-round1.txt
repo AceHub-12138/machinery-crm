@@ -1,0 +1,32 @@
+> machinery-crm@1.5.2-rc.4 test <workspace>
+> vitest run
+
+
+ RUN  v4.1.10 <workspace>
+
+ ❯ src/lib/currency-deployment.test.ts (4 tests | 2 failed) 17ms
+     × validates decompressed SQL, including nonempty gzip wrapping empty SQL 8ms
+     × validates decompressed SQL, including nonempty gzip wrapping empty SQL 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/currency-deployment.test.ts > currency deployment backup safeguards > validates decompressed SQL, including nonempty gzip wrapping empty SQL
+ FAIL  src/lib/currency-deployment.test.ts > currency deployment backup safeguards > validates decompressed SQL, including nonempty gzip wrapping empty SQL
+Error: spawnSync gzip ENOENT
+ ❯ src/lib/currency-deployment.test.ts:21:18
+     19|     ["-- SQL backup\nCREATE TABLE fixture (id INT);\n", true],
+     20|   ])("validates decompressed SQL, including nonempty gzip wrapping emp…
+     21|     const gzip = execFileSync("gzip", ["-c"], { input: sql });
+       |                  ^
+     22|     expect(gzip.length).toBeGreaterThan(0);
+     23|     // /dev/stdin is read once by gzip -t and again for the SQL check,…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 160 passed (161)
+      Tests  2 failed | 1206 passed (1208)
+   Start at  21:49:46
+   Duration  14.80s (transform 85.19s, setup 0ms, import 153.64s, tests 12.39s, environment 30ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

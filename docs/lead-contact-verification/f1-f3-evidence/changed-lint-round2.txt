@@ -1,0 +1,5 @@
+<workspace>\src\lib\lead-hunter\engine.ts
+   8:15  warning  'Prisma' is defined but never used              @typescript-eslint/no-unused-vars
+  17:87  warning  'LeadHuntTaskConfig' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 2 problems (0 errors, 2 warnings)

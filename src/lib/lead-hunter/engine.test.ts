@@ -123,6 +123,41 @@ function createFakeDb() {
 }
 
 describe("lead-hunter engine", () => {
+  it("[R4] 欢迎访问前缀沿真实引擎路径保留目标电话", async () => {
+    const db = createFakeDb(); db.addTask("round3", baseConfig);
+    const companyName = "甲机械有限公司";
+    const content = "欢迎访问甲机械有限公司 电话：0531-11112222";
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName, aiScore: 90, phone: "0531-11112222" });
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({ content })]) } }).runTask("round3");
+    expect(db.candidates[0]).toMatchObject({ phone: "0531-11112222", status: "PENDING_CONFIRM", phoneSource: "PAGE_TEXT", phoneEvidence: { excerpt: expect.stringContaining(content) } });
+  });
+  it.each([
+    ["[R1] 紧凑名录误配", "甲机械有限公司 电话：0531-11112222\n乙机械有限公司 电话：0531-33334444\n丙机械有限公司 电话：0531-55556666", "0531-33334444"],
+    ["[R2] 全角空格传真", "甲机械有限公司 传\u3000真：0574-87654321", "0574-87654321"],
+  ])("%s 沿真实引擎路径转为无电话", async (_label, content, phone) => {
+    const db = createFakeDb(); db.addTask("round2", baseConfig);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName: "甲机械有限公司", aiScore: 90, phone });
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({ content })]) } }).runTask("round2");
+    expect(db.candidates[0]).toMatchObject({ phone: null, status: "NO_CONTACT", phoneSource: null });
+    expect(db.candidates[0].phoneEvidence).toBeUndefined();
+  });
+  it.each([
+    ["[F1] 名录中的其他公司电话", "甲公司介绍" + "资料".repeat(100) + "乙五金制品厂 联系电话 13900002222"],
+    ["[F3] 目标公司的传真", "甲公司 传真：13900002222"],
+  ])("%s 按无电话候选处理", async (_label, content) => {
+    const db = createFakeDb(); db.addTask("review", baseConfig);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName: "甲公司", aiScore: 90, phone: "13900002222" });
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({ content })]) } }).runTask("review");
+    expect(db.candidates[0]).toMatchObject({ phone: null, status: "NO_CONTACT", phoneSource: null });
+    expect(db.candidates[0].phoneEvidence).toBeUndefined();
+  });
+  it("[F1] 保留同句电话，证据同时包含名称和号码", async () => {
+    const db = createFakeDb(); db.addTask("review", baseConfig);
+    const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName: "甲公司", aiScore: 90, phone: "13900002222" });
+    const content = "甲公司 联系电话 13900002222";
+    await createLeadHunterEngine({ prisma: db.prisma, llm, search: { searchWeb: vi.fn(async () => [searchResult({ content })]) } }).runTask("review");
+    expect(db.candidates[0]).toMatchObject({ phone: "13900002222", status: "PENDING_CONFIRM", phoneEvidence: { excerpt: expect.stringContaining(content) } });
+  });
   it("[AUDIT-E2] an invented AI phone becomes a NO_CONTACT candidate", async () => {
     const db = createFakeDb(); db.addTask("evidence", baseConfig);
     const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).mockResolvedValue({ companyName: "甲公司", aiScore: 90, phone: "13812345678" });
@@ -138,7 +173,7 @@ describe("lead-hunter engine", () => {
     const db = createFakeDb();
     db.addTask("t1", { ...baseConfig, maxRounds: 2, keywordIterations: 1 });
     const search: SearchClient = {
-      searchWeb: vi.fn(async () => [searchResult({ url: "https://a.com/1", title: "宁波恒精", content: "齿轮加工 联系 13812345678" })]),
+      searchWeb: vi.fn(async () => [searchResult({ url: "https://a.com/1", title: "宁波恒精", content: "宁波恒精传动科技有限公司 齿轮加工 联系 13812345678" })]),
     };
     const llm = vi.fn()
       .mockResolvedValueOnce({ keywords: ["齿轮加工"] })

@@ -28,8 +28,8 @@ describe("contact authenticity", () => {
     expect(matchCompanyIdentity("甲公司", "甲乙公司")).toBe("MISMATCH");
   });
   it("[AUDIT-E2] AI phone pointers must exactly match extracted source numbers", () => {
-    expect(verifiedPageContact("13800001111", "联系 13900001111")).toBeNull();
-    expect(verifiedPageContact("+86 13800001111", "联系 13800001111")).toBe("13800001111");
+    expect(verifiedPageContact("13800001111", "甲公司 联系 13900001111", "甲公司")).toBeNull();
+    expect(verifiedPageContact("+86 13800001111", "甲公司 联系 13800001111", "甲公司")).toBe("13800001111");
   });
   it("uses HTTPS, distinguishes business errors and keeps bounded valid evidence", async () => {
     vi.stubEnv("LEAD_TYC_TOKEN", "test-only"); vi.stubEnv("LEAD_TYC_MOCK", "0");

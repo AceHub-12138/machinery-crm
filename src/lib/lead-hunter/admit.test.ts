@@ -115,7 +115,7 @@ function createFakeDb(options?: { users?: Array<Record<string, unknown>> }) {
       companyName: "宁波恒精传动科技有限公司",
       status: "PENDING_CONFIRM",
       phone: "13812345678",
-      snippet: "电话 13812345678",
+      snippet: "宁波恒精传动科技有限公司 电话 13812345678",
       contactName: "王经理",
       phoneSource: null,
       phoneEvidence: null,
@@ -135,6 +135,50 @@ function createFakeDb(options?: { users?: Array<Record<string, unknown>> }) {
 }
 
 describe("admitCandidates 入池分单", () => {
+  it("[R4] 欢迎访问前缀沿历史入池路径保留电话及区域分配", async () => {
+    const db = createFakeDb({ users: [{ id: "sales-zj", role: "SALES", isActive: true, territories: [{ province: "浙江省", cities: [] }] }] });
+    db.addTask("t1", baseConfig);
+    const snippet = "欢迎访问甲机械有限公司 电话：0531-11112222";
+    db.addCandidate("round3", "t1", { companyName: "甲机械有限公司", phone: "0531-11112222", snippet, phoneEvidence: { excerpt: snippet } });
+    expect((await admitCandidates(buildUser(), "t1", ["round3"], { prisma: db.prisma })).admitted).toBe(1);
+    expect([...db.leads.values()][0]).toMatchObject({ phone: "0531-11112222", phoneSource: "PAGE_TEXT", contactStatus: "HAS_CONTACT", assignedUserId: "sales-zj", phoneEvidence: { excerpt: expect.stringContaining(snippet) } });
+  });
+  it.each([
+    ["[R1] 紧凑名录误配", "甲机械有限公司 电话：0531-11112222\n乙机械有限公司 电话：0531-33334444\n丙机械有限公司 电话：0531-55556666", "0531-33334444"],
+    ["[R2] 全角空格传真", "甲机械有限公司 传\u3000真：0574-87654321", "0574-87654321"],
+  ])("%s 沿历史入池路径丢弃电话并延后分配", async (_label, snippet, phone) => {
+    const db = createFakeDb({ users: [{ id: "sales-zj", role: "SALES", isActive: true, territories: [{ province: "浙江省", cities: [] }] }] });
+    db.addTask("t1", baseConfig);
+    db.addCandidate("round2", "t1", { companyName: "甲机械有限公司", phone, snippet, phoneEvidence: { excerpt: snippet } });
+    expect((await admitCandidates(buildUser(), "t1", ["round2"], { prisma: db.prisma })).admitted).toBe(1);
+    expect([...db.leads.values()][0]).toMatchObject({ phone: null, phoneSource: null, contactStatus: "PENDING_LOOKUP", assignedUserId: null });
+    expect(db.candidates[0]).toMatchObject({ phone: null, phoneSource: null });
+    expect(db.operationLogs[0].action).toBe("AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT");
+  });
+  it("[F1] 不拼接摘要和旧证据制造名称与号码的关联", async () => {
+    const db = createFakeDb(); db.addTask("t1", baseConfig);
+    db.addCandidate("old", "t1", { snippet: "宁波恒精传动科技有限公司", phoneEvidence: { excerpt: "电话 13812345678" } });
+    await admitCandidates(buildUser(), "t1", ["old"], { prisma: db.prisma });
+    expect([...db.leads.values()][0]).toMatchObject({ phone: null, contactStatus: "PENDING_LOOKUP" });
+  });
+  it("[F1] 超出摘要截取范围时，仍可凭包含名称和号码的独立证据入池", async () => {
+    const db = createFakeDb(); db.addTask("t1", baseConfig);
+    db.addCandidate("old", "t1", { snippet: "无联系方式的摘要", phoneEvidence: { excerpt: "宁波恒精传动科技有限公司 电话 13812345678" } });
+    await admitCandidates(buildUser(), "t1", ["old"], { prisma: db.prisma });
+    expect([...db.leads.values()][0]).toMatchObject({ phone: "13812345678", phoneEvidence: { excerpt: expect.stringContaining("宁波恒精传动科技有限公司 电话 13812345678") } });
+  });
+  it.each([false, true])("[F1] 历史候选中其他公司的电话丢弃且延后分配（旧证据=%s）", async (withEvidence) => {
+    const db = createFakeDb({ users: [{ id: "sales-zj", role: "SALES", isActive: true, territories: [{ province: "浙江省", cities: [] }] }] });
+    db.addTask("t1", baseConfig);
+    db.addCandidate("old", "t1", {
+      snippet: "宁波恒精传动科技有限公司" + "资料".repeat(100) + "乙五金制品厂 联系电话 13812345678",
+      phoneEvidence: withEvidence ? { excerpt: "乙五金制品厂 联系电话 13812345678" } : null,
+    });
+    expect((await admitCandidates(buildUser(), "t1", ["old"], { prisma: db.prisma })).admitted).toBe(1);
+    expect([...db.leads.values()][0]).toMatchObject({ phone: null, phoneSource: null, contactStatus: "PENDING_LOOKUP", assignedUserId: null });
+    expect(db.candidates[0]).toMatchObject({ phone: null, phoneSource: null });
+    expect(db.operationLogs[0].action).toBe("AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT");
+  });
   it("按 profile 省市自动分配给对应区域销售，并写操作日志", async () => {
     const user = buildUser();
     const db = createFakeDb({

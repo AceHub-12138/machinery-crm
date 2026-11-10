@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-06",
+  "timezone": "America/Los_Angeles",
+  "branch": "codex/lead-contact-verification",
+  "baseCommit": "3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699",
+  "sourceState": "uncommitted",
+  "newCommit": null,
+  "testFiles": 161,
+  "testsPassed": 1208,
+  "testsAdded": 33,
+  "lintErrors": 0,
+  "lintWarnings": 622,
+  "checks": [
+    {
+      "command": "pnpm test",
+      "exitCode": 0,
+      "log": "test.txt",
+      "logSha256": "55abaacf24855c0b4e631dc4b7a42b744a1ebb40e1fb94c8fa7cf14dbd95ea48"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit",
+      "exitCode": 0,
+      "log": "typecheck.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "pnpm lint",
+      "exitCode": 0,
+      "log": "lint.txt",
+      "logSha256": "e85df72cb0192596aeff3ca15caae810385ab5330788f9cc4e721cca89aba4b6"
+    },
+    {
+      "command": "pnpm exec eslint [11 changed source/test files]",
+      "exitCode": 0,
+      "log": "changed-lint.txt",
+      "logSha256": "77a096d9352ff9bef25771795ab2092e75c929d88edd8460904c8880b636259d"
+    },
+    {
+      "command": "pnpm build",
+      "exitCode": 0,
+      "log": "build.txt",
+      "logSha256": "0775a2db0e374bcc6416fddd6984b654817289e0793b42e304aeb83440d092f6"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "log": "diff-check.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "pnpm test (before Git usr/bin PATH correction)",
+      "exitCode": 1,
+      "log": "test-initial-missing-gzip.txt",
+      "logSha256": "41c1a5aada23aa89d192bbc6b49c6c604a62e1dc4a47c838ffc3d080944d1b64"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit (before Prisma JSON null handling fix)",
+      "exitCode": 2,
+      "log": "typecheck-initial.txt",
+      "logSha256": "c1b9afd4f73c8905265655efb9c085294d30a69739fdbde61c79739951031f73"
+    }
+  ],
+  "sourceHashEncoding": "SHA-256 over UTF-8 content with LF line endings",
+  "sourceFiles": {
+    "src/components/leads/contact-verification.test.tsx": "0c9c1357c2369c71c777935e42f54093f9f271112127a4ccc4eccc8a69449043",
+    "src/components/leads/contact-verification.tsx": "d84bfddbbada7eb656ca2c35106757e3967e3d521436a422be08ff83c5472665",
+    "src/lib/lead-hunter/admit.test.ts": "ad9e642bf41613508964f0874e4060920559aec613817a20aadee5ea6a35f729",
+    "src/lib/lead-hunter/admit.ts": "8c819f0d6da8e6f329ad5ff34ebebb947104c0b6b1127bde979daa8ea66ba8f7",
+    "src/lib/lead-hunter/contact-authenticity.test.ts": "b585291a43f04d38bd9507d497284f783e72ece5a9dea4e689fd60c8728a8d8f",
+    "src/lib/lead-hunter/engine.test.ts": "dc54215234fc8f19cc668f90cd4dbda1e108e92f3e2a0ed610f02ea107ad7b8a",
+    "src/lib/lead-hunter/engine.ts": "37ec29452eb026d07b6ff174854286b2e2299366ca30a1fcd4c27f80aca089f0",
+    "src/lib/lead-hunter/phone.test.ts": "4b75b7ac773b278cb042f7c0e2d0b11f15dc951d1aa9b050a240ac24e9cd15b5",
+    "src/lib/lead-hunter/phone.ts": "24d0ec33948a383a6551bafad5788dfedff35a2e4cccebcf0cf1c3e47da94180",
+    "src/modules/crm/leads/contact-lookup.test.ts": "9cb3057011efc0da777907f85eb0351051c7d80254ef35cbf88eaf5bd8d0dc2e",
+    "src/modules/crm/leads/contact-lookup.ts": "06043847066aeaedb98eed51ee387f2c123a2e3490ebc85de9906a8ca1d3a3cf"
+  },
+  "productionDeployed": false,
+  "databaseAccessed": false,
+  "realProviderCalled": false,
+  "V1": "NOT_RUN",
+  "V2": "NOT_RUN",
+  "V3": "NOT_RUN",
+  "V4": "NOT_RUN"
+}

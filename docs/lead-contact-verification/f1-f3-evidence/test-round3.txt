@@ -1,0 +1,11 @@
+> machinery-crm@1.5.2-rc.4 test <workspace>
+> vitest run
+
+
+ RUN  v4.1.10 <workspace>
+
+
+ Test Files  161 passed (161)
+      Tests  1281 passed (1281)
+   Start at  17:57:50
+   Duration  9.60s (transform 50.45s, setup 0ms, import 96.44s, tests 9.71s, environment 23ms)

@@ -1,0 +1,3 @@
+PASS: removing only the new R7/R8 blocks restores byte-identical round3 phone.test.ts.
+Round3 SHA-256: e64558ab3b42ae98e00a4d8a6e2b3b9394dc27db3399f502198cccc092e53cf4
+PASS: all other previously modified tracked files are byte-identical to round3; only phone.ts and phone.test.ts changed.

@@ -195,7 +195,7 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
           const otherCandidate = await prisma.leadHuntCandidate.findFirst({ where: { taskId: { not: taskId }, dedupKey, status: { not: "DISCARDED" } }, select: { id: true } });
           if (otherCandidate) continue;
           const pageText = [scored.item.title, scored.item.snippet, scored.item.content].join("\n");
-          analysis.phone = verifiedPageContact(analysis.phone, pageText);
+          analysis.phone = verifiedPageContact(analysis.phone, pageText, analysis.companyName);
           const customer = await findExistingLeadCustomer(prisma, analysis.companyName, analysis.phone);
           const qualified = analysis.aiScore >= LEAD_ADMIT_MIN_SCORE;
           const status = customer ? "EXISTING_CUSTOMER" : qualified ? (analysis.phone ? "PENDING_CONFIRM" : "NO_CONTACT") : "DISCARDED";
@@ -207,7 +207,7 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
               statusReason: customer ? customer.companyName.slice(0, 191) : null,
               contactName: analysis.contactName || null,
               phoneSource: analysis.phone ? "PAGE_TEXT" : null,
-              ...(analysis.phone ? { phoneEvidence: pagePhoneEvidence(scored.item.url, pageText, analysis.phone, now()) } : {}),
+              ...(analysis.phone ? { phoneEvidence: pagePhoneEvidence(scored.item.url, pageText, analysis.phone, analysis.companyName, now()) ?? undefined } : {}),
               sourceUrl: scored.item.url.slice(0, 2048),
               snippet: pageText.slice(0, 5000),
               keywords: currentKeywords,

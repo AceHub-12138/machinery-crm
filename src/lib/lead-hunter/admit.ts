@@ -37,8 +37,10 @@ export async function admitCandidates(user: SessionUser, taskId: string, candida
         if (candidate.score === null || candidate.score < LEAD_ADMIT_MIN_SCORE) return rejected("AI 评分必须 ≥ 85 分");
         if (!["PENDING_CONFIRM", "NO_CONTACT"].includes(candidate.status)) return rejected("状态不允许入池：" + candidate.status);
         const evidence = candidate.phoneEvidence && typeof candidate.phoneEvidence === "object" && !Array.isArray(candidate.phoneEvidence) ? candidate.phoneEvidence : null;
-        const sourceText = [candidate.snippet ?? "", typeof evidence?.excerpt === "string" ? evidence.excerpt : ""].join("\n");
-        const phone = verifiedPageContact(candidate.phone, sourceText);
+        const sourceTexts = [candidate.snippet ?? "", typeof evidence?.excerpt === "string" ? evidence.excerpt : ""];
+        const sourceText = sourceTexts.join("\n");
+        const phoneText = sourceTexts.find((text) => verifiedPageContact(candidate.phone, text, candidate.companyName));
+        const phone = phoneText ? verifiedPageContact(candidate.phone, phoneText, candidate.companyName) : null;
         const email = candidate.email && extractEmails(sourceText).includes(candidate.email.toLowerCase()) ? candidate.email.toLowerCase() : null;
         const customer = await findExistingLeadCustomer(tx, candidate.companyName, phone);
         if (customer) {
@@ -48,7 +50,7 @@ export async function admitCandidates(user: SessionUser, taskId: string, candida
         const profile = { ...(candidate.province ? { province: candidate.province } : {}), ...(candidate.city ? { city: candidate.city } : {}), ...(candidate.scoreReason ? { summary: candidate.scoreReason } : {}) };
         const users = phone ? await tx.user.findMany({ where: { isActive: true, role: { in: ["SALES", "FOREIGN_TRADE"] } }, select: { id: true, role: true, isActive: true, territories: true } }) : [];
         const routing = resolveLeadAssignee(profile, users);
-        const phoneEvidence = phone ? pagePhoneEvidence(candidate.sourceUrl, sourceText, phone) : undefined;
+        const phoneEvidence = phone && phoneText ? pagePhoneEvidence(candidate.sourceUrl, phoneText, phone, candidate.companyName) ?? undefined : undefined;
         const lead = await tx.lead.create({
           data: {
             companyName: candidate.companyName, contactName: candidate.contactName, phone, email, source: "BAIDU_SEARCH",

@@ -166,6 +166,7 @@ export async function confirmLeadContact(user: SessionUser, lookupId: string, in
     const row = await tx.leadContactLookup.findUnique({ where: { id: lookupId } });
     if (!row) throw new DomainError("反查记录不存在", 404);
     if (row.status !== "NEEDS_CONFIRM") throw new DomainError("该反查已处理", 409);
+    if (decision === "ADOPT" && !row.matchedName?.trim()) throw new DomainError("未返回企业名称，只能驳回此结果", 409);
     if (row.isMock || companyOperatingStatus(row.regStatus) === "INACTIVE") throw new DomainError("模拟或停业注销结果不可采用", 409);
     const claimed = await tx.leadContactLookup.updateMany({ where: { id: lookupId, status: "NEEDS_CONFIRM" }, data: { status: decision === "ADOPT" ? "ADOPTED" : "REJECTED", confirmedById: user.id, confirmedAt: at } });
     if (!claimed.count) throw new DomainError("其他管理员已处理", 409);

@@ -1,0 +1,183 @@
+{
+  "date": "2026-11-09",
+  "timezone": "America/Los_Angeles",
+  "round": 2,
+  "branch": "codex/lead-contact-verification",
+  "baseCommit": "3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699",
+  "sourceState": "uncommitted",
+  "newCommit": null,
+  "pushed": false,
+  "round1Tests": 1208,
+  "testsAddedThisRound": 30,
+  "testFiles": 161,
+  "testsPassed": 1238,
+  "testsFailed": 0,
+  "reproduction": {
+    "testFiles": 3,
+    "tests": 85,
+    "before": {
+      "passed": 62,
+      "failed": 23,
+      "exitCode": 1,
+      "log": "repro-before.txt"
+    },
+    "after": {
+      "passed": 85,
+      "failed": 0,
+      "exitCode": 0,
+      "log": "repro-after.txt"
+    },
+    "R1New": {
+      "tests": 17,
+      "beforeFailed": 12,
+      "afterFailed": 0
+    },
+    "R2New": {
+      "tests": 13,
+      "beforeFailed": 11,
+      "afterFailed": 0
+    }
+  },
+  "lintErrors": 0,
+  "lintWarnings": 622,
+  "checks": [
+    {
+      "order": 1,
+      "command": "pnpm test",
+      "exitCode": 0,
+      "log": "test.txt",
+      "logSha256": "fa4016fbcf914996456c579145d580aeab89e4ec343f9600807e28ea0756b7d8"
+    },
+    {
+      "order": 2,
+      "command": "pnpm exec tsc --noEmit",
+      "exitCode": 0,
+      "log": "typecheck.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "order": 3,
+      "command": "pnpm lint",
+      "exitCode": 0,
+      "log": "lint.txt",
+      "logSha256": "e85df72cb0192596aeff3ca15caae810385ab5330788f9cc4e721cca89aba4b6"
+    },
+    {
+      "order": 4,
+      "command": "pnpm exec eslint src/components/leads/contact-verification.test.tsx src/components/leads/contact-verification.tsx src/lib/lead-hunter/admit.test.ts src/lib/lead-hunter/admit.ts src/lib/lead-hunter/contact-authenticity.test.ts src/lib/lead-hunter/engine.test.ts src/lib/lead-hunter/engine.ts src/lib/lead-hunter/phone.test.ts src/lib/lead-hunter/phone.ts src/modules/crm/leads/contact-lookup.test.ts src/modules/crm/leads/contact-lookup.ts",
+      "exitCode": 0,
+      "log": "changed-lint.txt",
+      "logSha256": "77a096d9352ff9bef25771795ab2092e75c929d88edd8460904c8880b636259d"
+    },
+    {
+      "order": 5,
+      "command": "pnpm build",
+      "exitCode": 0,
+      "log": "build.txt",
+      "logSha256": "b8f9a7e7c415f369a7f040c907dd1e6ffc44d5907d3373a5761014039072a373"
+    },
+    {
+      "order": 6,
+      "command": "git -c core.autocrlf=false diff --check",
+      "exitCode": 0,
+      "log": "diff-check.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "order": 7,
+      "command": "git -c core.autocrlf=false diff --numstat",
+      "exitCode": 0,
+      "log": "numstat.txt",
+      "logSha256": "6f7e27571a6d45c33fa538274f736353bd7a3cf31d7a501c347978b78d85f38a"
+    }
+  ],
+  "lineEndings": {
+    "expected": "LF",
+    "exitCode": 0,
+    "log": "lf-check.txt"
+  },
+  "sourceHashEncoding": "SHA-256 over actual UTF-8 file bytes; all LF",
+  "sourceFiles": {
+    "src/components/leads/contact-verification.test.tsx": "0c9c1357c2369c71c777935e42f54093f9f271112127a4ccc4eccc8a69449043",
+    "src/components/leads/contact-verification.tsx": "d84bfddbbada7eb656ca2c35106757e3967e3d521436a422be08ff83c5472665",
+    "src/lib/lead-hunter/admit.test.ts": "9fae31aa2a3170146e9a774f9d953463528fdb77ecc146ef774f59a4d0e8598d",
+    "src/lib/lead-hunter/admit.ts": "8c819f0d6da8e6f329ad5ff34ebebb947104c0b6b1127bde979daa8ea66ba8f7",
+    "src/lib/lead-hunter/contact-authenticity.test.ts": "b585291a43f04d38bd9507d497284f783e72ece5a9dea4e689fd60c8728a8d8f",
+    "src/lib/lead-hunter/engine.test.ts": "7b37f74856053fac1a124f2ca1ffb7e5934b74bf0d811dd79382e86f76530f04",
+    "src/lib/lead-hunter/engine.ts": "37ec29452eb026d07b6ff174854286b2e2299366ca30a1fcd4c27f80aca089f0",
+    "src/lib/lead-hunter/phone.test.ts": "7dbc7e7d1e34964b7d3a42bc14811ff15e51466c3f6eaae53eb191ff5e564672",
+    "src/lib/lead-hunter/phone.ts": "f4b4737a4688a5b63a2ed8f1a9072d89f6a7ab4dc14247fce86068c4a2073d40",
+    "src/modules/crm/leads/contact-lookup.test.ts": "9cb3057011efc0da777907f85eb0351051c7d80254ef35cbf88eaf5bd8d0dc2e",
+    "src/modules/crm/leads/contact-lookup.ts": "06043847066aeaedb98eed51ee387f2c123a2e3490ebc85de9906a8ca1d3a3cf"
+  },
+  "sourceFilesChangedThisRound": [
+    "src/lib/lead-hunter/phone.ts",
+    "src/lib/lead-hunter/phone.test.ts",
+    "src/lib/lead-hunter/engine.test.ts",
+    "src/lib/lead-hunter/admit.test.ts"
+  ],
+  "round1SourcesUnchangedAfterLFNormalization": {
+    "src/components/leads/contact-verification.test.tsx": true,
+    "src/components/leads/contact-verification.tsx": true,
+    "src/lib/lead-hunter/admit.ts": true,
+    "src/lib/lead-hunter/contact-authenticity.test.ts": true,
+    "src/lib/lead-hunter/engine.ts": true,
+    "src/modules/crm/leads/contact-lookup.test.ts": true,
+    "src/modules/crm/leads/contact-lookup.ts": true
+  },
+  "approvedTestChange": "User explicitly allowed replacing the incompatible six-character fax boundary with the new thirty-character boundary; all other existing assertions retained.",
+  "round1Evidence": {
+    "manifest": "verification-round1.json",
+    "archiveLogMapping": {
+      "test.txt": {
+        "file": "test-round1.txt",
+        "sha256": "55abaacf24855c0b4e631dc4b7a42b744a1ebb40e1fb94c8fa7cf14dbd95ea48",
+        "unchanged": true
+      },
+      "typecheck.txt": {
+        "file": "typecheck-round1.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unchanged": true
+      },
+      "lint.txt": {
+        "file": "lint-round1.txt",
+        "sha256": "e85df72cb0192596aeff3ca15caae810385ab5330788f9cc4e721cca89aba4b6",
+        "unchanged": true
+      },
+      "changed-lint.txt": {
+        "file": "changed-lint-round1.txt",
+        "sha256": "77a096d9352ff9bef25771795ab2092e75c929d88edd8460904c8880b636259d",
+        "unchanged": true
+      },
+      "build.txt": {
+        "file": "build-round1.txt",
+        "sha256": "0775a2db0e374bcc6416fddd6984b654817289e0793b42e304aeb83440d092f6",
+        "unchanged": true
+      },
+      "diff-check.txt": {
+        "file": "diff-check-round1.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unchanged": true
+      },
+      "test-initial-missing-gzip.txt": {
+        "file": "test-initial-missing-gzip-round1.txt",
+        "sha256": "41c1a5aada23aa89d192bbc6b49c6c604a62e1dc4a47c838ffc3d080944d1b64",
+        "unchanged": true
+      },
+      "typecheck-initial.txt": {
+        "file": "typecheck-initial-round1.txt",
+        "sha256": "c1b9afd4f73c8905265655efb9c085294d30a69739fdbde61c79739951031f73",
+        "unchanged": true
+      }
+    }
+  },
+  "productionDeployed": false,
+  "databaseAccessed": false,
+  "realProviderCalled": false,
+  "schemaChanged": false,
+  "migrationChanged": false,
+  "V1": "NOT_RUN",
+  "V2": "NOT_RUN",
+  "V3": "NOT_RUN",
+  "V4": "NOT_RUN"
+}

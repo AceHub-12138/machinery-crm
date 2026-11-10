@@ -1,0 +1,7 @@
+PASS: existing test contents retained exactly; only new blocks inserted.
+src/lib/lead-hunter/phone.test.ts: remove new [R4], [R5], [R6] describe blocks -> exact round2 content.
+src/lib/lead-hunter/engine.test.ts: remove new [R4] test -> exact round2 content.
+src/lib/lead-hunter/admit.test.ts: remove new [R4] test -> exact round2 content.
+Existing assertions changed: 0.
+Existing assertions removed: 0.
+Conflicts with existing assertions: 0.
