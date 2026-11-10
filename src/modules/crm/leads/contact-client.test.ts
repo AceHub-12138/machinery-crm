@@ -13,6 +13,13 @@ describe("sequential contact lookup UI", () => {
     expect(maximum).toBe(1); expect(request).toHaveBeenCalledTimes(2);
     expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ id: "b", status: 429 }), 2, 3);
   });
+  it("stops at the first unconfigured response", async () => {
+    const request = vi.fn(async () => Response.json({ error: "天眼查未配置" }, { status: 503 }));
+    const progress = vi.fn();
+    await runContactLookups(["first", "second"], progress, request);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(progress).toHaveBeenCalledWith({ id: "first", status: 503, message: "天眼查未配置，已停止批量反查" }, 1, 2);
+  });
   it("enforces the 20 lead maximum before any request", async () => {
     const request = vi.fn(); await expect(runContactLookups(Array(21).fill("x"), vi.fn(), request)).rejects.toThrow("1~20");
     expect(request).not.toHaveBeenCalled();

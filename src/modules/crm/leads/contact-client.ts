@@ -4,7 +4,7 @@ export async function runContactLookups(ids: string[], progress: (value: LookupP
   for (let index = 0; index < ids.length; index++) {
     const response = await request("/api/crm/leads/" + encodeURIComponent(ids[index]) + "/contact-lookup", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
     const data = await response.json().catch(() => ({}));
-    progress({ id: ids[index], message: data.error || data.reason || data.status || "反查完成", status: response.status }, index + 1, ids.length);
-    if ([401, 403, 429].includes(response.status)) break;
+    progress({ id: ids[index], message: response.status === 503 ? "天眼查未配置，已停止批量反查" : data.error || data.reason || data.status || "反查完成", status: response.status }, index + 1, ids.length);
+    if ([401, 403, 429, 503].includes(response.status)) break;
   }
 }

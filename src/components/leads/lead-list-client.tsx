@@ -36,6 +36,7 @@ function dateTime(value: string) {
 }
 
 export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boolean }) {
+  const [lookupMessages, setLookupMessages] = useState<Record<string, string>>({});
   const [contactStatus, setContactStatus] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [companyNameDraft, setCompanyNameDraft] = useState("");
@@ -94,7 +95,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
   }, [contactStatus, companyName, aiScoreMax, aiScoreMin, assignedUserId, canFilterAssignee, createdFrom, createdTo, page, reviewStatus, searchKeyword]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void load(); }, 0);
+    const timer = window.setTimeout(() => { setLookupMessages({}); void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
 
@@ -331,7 +332,8 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
             <tbody>{items.map((lead) => <tr className="relative isolate border-b border-[var(--border)] hover:bg-[var(--surface-hover)]" key={lead.id}>
               <td className="w-[52px] whitespace-nowrap px-4 py-3 text-center">{highlightedLeadIds.has(lead.id) && <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[var(--brand-orange-soft)] opacity-0" data-assignment-highlight={lead.id} />}<input aria-label={`选择 ${lead.companyName}`} checked={selectedLeadIds.has(lead.id)} onChange={() => toggleLead(lead.id)} type="checkbox" /></td>
               <td className="w-[270px] px-4 py-3"><p className="truncate whitespace-nowrap font-medium text-[var(--text-primary)]" title={lead.companyName}>{lead.companyName}</p><p className="mt-1 truncate whitespace-nowrap text-xs text-[var(--text-tertiary)]" title={lead.contactName || undefined}>{lead.contactName || "未记录联系人"}</p></td>
-              <td className="w-[190px] whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]"><p>{lead.phone || "-"}</p><ContactSource lead={lead} />{canFilterAssignee && !lead.phone && (!lead.contactStatus || ["PENDING_LOOKUP", "LOOKUP_FAILED", "LOOKING_UP"].includes(lead.contactStatus)) && <ContactLookupButton leadId={lead.id} onRefresh={load} />}<p className="mt-1 truncate text-xs" title={lead.email || undefined}>{lead.email || "-"}</p></td>
+              <td className="w-[190px] whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]"><p>{lead.phone || "-"}</p><ContactSource lead={lead} />{canFilterAssignee && !lead.phone && (!lead.contactStatus || ["PENDING_LOOKUP", "LOOKUP_FAILED", "LOOKING_UP"].includes(lead.contactStatus)) && <ContactLookupButton leadId={lead.id} onRefresh={load} onMessage={(message) => setLookupMessages((previous) => ({ ...previous, [lead.id]: message }))} />}
+                {lookupMessages[lead.id] && <p role="status" className="text-xs">{lookupMessages[lead.id]}</p>}<p className="mt-1 truncate text-xs" title={lead.email || undefined}>{lead.email || "-"}</p></td>
               <td className="w-[90px] whitespace-nowrap px-4 py-3 font-semibold tabular-nums">{lead.aiScore ?? "未评分"}</td>
               <td className="w-[110px] whitespace-nowrap px-4 py-3"><LeadStatusBadge status={lead.reviewStatus} /></td>
               <td className="max-w-[220px] truncate whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]" title={lead.searchKeyword || undefined}>{lead.searchKeyword || "-"}</td>
