@@ -135,6 +135,17 @@ function createFakeDb(options?: { users?: Array<Record<string, unknown>> }) {
 }
 
 describe("admitCandidates 入池分单", () => {
+  it("[D1] admission SQL atomically increments an explicitly typed integer", async () => {
+    const db = createFakeDb(); db.addTask("sql-type", baseConfig); db.addCandidate("integer", "sql-type");
+    await admitCandidates(buildUser(), "sql-type", ["integer"], { prisma: db.prisma });
+    expect(db.prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    // SQL shape only: MySQL 5.7.44 regression verifies the actual JSON numeric type.
+    const [template] = vi.mocked(db.prisma.$executeRaw).mock.calls[0];
+    const sql = (template as TemplateStringsArray).join("?");
+    expect(sql).toContain("CAST(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0) + 1 AS SIGNED)");
+    expect(sql).not.toMatch(/COALESCE\(JSON_EXTRACT\(report,\s*'\$\.admitted'\),\s*0\)/);
+    expect(sql).toContain("JSON_SET(COALESCE(report, JSON_OBJECT())");
+  });
   it("[R4] 欢迎访问前缀沿历史入池路径保留电话及区域分配", async () => {
     const db = createFakeDb({ users: [{ id: "sales-zj", role: "SALES", isActive: true, territories: [{ province: "浙江省", cities: [] }] }] });
     db.addTask("t1", baseConfig);

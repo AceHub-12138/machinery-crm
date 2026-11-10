@@ -61,7 +61,7 @@ export async function admitCandidates(user: SessionUser, taskId: string, candida
           }, select: { id: true, assignedUserId: true },
         });
         await tx.leadHuntCandidate.update({ where: { id: candidateId }, data: { status: "ADMITTED", leadId: lead.id, phone, email, phoneSource: phone ? "PAGE_TEXT" : null, phoneEvidence: phoneEvidence ?? Prisma.DbNull } });
-        await tx.$executeRaw`UPDATE lead_hunt_tasks SET report = JSON_SET(COALESCE(report, JSON_OBJECT()), '$.admitted', COALESCE(JSON_EXTRACT(report, '$.admitted'), 0) + 1) WHERE id = ${taskId}`;
+        await tx.$executeRaw`UPDATE lead_hunt_tasks SET report = JSON_SET(COALESCE(report, JSON_OBJECT()), '$.admitted', CAST(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0) + 1 AS SIGNED)) WHERE id = ${taskId}`;
         await writeOperationLog(tx, { userId: user.id, action: phone ? leadRoutingAuditAction(routing) : "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT", entityType: "Lead", entityId: lead.id, afterData: { candidateId, assignedUserId: lead.assignedUserId } });
         return { candidateId, status: "ADMITTED" as const, reason: phone ? "入池成功" : "入池成功，待管理员反查", leadId: lead.id, assignedUserId: lead.assignedUserId, replay: false };
       }));

@@ -123,6 +123,19 @@ function createFakeDb() {
 }
 
 describe("lead-hunter engine", () => {
+  it("[D1] heartbeat SQL converts admitted to an integer before JSON_SET", async () => {
+    const db = createFakeDb(); db.addTask("sql-type", baseConfig);
+    await createLeadHunterEngine({ prisma: db.prisma, llm: vi.fn().mockResolvedValue({ keywords: ["k"] }), search: { searchWeb: vi.fn(async () => []) } }).runTask("sql-type");
+    const calls = vi.mocked(db.prisma.$executeRaw).mock.calls;
+    expect(calls.length).toBeGreaterThan(2);
+    // Fake DB cannot reproduce MySQL JSON types; the MySQL 5.7.44 SQL regression is authoritative.
+    for (const [template] of calls) {
+      const sql = (template as TemplateStringsArray).join("?");
+      expect(sql).toContain("COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0)");
+      expect(sql).not.toMatch(/COALESCE\(JSON_EXTRACT\(report,\s*'\$\.admitted'\),\s*0\)/);
+      expect(sql).toContain("AND status = 'running'");
+    }
+  });
   it("[R4] 欢迎访问前缀沿真实引擎路径保留目标电话", async () => {
     const db = createFakeDb(); db.addTask("round3", baseConfig);
     const companyName = "甲机械有限公司";

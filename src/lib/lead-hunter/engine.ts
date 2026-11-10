@@ -89,7 +89,7 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
     // JSON 字段中的 admitted 由入池事务单独原子累加；心跳不能用本地旧值覆盖它。
     const touch = () => prisma.$executeRaw`
       UPDATE lead_hunt_tasks SET progress = ${JSON.stringify(progress)},
-        report = JSON_SET(${JSON.stringify(report)}, '$.admitted', COALESCE(JSON_EXTRACT(report, '$.admitted'), 0)),
+        report = JSON_SET(${JSON.stringify(report)}, '$.admitted', COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0)),
         updatedAt = ${now()}
       WHERE id = ${taskId} AND status = 'running'
     `;
