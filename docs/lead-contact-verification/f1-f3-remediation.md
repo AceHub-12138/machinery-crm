@@ -1,8 +1,8 @@
 # AI 获客联系方式核验 F1–F3 整改结论
 
-状态：**已复审通过，待提交和 CI。V1–V4 未执行，未部署。**
+状态：**已复审通过，业务提交已推送 github 功能分支，Linux PR checks 全部成功。V1–V4 未执行，禁止合并，未部署。详见第 12 节。**
 
-第 1–8 节保留第一轮施工历史，第 9 节保留第二轮记录，第 10 节保留第三轮记录，第 11 节为当前第四轮小修结果；第 6 节人工验收清单已逐轮补充。
+第 1–8 节保留第一轮施工历史，第 9 节保留第二轮记录，第 10 节保留第三轮记录，第 11 节为第四轮小修结果，第 12 节记录提交与 Linux CI；第 6 节人工验收清单已逐轮补充。
 
 ## 1. 分支、基线和提交状态
 
@@ -310,4 +310,27 @@ R7 有意取舍：目标为“济南恒精机械有限公司”时，“济南�
 
 ### 12.2 提交与 Linux CI 状态
 
-当前已复审通过，待提交和 CI。V1–V4 未执行，禁止合并；不推送 main，不部署，不手动运行发布包工作流。CI 结果将在成功后以单独文档提交补充；若失败，仅记录失败步骤及摘要并停止。
+- 记录日期：2026-11-09（America/Los_Angeles）。
+- 业务提交：`852fd129aee956bb85a51923afe9e95c58d3efa3`，保留原提交，没有修改、amend 或重做。
+- 推送目标：`github = AceHub-12138/machinery-crm`，仅功能分支 `codex/lead-contact-verification`。
+- 推送前：工作区干净；fetch github 后，远程功能分支为 `3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699`；`git merge-base --is-ancestor` 返回 0。
+- 普通推送成功：`3c50d5bd..852fd129  codex/lead-contact-verification -> codex/lead-contact-verification`。
+- [草稿 PR #2](https://github.com/AceHub-12138/machinery-crm/pull/2)：head 为功能分支，base 为 main；正文首行“⚠ V1–V4 未执行，禁止合并”，附本报告链接。
+- [业务提交 Linux PR checks 运行](https://github.com/AceHub-12138/machinery-crm/actions/runs/42745329374)：由 pull_request 自动触发，关联 head SHA 为上述业务提交；Ubuntu runner，整体结论 **success**。
+
+| 步骤 | 结果 | 日志核对 |
+| --- | --- | --- |
+| `pnpm install --frozen-lockfile` | 通过 | 正常锁定依赖安装 |
+| `pnpm exec prisma generate` | 通过 | 生成 Prisma Client 6.8.2；无数据库迁移 |
+| `pnpm exec tsc --noEmit` | 通过 | 0 诊断 |
+| `pnpm lint` | 通过 | 0 errors、622 warnings |
+| `pnpm test` | 通过 | 161 文件、1293/1293 测试，0 失败 |
+| `pnpm build` | 通过 | 编译成功，122/122 页面生成 |
+
+构建在 Linux 干净检出后运行仓库正常配置，沿用 `next/font/google` 的 Google 字体加载；未设置本地字体替代响应，未修改源码、字体配置或工作流。该次正常 Linux 构建已替代先前 Windows 本地字体模式作为构建通过证据，不能替代 V1–V4、人工验收或部署授权。
+
+### 12.3 敏感信息复核与操作边界
+
+敏感信息结论**已复审核对**，详见第 12.1 节：四处姓名候选和前次 410 处电话候选均非真实客户资料；七处 cwd 已按授权脱敏，其他归档保持不变。本次仅追加报告记录，不再修改任何业务源码、测试或证据文件。
+
+PR 保持草稿、未合并；未推送 main 或其他分支/tag，未强推，未手动运行 build-standalone，未部署，未连接或操作数据库，未调用天眼查等真实业务供应商。Google 字体下载为本次明确要求的正常构建流程。V1–V4 全部仍为“未执行”。本报告更新以单独 docs 提交普通推送到 github 的同一功能分支。
