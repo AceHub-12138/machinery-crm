@@ -1,0 +1,124 @@
+Command: pnpm exec prisma migrate deploy --schema <temporary>/baseline/prisma/schema.prisma
+Target verified: 127.0.0.1:59793/crm_v1_test
+Started UTC: 2026-11-10T03:13:16.653659+00:00
+Exit: 0
+Elapsed seconds: 12.296
+Prisma schema loaded from <temporary>\baseline\prisma\schema.prisma
+Datasource "db": MySQL database "crm_v1_test" at "127.0.0.1:59793"
+
+36 migrations found in prisma/migrations
+
+Applying migration `20260528013123_full`
+Applying migration `20260529030000_add_shipments`
+Applying migration `20260529050000_add_estimated_shipment_date`
+Applying migration `20260604090000_phase1_quote_contract_items`
+Applying migration `20260604130000_phase2_payments_unlock_logs`
+Applying migration `20260613000000_add_contract_delete_requests`
+Applying migration `20260630000000_erp_phase1`
+Applying migration `20260701000000_erp_v142_fields`
+Applying migration `20260710090000_erp_phase3_purchase_part_a`
+Applying migration `20260710110000_erp_phase3_purchase_part_c`
+Applying migration `20260713090000_erp_phase4_production_part_a`
+Applying migration `20260713110000_erp_phase4_purchase_sources`
+Applying migration `20260713120000_erp_phase4_shortage_purchase_source_guard`
+Applying migration `20260714100000_erp_phase4_round1_roles_contract_item`
+Applying migration `20260714130000_reconcile_legacy_schema_history`
+Applying migration `20260715100000_erp_phase4_procurement_delivery`
+Applying migration `20260803130000_v2_phase3_admin_tasks`
+Applying migration `20260803140000_v2_phase5_stock_in_void`
+Applying migration `20260805110000_ui_1b_user_avatar`
+Applying migration `20260810090000_add_sales_target`
+Applying migration `20260814113000_add_ai_lead_pool`
+Applying migration `20260814170000_add_lead_write_audits`
+Applying migration `20260818143000_add_lead_write_idempotencies`
+Applying migration `20260820140000_add_lead_feedback_event_status`
+Applying migration `20260826150000_extend_lead_source_url_and_routing_outcome`
+Applying migration `20260901101500_after_sales_workorders`
+Applying migration `20260902090000_add_after_sales_service_fields`
+Applying migration `20260903090000_add_xiaochuan_agent_conversations`
+Applying migration `20260903110000_add_agent_message_error_flag`
+Applying migration `20260904090000_add_xiaochuan_knowledge_tables`
+Applying migration `20260904110000_add_agent_message_attachments`
+Applying migration `20260904150000_add_agent_message_feedback`
+Applying migration `20260904180000_add_agent_accounts_and_model_configs`
+Applying migration `20260904190000_add_agent_account_session_version`
+Applying migration `20260905100000_add_agent_mcp_servers`
+Applying migration `20260906100000_add_lead_hunter_tables`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20260528013123_full/
+    └─ migration.sql
+  └─ 20260529030000_add_shipments/
+    └─ migration.sql
+  └─ 20260529050000_add_estimated_shipment_date/
+    └─ migration.sql
+  └─ 20260604090000_phase1_quote_contract_items/
+    └─ migration.sql
+  └─ 20260604130000_phase2_payments_unlock_logs/
+    └─ migration.sql
+  └─ 20260613000000_add_contract_delete_requests/
+    └─ migration.sql
+  └─ 20260630000000_erp_phase1/
+    └─ migration.sql
+  └─ 20260701000000_erp_v142_fields/
+    └─ migration.sql
+  └─ 20260710090000_erp_phase3_purchase_part_a/
+    └─ migration.sql
+  └─ 20260710110000_erp_phase3_purchase_part_c/
+    └─ migration.sql
+  └─ 20260713090000_erp_phase4_production_part_a/
+    └─ migration.sql
+  └─ 20260713110000_erp_phase4_purchase_sources/
+    └─ migration.sql
+  └─ 20260713120000_erp_phase4_shortage_purchase_source_guard/
+    └─ migration.sql
+  └─ 20260714100000_erp_phase4_round1_roles_contract_item/
+    └─ migration.sql
+  └─ 20260714130000_reconcile_legacy_schema_history/
+    └─ migration.sql
+  └─ 20260715100000_erp_phase4_procurement_delivery/
+    └─ migration.sql
+  └─ 20260803130000_v2_phase3_admin_tasks/
+    └─ migration.sql
+  └─ 20260803140000_v2_phase5_stock_in_void/
+    └─ migration.sql
+  └─ 20260805110000_ui_1b_user_avatar/
+    └─ migration.sql
+  └─ 20260810090000_add_sales_target/
+    └─ migration.sql
+  └─ 20260814113000_add_ai_lead_pool/
+    └─ migration.sql
+  └─ 20260814170000_add_lead_write_audits/
+    └─ migration.sql
+  └─ 20260818143000_add_lead_write_idempotencies/
+    └─ migration.sql
+  └─ 20260820140000_add_lead_feedback_event_status/
+    └─ migration.sql
+  └─ 20260826150000_extend_lead_source_url_and_routing_outcome/
+    └─ migration.sql
+  └─ 20260901101500_after_sales_workorders/
+    └─ migration.sql
+  └─ 20260902090000_add_after_sales_service_fields/
+    └─ migration.sql
+  └─ 20260903090000_add_xiaochuan_agent_conversations/
+    └─ migration.sql
+  └─ 20260903110000_add_agent_message_error_flag/
+    └─ migration.sql
+  └─ 20260904090000_add_xiaochuan_knowledge_tables/
+    └─ migration.sql
+  └─ 20260904110000_add_agent_message_attachments/
+    └─ migration.sql
+  └─ 20260904150000_add_agent_message_feedback/
+    └─ migration.sql
+  └─ 20260904180000_add_agent_accounts_and_model_configs/
+    └─ migration.sql
+  └─ 20260904190000_add_agent_account_session_version/
+    └─ migration.sql
+  └─ 20260905100000_add_agent_mcp_servers/
+    └─ migration.sql
+  └─ 20260906100000_add_lead_hunter_tables/
+    └─ migration.sql
+
+All migrations have been successfully applied.

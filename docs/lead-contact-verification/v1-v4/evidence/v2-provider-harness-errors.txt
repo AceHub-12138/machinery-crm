@@ -1,0 +1,36 @@
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 56043)
+Traceback (most recent call last):
+  File "<python-runtime>/Lib/socketserver.py", line 691, in process_request_thread
+    self.finish_request(request, client_address)
+  File "<python-runtime>/Lib/socketserver.py", line 361, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "<python-runtime>/Lib/socketserver.py", line 755, in __init__
+    self.handle()
+  File "<python-runtime>/Lib/http\server.py", line 440, in handle
+    self.handle_one_request()
+  File "<python-runtime>/Lib/http\server.py", line 428, in handle_one_request
+    method()
+  File "<temporary>\service.py", line 24, in do_POST
+    key=re.search(r'ENGINE_CASE_([a-z0-9-]+)',user).group(1)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'group'
+----------------------------------------
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 56044)
+Traceback (most recent call last):
+  File "<python-runtime>/Lib/socketserver.py", line 691, in process_request_thread
+    self.finish_request(request, client_address)
+  File "<python-runtime>/Lib/socketserver.py", line 361, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "<python-runtime>/Lib/socketserver.py", line 755, in __init__
+    self.handle()
+  File "<python-runtime>/Lib/http\server.py", line 440, in handle
+    self.handle_one_request()
+  File "<python-runtime>/Lib/http\server.py", line 428, in handle_one_request
+    method()
+  File "<temporary>\service.py", line 24, in do_POST
+    key=re.search(r'ENGINE_CASE_([a-z0-9-]+)',user).group(1)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'group'
+----------------------------------------

@@ -1,0 +1,2 @@
+migration_name	finished	rolled_back	applied_steps_count
+20261107010000_add_lead_contact_verification	1	0	1

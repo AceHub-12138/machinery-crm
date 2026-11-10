@@ -1,0 +1,34 @@
+# V4：正式库历史电话只读排查材料
+
+状态：**待管理员执行**。本轮未连接正式库或任何远程数据库；D1 是新功能缺陷，不列入本排查。
+
+完整 SQL：[v4-prod-readonly-scan.sql](v4-prod-readonly-scan.sql)。除开头用户要求的 `SET SESSION TRANSACTION READ ONLY;`，所有执行语句都是 SELECT；没有 DDL、DML、临时表或变量赋值。必须由只有 SELECT 权限的账号执行，不能把会话只读设置当作权限控制的替代。
+
+## 执行顺序
+
+1. 管理员确认实际数据库、只读账号及导出位置；不在聊天中复制密码、连接串或完整电话号码。
+2. **只执行阶段 1**：读取版本、sql_mode、字符集，以及当前库的 leads 和 lead_hunt_candidates 全部列。与 V1 的 MySQL 5.7.44、严格模式、utf8mb4 / utf8mb4_unicode_ci 对比。
+3. 确认基线列存在：leads 的 id、companyName、phone、assignedUserId；候选的 id、companyName、phone、snippet、leadId。没有这些列时停止并保存结构结果，不能猜测替代列。脚本不引用核验迁移新增列。
+4. **再单独执行阶段 2**：分别统计传真标签、无邻近公司名、多个公司共用号码、已指派且命中任一项；每类抽样最多 20 行。只输出电话后 4 位，不输出 snippet、原始 phone 或核验响应。
+5. SQL 结果仅作为人工复核线索；不据此自动修正、解绑、取消分配或删除数据。是否纠错另行由业务审核决定。
+
+阶段 1、2 在同一只读会话中分段运行。大表的 LOCATE／REGEXP／共号聚合可能全表扫描，应先由管理员评估数据量、执行计划和低峰窗口；本轮没有提供或执行正式库写操作。
+
+## 规则范围及与 phone.ts 的差异
+
+- 传真：只看候选 phone 在 snippet 中首次出现位置前最多 30 个 MySQL 字符，有 `传[空白]真` 或大小写不敏感的 fax 就列为线索。比代码末尾标签规则宽，未复现完整标点、多号码传真列表传播及每个号码出现位置；可能多报或漏报。
+- 公司名：只在首次 phone 字面出现前后各 80 个 MySQL 字符中找完整 companyName。没有 NFKC、去标点／空格、大小写统一、至少 4 字主体、换后缀、其他公司条目边界等代码规则；不能据此判定号码归属错误。
+- 共号：合并 leads 和候选的非空 phone，按数据库当前排序规则对字面 phone 分组，COUNT(DISTINCT companyName)>1。未按 phoneKey 去区号前缀、空格和连字符，也不作公司名规范化。统计单位为来源行，同一入池实体可能在两表各有一行；不是唯一企业数或唯一问题数。
+- 已分配：候选经 leadId 关联 Lead，使用其 assignedUserId；Lead 自身也纳入共号检查。无 leadId 关联的历史候选不能推断实际指派人。
+- leads 没有 snippet，前两类只能核对候选原文；不能把 Lead 的 NULL snippet 算作“公司名缺失”。样本输出按来源类型与 id 排序，每类最多 20 行，电话统一 `****` 加后四位；仅短掩码不用于对外识别企业联系人。
+- `phone.ts` 验证所有匹配位置并做原文关联，本 SQL 不会替代它，也不能替代实际拨号核实。
+
+## 本地语法试跑
+
+在本轮一次性 MySQL 5.7.44 容器内另建 `crm_v4_baseline`，恢复 V2 重建时在核验迁移之前保存的 baseline schema snapshot。新核验字段检查数量为 0；未改工作区 schema／migration。随后在该库执行完整 SQL，exit 0，四类统计均返回 0，所有抽样语句无错误。
+
+这是空基线库上的**语法兼容性验证**，不代表正式库没有历史问题。证据：[基线恢复](evidence/v4-retest-restore-baseline.txt)、[无新列核对](evidence/v4-retest-no-new-columns.txt)、[完整试跑输出](evidence/v4-retest-baseline-syntax.txt)。测试库随容器清理；正式库结果由管理员另行填写。
+
+| 正式库执行人／时间 | 版本／结构核对 | 传真数量 | 无名称数量 | 共号数量 | 已指派数量 | 后续人工结论 |
+| --- | --- | --- | --- | --- | --- | --- |
+| | | | | | | |

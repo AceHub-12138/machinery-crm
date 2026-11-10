@@ -1,0 +1,8 @@
+role	accounts
+SUPER_ADMIN	1
+SALES	3
+FOREIGN_TRADE	1
+customers
+8
+contracts
+3

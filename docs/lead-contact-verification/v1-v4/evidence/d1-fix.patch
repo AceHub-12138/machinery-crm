@@ -1,0 +1,80 @@
+commit 55ab5d9e0be051c615663a4ca34599f1b2d976b0
+Author:     AceHub-12138 <337893828+AceHub-12138@users.noreply.github.com>
+AuthorDate: Mon Nov 9 19:40:08 2026 -0800
+Commit:     AceHub-12138 <337893828+AceHub-12138@users.noreply.github.com>
+CommitDate: Mon Nov 9 19:40:08 2026 -0800
+
+    fix: 修复获客任务入池计数在 MySQL 中被写成字符串
+
+diff --git a/src/lib/lead-hunter/admit.test.ts b/src/lib/lead-hunter/admit.test.ts
+index 95dc37eb..b3baa026 100644
+--- a/src/lib/lead-hunter/admit.test.ts
++++ b/src/lib/lead-hunter/admit.test.ts
+@@ -135,6 +135,17 @@ function createFakeDb(options?: { users?: Array<Record<string, unknown>> }) {
+ }
+
+ describe("admitCandidates 入池分单", () => {
++  it("[D1] admission SQL atomically increments an explicitly typed integer", async () => {
++    const db = createFakeDb(); db.addTask("sql-type", baseConfig); db.addCandidate("integer", "sql-type");
++    await admitCandidates(buildUser(), "sql-type", ["integer"], { prisma: db.prisma });
++    expect(db.prisma.$executeRaw).toHaveBeenCalledTimes(1);
++    // SQL shape only: MySQL 5.7.44 regression verifies the actual JSON numeric type.
++    const [template] = vi.mocked(db.prisma.$executeRaw).mock.calls[0];
++    const sql = (template as TemplateStringsArray).join("?");
++    expect(sql).toContain("CAST(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0) + 1 AS SIGNED)");
++    expect(sql).not.toMatch(/COALESCE\(JSON_EXTRACT\(report,\s*'\$\.admitted'\),\s*0\)/);
++    expect(sql).toContain("JSON_SET(COALESCE(report, JSON_OBJECT())");
++  });
+   it("[R4] 欢迎访问前缀沿历史入池路径保留电话及区域分配", async () => {
+     const db = createFakeDb({ users: [{ id: "sales-zj", role: "SALES", isActive: true, territories: [{ province: "浙江省", cities: [] }] }] });
+     db.addTask("t1", baseConfig);
+diff --git a/src/lib/lead-hunter/admit.ts b/src/lib/lead-hunter/admit.ts
+index 2785a2b7..8e969627 100644
+--- a/src/lib/lead-hunter/admit.ts
++++ b/src/lib/lead-hunter/admit.ts
+@@ -61,7 +61,7 @@ export async function admitCandidates(user: SessionUser, taskId: string, candida
+           }, select: { id: true, assignedUserId: true },
+         });
+         await tx.leadHuntCandidate.update({ where: { id: candidateId }, data: { status: "ADMITTED", leadId: lead.id, phone, email, phoneSource: phone ? "PAGE_TEXT" : null, phoneEvidence: phoneEvidence ?? Prisma.DbNull } });
+-        await tx.$executeRaw`UPDATE lead_hunt_tasks SET report = JSON_SET(COALESCE(report, JSON_OBJECT()), '$.admitted', COALESCE(JSON_EXTRACT(report, '$.admitted'), 0) + 1) WHERE id = ${taskId}`;
++        await tx.$executeRaw`UPDATE lead_hunt_tasks SET report = JSON_SET(COALESCE(report, JSON_OBJECT()), '$.admitted', CAST(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0) + 1 AS SIGNED)) WHERE id = ${taskId}`;
+         await writeOperationLog(tx, { userId: user.id, action: phone ? leadRoutingAuditAction(routing) : "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT", entityType: "Lead", entityId: lead.id, afterData: { candidateId, assignedUserId: lead.assignedUserId } });
+         return { candidateId, status: "ADMITTED" as const, reason: phone ? "入池成功" : "入池成功，待管理员反查", leadId: lead.id, assignedUserId: lead.assignedUserId, replay: false };
+       }));
+diff --git a/src/lib/lead-hunter/engine.test.ts b/src/lib/lead-hunter/engine.test.ts
+index 23d529dd..d9f3af0d 100644
+--- a/src/lib/lead-hunter/engine.test.ts
++++ b/src/lib/lead-hunter/engine.test.ts
+@@ -123,6 +123,19 @@ function createFakeDb() {
+ }
+
+ describe("lead-hunter engine", () => {
++  it("[D1] heartbeat SQL converts admitted to an integer before JSON_SET", async () => {
++    const db = createFakeDb(); db.addTask("sql-type", baseConfig);
++    await createLeadHunterEngine({ prisma: db.prisma, llm: vi.fn().mockResolvedValue({ keywords: ["k"] }), search: { searchWeb: vi.fn(async () => []) } }).runTask("sql-type");
++    const calls = vi.mocked(db.prisma.$executeRaw).mock.calls;
++    expect(calls.length).toBeGreaterThan(2);
++    // Fake DB cannot reproduce MySQL JSON types; the MySQL 5.7.44 SQL regression is authoritative.
++    for (const [template] of calls) {
++      const sql = (template as TemplateStringsArray).join("?");
++      expect(sql).toContain("COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0)");
++      expect(sql).not.toMatch(/COALESCE\(JSON_EXTRACT\(report,\s*'\$\.admitted'\),\s*0\)/);
++      expect(sql).toContain("AND status = 'running'");
++    }
++  });
+   it("[R4] 欢迎访问前缀沿真实引擎路径保留目标电话", async () => {
+     const db = createFakeDb(); db.addTask("round3", baseConfig);
+     const companyName = "甲机械有限公司";
+diff --git a/src/lib/lead-hunter/engine.ts b/src/lib/lead-hunter/engine.ts
+index 5527e43b..735b6bbb 100644
+--- a/src/lib/lead-hunter/engine.ts
++++ b/src/lib/lead-hunter/engine.ts
+@@ -89,7 +89,7 @@ export function createLeadHunterEngine(deps: LeadHunterDeps) {
+     // JSON 字段中的 admitted 由入池事务单独原子累加；心跳不能用本地旧值覆盖它。
+     const touch = () => prisma.$executeRaw`
+       UPDATE lead_hunt_tasks SET progress = ${JSON.stringify(progress)},
+-        report = JSON_SET(${JSON.stringify(report)}, '$.admitted', COALESCE(JSON_EXTRACT(report, '$.admitted'), 0)),
++        report = JSON_SET(${JSON.stringify(report)}, '$.admitted', COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0)),
+         updatedAt = ${now()}
+       WHERE id = ${taskId} AND status = 'running'
+     `;

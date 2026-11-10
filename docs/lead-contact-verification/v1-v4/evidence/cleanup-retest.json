@@ -1,0 +1,44 @@
+{
+  "container": "crm-d1-20261109",
+  "databaseScope": "disposable local only",
+  "commands": [
+    {
+      "command": "taskkill /PID 35792 /T /F",
+      "exit": 0,
+      "verifiedOwnedProcess": true
+    },
+    {
+      "command": "taskkill /PID 34068 /T /F",
+      "exit": 0,
+      "verifiedOwnedProcess": true
+    },
+    {
+      "command": "docker rm -f -v crm-d1-20261109",
+      "exit": 0
+    }
+  ],
+  "containerRemoved": true,
+  "anonymousVolumes": [
+    {
+      "name": "a89fc57cd36c65f6601594efc7856b30dc346e3154723d3da255dd48f7b172ae",
+      "removed": true
+    }
+  ],
+  "portsClosed": {
+    "app": {
+      "port": 58575,
+      "closed": true
+    },
+    "mysql": {
+      "port": 62372,
+      "closed": true
+    },
+    "mock": {
+      "port": 58576,
+      "closed": true
+    }
+  },
+  "temporaryDirectoryRemoved": false,
+  "temporaryDirectoryDeletion": "Automatic approval review rejected both the verified-target removal command and the exact literal-path Remove-Item command: blocked by policy. No alternate deletion mechanism attempted. Disposable task directory remains outside the worktree; user local cleanup required.",
+  "worktreeRuntimeEnvFiles": []
+}

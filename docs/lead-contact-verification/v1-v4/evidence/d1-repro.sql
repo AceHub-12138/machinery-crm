@@ -1,0 +1,27 @@
+SELECT VERSION(), @@sql_mode;
+CREATE TEMPORARY TABLE d1_report_probe (id INT PRIMARY KEY, report JSON NULL) ENGINE=InnoDB;
+INSERT INTO d1_report_probe VALUES (1, JSON_OBJECT('admitted', 0)), (2, JSON_OBJECT('admitted', 0));
+PREPARE heartbeat FROM 'UPDATE d1_report_probe SET report=JSON_SET(?, ''$.admitted'', COALESCE(JSON_EXTRACT(report, ''$.admitted''), 0)) WHERE id=1';
+SET @local_report='{"admitted":0,"totalCandidates":3}';
+EXECUTE heartbeat USING @local_report;
+SELECT 'heartbeat-1' AS step, JSON_TYPE(JSON_EXTRACT(report,'$.admitted')) AS type, JSON_EXTRACT(report,'$.admitted') AS value FROM d1_report_probe WHERE id=1;
+EXECUTE heartbeat USING @local_report;
+SELECT 'heartbeat-2' AS step, JSON_TYPE(JSON_EXTRACT(report,'$.admitted')) AS type, JSON_EXTRACT(report,'$.admitted') AS value FROM d1_report_probe WHERE id=1;
+EXECUTE heartbeat USING @local_report;
+SELECT 'heartbeat-3' AS step, JSON_TYPE(JSON_EXTRACT(report,'$.admitted')) AS type, JSON_EXTRACT(report,'$.admitted') AS value FROM d1_report_probe WHERE id=1;
+DEALLOCATE PREPARE heartbeat;
+UPDATE d1_report_probe SET report=JSON_SET(COALESCE(report,JSON_OBJECT()),'$.admitted',COALESCE(JSON_EXTRACT(report,'$.admitted'),0)+1) WHERE id=2;
+SHOW WARNINGS;
+SELECT 'admit-numeric' AS step, JSON_TYPE(JSON_EXTRACT(report,'$.admitted')) AS type, JSON_EXTRACT(report,'$.admitted') AS value FROM d1_report_probe WHERE id=2;
+UPDATE d1_report_probe SET report=JSON_SET(COALESCE(report,JSON_OBJECT()),'$.admitted',COALESCE(JSON_EXTRACT(report,'$.admitted'),0)+1) WHERE id=1;
+SHOW WARNINGS;
+SELECT 'admit-after-three-heartbeats' AS step, JSON_TYPE(JSON_EXTRACT(report,'$.admitted')) AS type, JSON_EXTRACT(report,'$.admitted') AS value FROM d1_report_probe WHERE id=1;
+UPDATE d1_report_probe SET report=JSON_OBJECT('admitted',0) WHERE id=1;
+PREPARE heartbeat FROM 'UPDATE d1_report_probe SET report=JSON_SET(?, ''$.admitted'', COALESCE(JSON_EXTRACT(report, ''$.admitted''), 0)) WHERE id=1';
+EXECUTE heartbeat USING @local_report;
+UPDATE d1_report_probe SET report=JSON_SET(COALESCE(report,JSON_OBJECT()),'$.admitted',COALESCE(JSON_EXTRACT(report,'$.admitted'),0)+1) WHERE id=1;
+SHOW WARNINGS;
+SELECT 'admit-after-one-heartbeat' AS step, JSON_TYPE(JSON_EXTRACT(report,'$.admitted')) AS type, JSON_EXTRACT(report,'$.admitted') AS value FROM d1_report_probe WHERE id=1;
+DEALLOCATE PREPARE heartbeat;
+SELECT JSON_TYPE(JSON_EXTRACT(JSON_SET('{"admitted":0}', '$.admitted', JSON_EXTRACT('{"admitted":0}', '$.admitted')), '$.admitted')) AS direct_extract_type,
+ JSON_TYPE(JSON_EXTRACT(JSON_SET('{"admitted":0}', '$.admitted', COALESCE(JSON_EXTRACT('{"admitted":0}', '$.admitted'),0)), '$.admitted')) AS coalesce_type;

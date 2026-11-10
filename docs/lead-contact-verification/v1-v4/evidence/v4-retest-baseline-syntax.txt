@@ -1,0 +1,76 @@
+exit=0
++---------+-------------------------------------------------------------------------------------------------------------------------------------------+----------------+--------------------+
+| version | sql_mode                                                                                                                                  | charset_server | collation_server   |
++---------+-------------------------------------------------------------------------------------------------------------------------------------------+----------------+--------------------+
+| 5.7.44  | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | utf8mb4        | utf8mb4_unicode_ci |
++---------+-------------------------------------------------------------------------------------------------------------------------------------------+----------------+--------------------+
++----------------------+---------------------+--------------------------------------------------------------------------+-------------+
+| TABLE_NAME           | COLUMN_NAME         | COLUMN_TYPE                                                              | IS_NULLABLE |
++----------------------+---------------------+--------------------------------------------------------------------------+-------------+
+| leads                | id                  | varchar(191)                                                             | NO          |
+| leads                | companyName         | varchar(191)                                                             | NO          |
+| leads                | contactName         | varchar(191)                                                             | YES         |
+| leads                | phone               | varchar(191)                                                             | YES         |
+| leads                | email               | varchar(191)                                                             | YES         |
+| leads                | source              | enum('BAIDU_SEARCH','MANUAL','OTHER')                                    | NO          |
+| leads                | sourceUrl           | varchar(2048)                                                            | YES         |
+| leads                | searchKeyword       | varchar(191)                                                             | YES         |
+| leads                | aiScore             | int(11)                                                                  | YES         |
+| leads                | profile             | json                                                                     | YES         |
+| leads                | sourceModelVersion  | varchar(191)                                                             | YES         |
+| leads                | extractorVersion    | varchar(191)                                                             | YES         |
+| leads                | sourceSystem        | varchar(191)                                                             | YES         |
+| leads                | externalLeadId      | varchar(191)                                                             | YES         |
+| leads                | idempotencyKey      | varchar(191)                                                             | YES         |
+| leads                | payloadHash         | varchar(191)                                                             | YES         |
+| leads                | dedupKey            | varchar(191)                                                             | YES         |
+| leads                | duplicateOfLeadId   | varchar(191)                                                             | YES         |
+| leads                | duplicateConfidence | int(11)                                                                  | YES         |
+| leads                | dedupStatus         | enum('UNIQUE','PENDING_REVIEW','CONFIRMED_DUPLICATE','CONFIRMED_UNIQUE') | NO          |
+| leads                | reviewStatus        | enum('PENDING','HIGH_INTENT','MID_INTENT','LOW_INTENT','INVALID')        | NO          |
+| leads                | assignedUserId      | varchar(191)                                                             | YES         |
+| leads                | reviewedByUserId    | varchar(191)                                                             | YES         |
+| leads                | reviewedAt          | datetime(3)                                                              | YES         |
+| leads                | convertedCustomerId | varchar(191)                                                             | YES         |
+| leads                | feedbackVersion     | int(11)                                                                  | NO          |
+| leads                | createdAt           | datetime(3)                                                              | NO          |
+| leads                | updatedAt           | datetime(3)                                                              | NO          |
+| lead_hunt_candidates | id                  | varchar(191)                                                             | NO          |
+| lead_hunt_candidates | taskId              | varchar(191)                                                             | NO          |
+| lead_hunt_candidates | companyName         | varchar(191)                                                             | NO          |
+| lead_hunt_candidates | sourceUrl           | varchar(2048)                                                            | YES         |
+| lead_hunt_candidates | snippet             | text                                                                     | YES         |
+| lead_hunt_candidates | keywords            | json                                                                     | YES         |
+| lead_hunt_candidates | round               | int(11)                                                                  | YES         |
+| lead_hunt_candidates | score               | int(11)                                                                  | YES         |
+| lead_hunt_candidates | scoreReason         | text                                                                     | YES         |
+| lead_hunt_candidates | phone               | varchar(191)                                                             | YES         |
+| lead_hunt_candidates | email               | varchar(191)                                                             | YES         |
+| lead_hunt_candidates | province            | varchar(191)                                                             | YES         |
+| lead_hunt_candidates | city                | varchar(191)                                                             | YES         |
+| lead_hunt_candidates | status              | varchar(191)                                                             | NO          |
+| lead_hunt_candidates | tianyancha          | json                                                                     | YES         |
+| lead_hunt_candidates | leadId              | varchar(191)                                                             | YES         |
+| lead_hunt_candidates | createdAt           | datetime(3)                                                              | NO          |
+| lead_hunt_candidates | updatedAt           | datetime(3)                                                              | NO          |
++----------------------+---------------------+--------------------------------------------------------------------------+-------------+
++-----------+-----------+
+| flag      | row_count |
++-----------+-----------+
+| FAX_LABEL |         0 |
++-----------+-----------+
++----------------+-----------+
+| flag           | row_count |
++----------------+-----------+
+| NO_NEARBY_NAME |         0 |
++----------------+-----------+
++--------------+-----------+
+| flag         | row_count |
++--------------+-----------+
+| SHARED_PHONE |         0 |
++--------------+-----------+
++------------------+-----------+
+| flag             | row_count |
++------------------+-----------+
+| ASSIGNED_FLAGGED |         0 |
++------------------+-----------+

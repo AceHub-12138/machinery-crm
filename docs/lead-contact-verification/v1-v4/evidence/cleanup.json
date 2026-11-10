@@ -1,0 +1,32 @@
+[
+  {
+    "command": "taskkill /PID <devPid> /T /F",
+    "exitCode": 0,
+    "result": "stopped"
+  },
+  {
+    "command": "taskkill /PID <llmPid> /T /F",
+    "exitCode": 0,
+    "result": "stopped"
+  },
+  {
+    "command": "docker rm --force --volumes lead-contact-v1v2-2a943272",
+    "exitCode": 0,
+    "result": "container and anonymous volume removed"
+  },
+  {
+    "command": "docker ps -a --filter name=<this-container> --format {{.Names}}",
+    "exitCode": 0,
+    "result": "no matching container"
+  },
+  {
+    "command": "Remove only validated <temporary>/lead-v1v2-<task> recursively, then its task locator file",
+    "exitCode": 0,
+    "result": "task directory, migration copies, credentials, cookie files, uploads and runtime fixtures removed"
+  },
+  {
+    "command": "Check worktree runtime environment files",
+    "exitCode": 0,
+    "result": "no .env, .env.local, .env.development, .env.production created"
+  }
+]

@@ -1,0 +1,46 @@
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://127.0.0.1:53112
+- Network:       http://127.0.0.1:53112
+✓ Ready in 668ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+- Experiments (use with caution):
+  · proxyClientMaxBodySize: "100mb"
+  · serverActions
+
+ GET /api/auth/csrf 200 in 1358ms (next.js: 1206ms, proxy.ts: 120ms, application-code: 31ms)
+ POST /api/auth/callback/credentials 200 in 332ms (next.js: 44ms, proxy.ts: 11ms, application-code: 276ms)
+ GET /api/auth/session 200 in 32ms (next.js: 5ms, proxy.ts: 15ms, application-code: 11ms)
+ GET /api/auth/csrf 200 in 13ms (next.js: 4ms, proxy.ts: 4ms, application-code: 5ms)
+ POST /api/auth/callback/credentials 200 in 258ms (next.js: 5ms, proxy.ts: 6ms, application-code: 247ms)
+ GET /api/auth/session 200 in 26ms (next.js: 5ms, proxy.ts: 11ms, application-code: 10ms)
+ GET /api/auth/csrf 200 in 12ms (next.js: 5ms, proxy.ts: 4ms, application-code: 4ms)
+ POST /api/auth/callback/credentials 200 in 276ms (next.js: 4ms, proxy.ts: 4ms, application-code: 267ms)
+ GET /api/auth/session 200 in 81ms (next.js: 60ms, proxy.ts: 11ms, application-code: 11ms)
+ GET /api/crm/leads/contact-lookups/quota 200 in 185ms (next.js: 154ms, proxy.ts: 8ms, application-code: 23ms)
+○ Compiling /login ...
+ GET /login 200 in 17.6s (next.js: 17.4s, proxy.ts: 5ms, application-code: 186ms)
+ GET /api/desktop/latest 404 in 111ms (next.js: 100ms, proxy.ts: 6ms, application-code: 5ms)
+ GET /api/desktop/latest 404 in 114ms (next.js: 106ms, proxy.ts: 5ms, application-code: 3ms)
+ GET /login 200 in 53ms (next.js: 4ms, proxy.ts: 4ms, application-code: 45ms)
+ GET /api/desktop/latest 404 in 15ms (next.js: 4ms, proxy.ts: 6ms, application-code: 6ms)
+ GET /api/desktop/latest 404 in 19ms (next.js: 11ms, proxy.ts: 5ms, application-code: 4ms)
+ GET /api/auth/providers 200 in 61ms (next.js: 52ms, proxy.ts: 4ms, application-code: 5ms)
+ GET /api/auth/csrf 200 in 13ms (next.js: 6ms, proxy.ts: 4ms, application-code: 4ms)
+ POST /api/auth/callback/credentials? 200 in 264ms (next.js: 5ms, proxy.ts: 5ms, application-code: 254ms)
+ GET / 307 in 547ms (next.js: 371ms, proxy.ts: 10ms, application-code: 166ms)
+ GET /dashboard/crm 200 in 665ms (next.js: 463ms, proxy.ts: 11ms, application-code: 191ms)
+ GET /api/auth/session 200 in 96ms (next.js: 60ms, proxy.ts: 26ms, application-code: 10ms)
+ GET /api/auth/session 200 in 25ms (next.js: 5ms, proxy.ts: 9ms, application-code: 10ms)
+ GET /api/system/tasks?view=inbox 200 in 328ms (next.js: 199ms, proxy.ts: 29ms, application-code: 100ms)
+ GET /api/upload/avatar 200 in 189ms (next.js: 123ms, application-code: 66ms)
+ GET /api/crm/dashboard 200 in 372ms (next.js: 154ms, proxy.ts: 26ms, application-code: 192ms)
+ GET /api/crm/dashboard?preset=month 200 in 376ms (next.js: 161ms, proxy.ts: 26ms, application-code: 188ms)
+ GET /api/system/health 200 in 250ms (next.js: 217ms, proxy.ts: 11ms, application-code: 23ms)
+ GET /api/crm/sales-targets?periodType=MONTH&year=2026&metric=CONTRACT_AMOUNT&month=11 200 in 128ms (next.js: 103ms, proxy.ts: 7ms, application-code: 19ms)
+ POST /api/lead-hunter/tasks 200 in 300ms (next.js: 261ms, proxy.ts: 10ms, application-code: 29ms)
+ GET /api/lead-hunter/tasks/ef6f66f5-cb5e-4cb9-9f47-3011aeed0337 200 in 1033ms (next.js: 984ms, proxy.ts: 23ms, application-code: 25ms)
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+ GET /api/auth/session 200 in 94ms (next.js: 56ms, proxy.ts: 22ms, application-code: 16ms)
+ GET /api/system/tasks?view=inbox 200 in 114ms (next.js: 9ms, proxy.ts: 20ms, application-code: 85ms)
+ GET /api/system/tasks?view=inbox 200 in 109ms (next.js: 11ms, proxy.ts: 20ms, application-code: 78ms)
+ GET /api/auth/session 200 in 26ms (next.js: 5ms, proxy.ts: 14ms, application-code: 7ms)

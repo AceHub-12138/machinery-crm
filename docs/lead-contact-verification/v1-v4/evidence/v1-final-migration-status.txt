@@ -1,0 +1,11 @@
+Command: pnpm exec prisma migrate status --schema <temporary>/full/prisma/schema.prisma
+Target verified: 127.0.0.1:59793/crm_v1_test
+Started UTC: 2026-11-10T03:16:00.290020+00:00
+Exit: 0
+Elapsed seconds: 1.422
+Prisma schema loaded from <temporary>\full\prisma\schema.prisma
+Datasource "db": MySQL database "crm_v1_test" at "127.0.0.1:59793"
+
+37 migrations found in prisma/migrations
+
+Database schema is up to date!

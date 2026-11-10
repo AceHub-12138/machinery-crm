@@ -1,0 +1,2 @@
+Command: git -c core.autocrlf=false diff --check
+exit=0

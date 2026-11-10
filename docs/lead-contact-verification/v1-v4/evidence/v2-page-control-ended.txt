@@ -1,0 +1,1 @@
+Computer Use ended because the tool could not determine the current browser URL on Windows with sufficient confidence to enforce policy. Browser calls stopped after that result. Production no-name confirmation dialog was observed, but post-confirmation screenshot could not be captured. Database verification is recorded separately; uncompleted UI items remain pending.

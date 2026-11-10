@@ -1,0 +1,761 @@
+{
+  "leads": [
+    {
+      "id": "04eda8f5-f7bf-4093-baaa-403034355667",
+      "name": "恒精机有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "0c34bee1-9469-44b8-9bd5-b5ed7b6db2a3",
+      "name": "D1传真乙有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "108094ba-fe69-4749-9392-f4b5570c782a",
+      "name": "D1简称有限公司",
+      "phone": "0531-11112222",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "D1简称 电话：0531-11112222",
+        "sourceUrl": "https://example.test/short-name",
+        "extractedAt": "2026-11-10T03:48:06.789Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "12105254-55d8-4d19-a601-3b6f7ad59f16",
+      "name": "D1电话甲有限公司",
+      "phone": "0574-11112222",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "D1电话甲有限公司 电话：0574-11112222 / 0574-11113333（传真另询）",
+        "sourceUrl": "https://example.test/phone-ab-first",
+        "extractedAt": "2026-11-10T03:49:09.516Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "42ce4887-dafb-4c5d-9b2b-a8befcb3ab6b",
+      "name": "D1英文有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "6537073b-3e6b-4448-8cce-c3fabd717213",
+      "name": "D1虚构有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "67ac00cc-ce7d-4e27-b85a-b08fa2cb0f6a",
+      "name": "D1名录甲有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "6ccc6508-5962-4f47-93c3-791d94ca36b4",
+      "name": "青岛恒精机械有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "7a363bb8-fee9-4434-8fef-6b5ac1e5cd60",
+      "name": "宁波恒精传动科技有限公司",
+      "phone": "13812345678",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "宁波恒精传动科技有限公司 - 联系我们\n\n宁波恒精传动科技有限公司专业从事精密齿轮、联轴器与键槽加工，拥有多台数控插齿机。采购请联系王经理：13812345678",
+        "sourceUrl": "https://www.example-hengjing.cn/contact?kw=D1%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95&c=1-0",
+        "extractedAt": "2026-11-10T03:45:18.274Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "7e06a24d-4928-4c59-ba93-938d08d2f4b0",
+      "name": "D1页脚有限公司",
+      "phone": "0531-11112222",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "电话：0531-11112222 版权所有D1页脚有限公司",
+        "sourceUrl": "https://example.test/footer",
+        "extractedAt": "2026-11-10T03:49:04.973Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "8428cf58-e351-4ed3-b356-5fad7d4645d5",
+      "name": "D1括号有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "85d2173c-8347-4199-837a-294c9f2420ce",
+      "name": "D1换缀有限公司",
+      "phone": "0531-11112222",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "D1换缀有限责任公司 电话：0531-11112222",
+        "sourceUrl": "https://example.test/R7-suffix",
+        "extractedAt": "2026-11-10T03:49:11.346Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "8ceafe86-d376-49ce-8cb6-5ccbd1d56dea",
+      "name": "D1后置甲有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "9f7d88de-c6e2-491a-b372-0ad63bc3544f",
+      "name": "恒精有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "a220cc93-fdde-4d51-9e3d-7ed57bb8d19b",
+      "name": "济南恒精机械有限公司",
+      "phone": "0531-11112222",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "欢迎访问济南恒精机械股份有限公司 电话：0531-11112222",
+        "sourceUrl": "https://example.test/R7-welcome",
+        "extractedAt": "2026-11-10T03:50:35.105Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "ade33894-8761-436e-bc6b-a35bc0a3c77c",
+      "name": "D1评分85有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "bd0ecd0e-f007-456d-938e-203170412313",
+      "name": "D1方括号有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "c29f956a-497f-4617-9b8e-8addcbe56a5a",
+      "name": "D1全角有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "c32a296f-6c01-46c5-aa47-01631e93536c",
+      "name": "D1同句有限公司",
+      "phone": "0531-11112222",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "D1同句有限公司 电话：0531-11112222",
+        "sourceUrl": "https://example.test/same-sentence",
+        "extractedAt": "2026-11-10T03:48:05.918Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "c3dcf9fe-6677-44b5-aaad-01ff47e4035d",
+      "name": "D1电话乙有限公司",
+      "phone": "0574-11113333",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "D1电话乙有限公司 电话：0574-11112222 / 0574-11113333（传真另询）",
+        "sourceUrl": "https://example.test/phone-ab-second",
+        "extractedAt": "2026-11-10T03:49:10.438Z"
+      },
+      "assignedUserId": null
+    },
+    {
+      "id": "d0eb8291-fd0c-40a8-a58b-91c08107c6af",
+      "name": "D1传真甲有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "dcc2b3df-26b4-4ed5-8f9f-508f65f25986",
+      "name": "D1多行甲有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "de2cc777-7715-48f0-b728-ed5d0f841c0d",
+      "name": "D1同排甲有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "efa30629-8541-4125-9e1e-5c33f73f52cc",
+      "name": "D1传真有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "PENDING_LOOKUP",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "mock-lead",
+      "name": "D1模拟有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "LOOKUP_FAILED",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    },
+    {
+      "id": "no-name",
+      "name": "D1无名称待确认有限公司",
+      "phone": null,
+      "phoneSource": null,
+      "contactStatus": "LOOKUP_FAILED",
+      "phoneEvidence": null,
+      "assignedUserId": null
+    }
+  ],
+  "lead_hunt_candidates": [
+    {
+      "id": "4f699095-b4fa-4dcf-b6fe-8e6db49e0ddb",
+      "name": "苏州拓峰自动化设备有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": null,
+      "status": "NO_CONTACT",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "5f0d88fa-08d9-4bd2-ad2f-0a929518bcbc",
+      "name": "台州洪发阀门制造有限公司",
+      "phone": "0576-88012345",
+      "score": 90,
+      "leadId": null,
+      "status": "PENDING_CONFIRM",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "台州洪发阀门制造有限公司 - 公司简介\n\n台州洪发阀门制造有限公司生产各类工业阀门，机加工车间对外协作。联系电话：0576-88012345 张厂长",
+        "sourceUrl": "https://www.example-hongfa.com/about?kw=D1%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95&c=1-1",
+        "extractedAt": "2026-11-10T03:45:17.417Z"
+      }
+    },
+    {
+      "id": "adb0786c-7868-4405-8c5f-d799c7e12d0e",
+      "name": "宁波恒精传动科技有限公司",
+      "phone": "13812345678",
+      "score": 90,
+      "leadId": "7a363bb8-fee9-4434-8fef-6b5ac1e5cd60",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "宁波恒精传动科技有限公司 - 联系我们\n\n宁波恒精传动科技有限公司专业从事精密齿轮、联轴器与键槽加工，拥有多台数控插齿机。采购请联系王经理：13812345678",
+        "sourceUrl": "https://www.example-hengjing.cn/contact?kw=D1%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95&c=1-0",
+        "extractedAt": "2026-11-10T03:45:18.274Z"
+      }
+    },
+    {
+      "id": "compact-inline",
+      "name": "D1同排甲有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "de2cc777-7715-48f0-b728-ed5d0f841c0d",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "compact-lines",
+      "name": "D1多行甲有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "dcc2b3df-26b4-4ed5-8f9f-508f65f25986",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "customer-name",
+      "name": "深圳精工科技",
+      "phone": null,
+      "score": 90,
+      "leadId": null,
+      "status": "EXISTING_CUSTOMER",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "customer-phone",
+      "name": "D1客户共号有限公司",
+      "phone": "13900139002",
+      "score": 90,
+      "leadId": null,
+      "status": "EXISTING_CUSTOMER",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "directory",
+      "name": "D1名录甲有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "67ac00cc-ce7d-4e27-b85a-b08fa2cb0f6a",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "fax",
+      "name": "D1传真有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "efa30629-8541-4125-9e1e-5c33f73f52cc",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "fax-ab-first",
+      "name": "D1传真甲有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "d0eb8291-fd0c-40a8-a58b-91c08107c6af",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "fax-ab-second",
+      "name": "D1传真乙有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "0c34bee1-9469-44b8-9bd5-b5ed7b6db2a3",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "fax-bracket",
+      "name": "D1方括号有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "bd0ecd0e-f007-456d-938e-203170412313",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "fax-en",
+      "name": "D1英文有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "42ce4887-dafb-4c5d-9b2b-a8befcb3ab6b",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "fax-paren",
+      "name": "D1括号有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "8428cf58-e351-4ed3-b356-5fad7d4645d5",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "fax-wide",
+      "name": "D1全角有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "c29f956a-497f-4617-9b8e-8addcbe56a5a",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "footer",
+      "name": "D1页脚有限公司",
+      "phone": "0531-11112222",
+      "score": 90,
+      "leadId": "7e06a24d-4928-4c59-ba93-938d08d2f4b0",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "电话：0531-11112222 版权所有D1页脚有限公司",
+        "sourceUrl": "https://example.test/footer",
+        "extractedAt": "2026-11-10T03:49:04.973Z"
+      }
+    },
+    {
+      "id": "invented",
+      "name": "D1虚构有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "6537073b-3e6b-4448-8cce-c3fabd717213",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "number-before",
+      "name": "D1后置甲有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "8ceafe86-d376-49ce-8cb6-5ccbd1d56dea",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "phone-ab-first",
+      "name": "D1电话甲有限公司",
+      "phone": "0574-11112222",
+      "score": 90,
+      "leadId": "12105254-55d8-4d19-a601-3b6f7ad59f16",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "D1电话甲有限公司 电话：0574-11112222 / 0574-11113333（传真另询）",
+        "sourceUrl": "https://example.test/phone-ab-first",
+        "extractedAt": "2026-11-10T03:49:09.516Z"
+      }
+    },
+    {
+      "id": "phone-ab-second",
+      "name": "D1电话乙有限公司",
+      "phone": "0574-11113333",
+      "score": 90,
+      "leadId": "c3dcf9fe-6677-44b5-aaad-01ff47e4035d",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "D1电话乙有限公司 电话：0574-11112222 / 0574-11113333（传真另询）",
+        "sourceUrl": "https://example.test/phone-ab-second",
+        "extractedAt": "2026-11-10T03:49:10.438Z"
+      }
+    },
+    {
+      "id": "R7-short",
+      "name": "恒精机有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "04eda8f5-f7bf-4093-baaa-403034355667",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "R7-sister",
+      "name": "济南恒精机械有限公司",
+      "phone": "0531-11112222",
+      "score": 90,
+      "leadId": "a220cc93-fdde-4d51-9e3d-7ed57bb8d19b",
+      "status": "ALREADY_IN_POOL",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "R7-sister-distinct",
+      "name": "青岛恒精机械有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "6ccc6508-5962-4f47-93c3-791d94ca36b4",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "R7-suffix",
+      "name": "D1换缀有限公司",
+      "phone": "0531-11112222",
+      "score": 90,
+      "leadId": "85d2173c-8347-4199-837a-294c9f2420ce",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "D1换缀有限责任公司 电话：0531-11112222",
+        "sourceUrl": "https://example.test/R7-suffix",
+        "extractedAt": "2026-11-10T03:49:11.346Z"
+      }
+    },
+    {
+      "id": "R7-welcome",
+      "name": "济南恒精机械有限公司",
+      "phone": "0531-11112222",
+      "score": 90,
+      "leadId": "a220cc93-fdde-4d51-9e3d-7ed57bb8d19b",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "欢迎访问济南恒精机械股份有限公司 电话：0531-11112222",
+        "sourceUrl": "https://example.test/R7-welcome",
+        "extractedAt": "2026-11-10T03:50:35.105Z"
+      }
+    },
+    {
+      "id": "same-sentence",
+      "name": "D1同句有限公司",
+      "phone": "0531-11112222",
+      "score": 90,
+      "leadId": "c32a296f-6c01-46c5-aa47-01631e93536c",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "D1同句有限公司 电话：0531-11112222",
+        "sourceUrl": "https://example.test/same-sentence",
+        "extractedAt": "2026-11-10T03:48:05.918Z"
+      }
+    },
+    {
+      "id": "score84",
+      "name": "D1评分84有限公司",
+      "phone": null,
+      "score": 84,
+      "leadId": null,
+      "status": "PENDING_CONFIRM",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "score85",
+      "name": "D1评分85有限公司",
+      "phone": null,
+      "score": 85,
+      "leadId": "ade33894-8761-436e-bc6b-a35bc0a3c77c",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "short-name",
+      "name": "D1简称有限公司",
+      "phone": "0531-11112222",
+      "score": 90,
+      "leadId": "108094ba-fe69-4749-9392-f4b5570c782a",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "D1简称 电话：0531-11112222",
+        "sourceUrl": "https://example.test/short-name",
+        "extractedAt": "2026-11-10T03:48:06.789Z"
+      }
+    },
+    {
+      "id": "short-name-corrected",
+      "name": "恒精有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": "9f7d88de-c6e2-491a-b372-0ad63bc3544f",
+      "status": "ADMITTED",
+      "phoneSource": null,
+      "phoneEvidence": null
+    }
+  ],
+  "lead_contact_lookups": [
+    {
+      "id": "e90ca89c-0a41-4463-b7d4-91428c37147d",
+      "isMock": 1,
+      "leadId": "mock-lead",
+      "status": "FAILED",
+      "charged": 0,
+      "matchedName": "D1模拟有限公司",
+      "cacheOfLookupId": null
+    },
+    {
+      "id": "no-name-row",
+      "isMock": 0,
+      "leadId": "no-name",
+      "status": "REJECTED",
+      "charged": 0,
+      "matchedName": null,
+      "cacheOfLookupId": null
+    }
+  ],
+  "lead_lookup_daily_quotas": [],
+  "operation_logs": [
+    {
+      "id": "01360373-40d9-4f45-a197-4fe2c81fb892",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "8ceafe86-d376-49ce-8cb6-5ccbd1d56dea"
+    },
+    {
+      "id": "07cba2ba-bcf6-4cfc-96f2-24ab7a42a5ee",
+      "action": "LEAD_CONTACT_LOOKUP|result=FAILED",
+      "entityId": "mock-lead"
+    },
+    {
+      "id": "12e5ca2a-847e-4e4c-a286-2f8d093559b5",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "8428cf58-e351-4ed3-b356-5fad7d4645d5"
+    },
+    {
+      "id": "1b18b3cf-d994-48db-a463-0729a334ed39",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "42ce4887-dafb-4c5d-9b2b-a8befcb3ab6b"
+    },
+    {
+      "id": "2d270c12-fca8-46e3-875e-365fe2d222e0",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "67ac00cc-ce7d-4e27-b85a-b08fa2cb0f6a"
+    },
+    {
+      "id": "39ed6a57-80af-489e-958f-3b195f14310f",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "c32a296f-6c01-46c5-aa47-01631e93536c"
+    },
+    {
+      "id": "456de1ff-e999-411c-afcc-4c2ab3628ae6",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "0c34bee1-9469-44b8-9bd5-b5ed7b6db2a3"
+    },
+    {
+      "id": "4707fe00-d7f0-4f47-9ffb-97adb8e7c7cf",
+      "action": "LEAD_CONTACT_CONFIRM|decision=REJECT",
+      "entityId": "no-name"
+    },
+    {
+      "id": "4bf1345e-7747-41b0-96c6-f3740a417b36",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "04eda8f5-f7bf-4093-baaa-403034355667"
+    },
+    {
+      "id": "54bebbb6-1070-49bd-8ca8-a6d3dcda948f",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "c29f956a-497f-4617-9b8e-8addcbe56a5a"
+    },
+    {
+      "id": "598a9925-0f74-473e-a0b6-2e61a0001531",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "6537073b-3e6b-4448-8cce-c3fabd717213"
+    },
+    {
+      "id": "59c5b2e9-ff93-46be-8ff0-b89cbc361a5e",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "85d2173c-8347-4199-837a-294c9f2420ce"
+    },
+    {
+      "id": "5af18f5b-0e5d-40f0-851f-73d0aae3f844",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "6ccc6508-5962-4f47-93c3-791d94ca36b4"
+    },
+    {
+      "id": "7287597c-6671-4ba3-87a7-50dae76fb3b2",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "c3dcf9fe-6677-44b5-aaad-01ff47e4035d"
+    },
+    {
+      "id": "7597be0c-0ef6-4772-b0e4-864254f07d56",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "108094ba-fe69-4749-9392-f4b5570c782a"
+    },
+    {
+      "id": "81e28c11-91c7-41b4-a7e6-0dd7e2464459",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "7a363bb8-fee9-4434-8fef-6b5ac1e5cd60"
+    },
+    {
+      "id": "9234eee8-81f1-4a88-8ab7-5fab59219651",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "bd0ecd0e-f007-456d-938e-203170412313"
+    },
+    {
+      "id": "9a1bcfab-5eea-47b2-8359-10ece4a84060",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "efa30629-8541-4125-9e1e-5c33f73f52cc"
+    },
+    {
+      "id": "9a7b0c1e-77c0-435d-a784-be0eb43614be",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "12105254-55d8-4d19-a601-3b6f7ad59f16"
+    },
+    {
+      "id": "a5c73389-dca1-4f44-94c1-27c4b88d504e",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "ade33894-8761-436e-bc6b-a35bc0a3c77c"
+    },
+    {
+      "id": "aa1eb2ad-8daa-42b2-ae9f-a8577f3c1e92",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "a220cc93-fdde-4d51-9e3d-7ed57bb8d19b"
+    },
+    {
+      "id": "e30768e3-0146-47e2-8982-d04c0ff12e58",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "de2cc777-7715-48f0-b728-ed5d0f841c0d"
+    },
+    {
+      "id": "e54d54cf-c367-4507-8448-53c60422aaf2",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "dcc2b3df-26b4-4ed5-8f9f-508f65f25986"
+    },
+    {
+      "id": "f0571c9d-4691-43f3-a06e-72609bfa87be",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "9f7d88de-c6e2-491a-b372-0ad63bc3544f"
+    },
+    {
+      "id": "f33368d7-c6f9-4e39-9090-3b0b5ad1a009",
+      "action": "AUTO_ASSIGN_DEFERRED|reason=NO_CONTACT",
+      "entityId": "d0eb8291-fd0c-40a8-a58b-91c08107c6af"
+    },
+    {
+      "id": "fce7a298-23b9-458f-91cd-77b81a2002df",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "7e06a24d-4928-4c59-ba93-938d08d2f4b0"
+    }
+  ]
+}

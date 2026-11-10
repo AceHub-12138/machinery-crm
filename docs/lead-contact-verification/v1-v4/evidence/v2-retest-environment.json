@@ -1,0 +1,17 @@
+{
+  "codeCommit": "55ab5d9e0be051c615663a4ca34599f1b2d976b0",
+  "container": "crm-d1-20261109",
+  "database": "crm_v1_test",
+  "binding": "127.0.0.1:62372",
+  "browserBase": "http://127.0.0.1:58575",
+  "production": {
+    "NODE_ENV": "production",
+    "LEAD_TYC_TOKEN": "empty",
+    "tycConfigured": false,
+    "build": "pnpm build",
+    "start": "next start (local validation only)"
+  },
+  "vendorRequests": "loopback mock only; external sockets denied",
+  "worktreeRuntimeEnvFiles": false,
+  "noHostMounts": true
+}

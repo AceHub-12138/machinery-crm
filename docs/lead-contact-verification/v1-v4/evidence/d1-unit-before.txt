@@ -1,0 +1,55 @@
+
+ RUN  v4.1.10 <workspace>
+
+ ❯ src/lib/lead-hunter/admit.test.ts (17 tests | 1 failed) 36ms
+     × [D1] admission SQL atomically increments an explicitly typed integer 19ms
+ ❯ src/lib/lead-hunter/engine.test.ts (19 tests | 1 failed) 43ms
+     × [D1] heartbeat SQL converts admitted to an integer before JSON_SET 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/lead-hunter/admit.test.ts > admitCandidates 入池分单 > [D1] admission SQL atomically increments an explicitly typed integer
+AssertionError: expected 'UPDATE lead_hunt_tasks SET report = J…' to contain 'CAST(COALESCE(CAST(JSON_UNQUOTE(JSON_…'
+
+Expected: "CAST(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0) + 1 AS SIGNED)"
+Received: "UPDATE lead_hunt_tasks SET report = JSON_SET(COALESCE(report, JSON_OBJECT()), '$.admitted', COALESCE(JSON_EXTRACT(report, '$.admitted'), 0) + 1) WHERE id = ?"
+
+ ❯ src/lib/lead-hunter/admit.test.ts:145:17
+    143|     const [template] = vi.mocked(db.prisma.$executeRaw).mock.calls[0];
+    144|     const sql = (template as TemplateStringsArray).join("?");
+    145|     expect(sql).toContain("CAST(COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRAC…
+       |                 ^
+    146|     expect(sql).not.toMatch(/COALESCE\(JSON_EXTRACT\(report,\s*'\$\.ad…
+    147|     expect(sql).toContain("JSON_SET(COALESCE(report, JSON_OBJECT())");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/lead-hunter/engine.test.ts > lead-hunter engine > [D1] heartbeat SQL converts admitted to an integer before JSON_SET
+AssertionError: expected '\n      UPDATE lead_hunt_tasks SET pr…' to contain 'COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRA…'
+
+- Expected
++ Received
+
+- COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(report, '$.admitted')) AS SIGNED), 0)
++
++       UPDATE lead_hunt_tasks SET progress = ?,
++         report = JSON_SET(?, '$.admitted', COALESCE(JSON_EXTRACT(report, '$.admitted'), 0)),
++         updatedAt = ?
++       WHERE id = ? AND status = 'running'
++
+
+ ❯ src/lib/lead-hunter/engine.test.ts:134:19
+    132|     for (const [template] of calls) {
+    133|       const sql = (template as TemplateStringsArray).join("?");
+    134|       expect(sql).toContain("COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(r…
+       |                   ^
+    135|       expect(sql).not.toMatch(/COALESCE\(JSON_EXTRACT\(report,\s*'\$\.…
+    136|       expect(sql).toContain("AND status = 'running'");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 34 passed (36)
+   Start at  19:37:23
+   Duration  548ms (transform 205ms, setup 0ms, import 495ms, tests 80ms, environment 0ms)

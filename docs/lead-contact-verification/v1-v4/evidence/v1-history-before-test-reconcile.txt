@@ -1,0 +1,2 @@
+id	checksum	migration_name	started_at	finished_at	rolled_back_at	applied_steps_count
+1f6fdbf7-6213-4395-9c8e-3ac8718a00f1	a721c81c5fc37a8d1307e8413b033277e1edd79b40ec585ecbb9d6a3d0d60d83	20261107010000_add_lead_contact_verification	2026-11-10 03:15:19.252	2026-11-10 03:15:19.698	NULL	1
