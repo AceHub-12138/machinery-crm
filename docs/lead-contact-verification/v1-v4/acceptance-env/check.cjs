@@ -13,9 +13,9 @@ function local(args,input) {
 }
 function snapshot() {
   const sql = `SELECT quotaDate,used FROM lead_lookup_daily_quotas;
-SELECT id,contactStatus,contactStatusUpdatedAt FROM leads WHERE id IN ('quota-a','quota-b') ORDER BY id;
+SELECT id,contactStatus,contactStatusUpdatedAt FROM leads WHERE id IN ('quota-single','quota-a','quota-b') ORDER BY id;
 SELECT COUNT(*) AS all_lookup_rows FROM lead_contact_lookups;
-SELECT COUNT(*) AS fixture_lookup_rows FROM lead_contact_lookups WHERE leadId IN ('quota-a','quota-b') OR queryNameNormalized IN ('验收测试额度甲机械有限公司','验收测试额度乙机械有限公司');`;
+SELECT COUNT(*) AS fixture_lookup_rows FROM lead_contact_lookups WHERE leadId IN ('quota-single','quota-a','quota-b') OR queryNameNormalized IN ('验收测试额度单查机械有限公司','验收测试额度批查甲机械有限公司','验收测试额度批查乙机械有限公司');`;
   return local(["exec","-i",id+"-db","sh","-c",'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql --default-character-set=utf8mb4 -B -uroot crm_acceptance'],sql);
 }
 async function login(port, account) {
@@ -35,12 +35,13 @@ async function login(port, account) {
 async function main() {
   if (!fs.readFileSync(path.join(base,"guard.txt"),"utf8").includes("routes=0")) throw Error("未启用 3103");
   const before=snapshot();
+  assert.match(before,/quota-single\s+PENDING_LOOKUP\s+NULL/);
   assert.match(before,/quota-a\s+PENDING_LOOKUP\s+NULL/);
   assert.match(before,/quota-b\s+PENDING_LOOKUP\s+NULL/);
   assert.match(before,/fixture_lookup_rows\s+0$/);
   console.log("正在核对 3103 登录、单条与批量接口。");
   const request=await login(3103,accounts[0]);
-  const r=await request("/api/crm/leads/quota-a/contact-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+  const r=await request("/api/crm/leads/quota-single/contact-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
   assert.equal(r.status,429);
   const reason=(await r.json()).error;
   assert.equal(reason,"今日天眼查额度已用完（1/1）");
@@ -66,9 +67,17 @@ async function main() {
   const prod=await login(3102,accounts[0]);
   const task=(await (await prod("/api/lead-hunter/tasks/candidate-task")).json()).task;
   const candidate=task.candidates[0];
+  assert.equal(candidate.sourceUrl,"https://example.com/acceptance-source");
   assert.equal(candidate.score,85);
   assert.equal(candidate.phone,null);
   assert.equal(candidate.contactName,"验收联系人甲");
+  const adminList=await (await prod("/api/crm/leads")).json();
+  const summary=adminList.items.find(row=>row.id==="compare").latestContactLookup;
+  assert.deepEqual(Object.keys(summary).sort(),["createdAt","isMock","reason","status"]);
+  assert.equal(summary.reason,"验收预置人工复核样本");
+  assert.equal(summary.status,"NEEDS_CONFIRM");
+  assert.ok(!JSON.stringify(adminList).includes('"rawResponse"'));
+  console.log("D3 超管列表：最近反查摘要仅含 status、reason、isMock、createdAt；无 rawResponse。");
   const rows=(await (await prod("/api/crm/leads/contact-lookups?status=NEEDS_CONFIRM")).json()).items;
   assert.ok(rows.some(row=>row.leadId==="no-name" && row.matchedName===null));
   assert.ok(rows.some(row=>row.leadId==="compare" && row.creditCode && row.rawResponse?.regLocation));
@@ -76,6 +85,12 @@ async function main() {
     const req=await login(3102,accounts[i]);
     const data=await (await req("/api/crm/leads")).json();
     assert.deepEqual(data.items.map(row=>row.id),[expected]);
+    for (const row of data.items) {
+      assert.ok(!Object.hasOwn(row,"latestContactLookup"));
+      assert.ok(!Object.hasOwn(row,"contactLookups"));
+    }
+    assert.ok(!JSON.stringify(data).includes('"rawResponse"'));
+    console.log("D3 "+accounts[i][0]+"列表：无 latestContactLookup、contactLookups、rawResponse 字段。");
   }
   console.log("3102 双待确认样本、85 分候选及三个角色各自的一条线索已核对。");
   assert.equal((await prod("/api/crm/leads/offline/contact-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"})).status,503);

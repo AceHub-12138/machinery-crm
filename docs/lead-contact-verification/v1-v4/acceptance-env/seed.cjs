@@ -39,9 +39,9 @@ async function main() {
       contractPrice: 100, quantity: 1, itemType: "MAIN" } } } });
   async function lead(id, label, status, assignedUserId = null) {
     return db.lead.create({ data: { id, companyName: "验收测试" + label + "机械有限公司",
-      source: "MANUAL", sourceUrl: "http://127.0.0.1:3101/leads", aiScore: 88, contactStatus: status, assignedUserId } });
+      source: "MANUAL", sourceUrl: "https://example.com/acceptance-source", aiScore: 88, contactStatus: status, assignedUserId } });
   }
-  for (const [id, label] of [["quota-a","额度甲"],["quota-b","额度乙"],["offline","未配置"]]) await lead(id,label,"PENDING_LOOKUP");
+  for (const [id, label] of [["mock-single","模拟单查"],["quota-single","额度单查"],["quota-a","额度批查甲"],["quota-b","额度批查乙"],["offline","未配置单查"],["offline-a","未配置批查甲"],["offline-b","未配置批查乙"]]) await lead(id,label,"PENDING_LOOKUP");
   for (const [i, id] of [[1,"north"],[2,"south"],[3,"trade"]]) await lead(id, accounts[i].role,"PENDING_LOOKUP",users[i].id);
   for (const [id, label, name] of [["no-name","缺名",null],["compare","对照","验收测试乙设备有限公司"]]) {
     const row = await lead(id,label,"NEEDS_CONFIRM");
@@ -53,7 +53,7 @@ async function main() {
   await db.leadHuntTask.create({ data: { id: "candidate-task", status: "done", createdById: users[0].id,
     config: { goal: "验收测试：85分候选", maxRounds: 1, pagesPerRound: 1, keywordIterations: 1 },
     candidates: { create: { companyName: "验收测试候选机械有限公司", status: "NO_CONTACT",
-      score: 85, round: 1, contactName: "验收联系人甲", sourceUrl: "http://127.0.0.1:3101/lead-hunter" } } } });
+      score: 85, round: 1, contactName: "验收联系人甲", sourceUrl: "https://example.com/acceptance-source" } } } });
   const date = new Date(Date.now() + 8 * 3600000).toISOString().slice(0,10);
   await db.leadLookupDailyQuota.create({ data: { quotaDate: date, used: 1 } });
 }
