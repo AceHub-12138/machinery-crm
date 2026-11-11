@@ -133,7 +133,13 @@ export async function listHumanLeads(user: SessionUser, searchParams: URLSearchP
   const [leads, total] = await Promise.all([
     prisma.lead.findMany({
       where,
-      select: leadListSelect,
+      select: {
+        ...leadListSelect,
+        ...(user.role === "SUPER_ADMIN" ? { contactLookups: {
+          orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }], take: 1,
+          select: { status: true, reason: true, isMock: true, createdAt: true },
+        } } : {}),
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -147,8 +153,9 @@ export async function listHumanLeads(user: SessionUser, searchParams: URLSearchP
   const userById = new Map(assignedUsers.map((assignedUser) => [assignedUser.id, assignedUser]));
 
   return {
-    items: leads.map((lead) => ({
+    items: leads.map(({ contactLookups, ...lead }) => ({
       ...lead,
+      ...(user.role === "SUPER_ADMIN" ? { latestContactLookup: contactLookups?.[0] ?? null } : {}),
       phoneEvidence: user.role === "SUPER_ADMIN" ? lead.phoneEvidence : contactEvidenceSummary(lead.phoneEvidence),
       assignedUser: lead.assignedUserId ? userById.get(lead.assignedUserId) ?? null : null,
     })),

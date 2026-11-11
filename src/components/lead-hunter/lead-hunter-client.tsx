@@ -488,8 +488,9 @@ export function LeadHunterClient() {
                         </td>
                         <td className="py-2 pr-3">
                           {candidate.sourceUrl
-                            ? <a href={candidate.sourceUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--brand-orange)]">{candidate.companyName}</a>
+                            ? <a title="打开来源网页" href={candidate.sourceUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--brand-orange)]">{candidate.companyName}</a>
                             : candidate.companyName}
+                          {candidate.status === "ADMITTED" && candidate.leadId && <a className="ml-2 text-[var(--brand-orange)]" href={"/leads/" + encodeURIComponent(candidate.leadId)}>查看线索</a>}
                         </td>
                         <td className="py-2 pr-3 font-medium">{candidate.score ?? "—"}</td>
                         <td className="max-w-64 py-2 pr-3 text-xs text-gray-500">{candidate.scoreReason ?? "—"}</td>

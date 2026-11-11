@@ -36,6 +36,7 @@ function dateTime(value: string) {
 }
 
 export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boolean }) {
+  const [singleLookupMessage, setSingleLookupMessage] = useState("");
   const [lookupMessages, setLookupMessages] = useState<Record<string, string>>({});
   const [contactStatus, setContactStatus] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -95,7 +96,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
   }, [contactStatus, companyName, aiScoreMax, aiScoreMin, assignedUserId, canFilterAssignee, createdFrom, createdTo, page, reviewStatus, searchKeyword]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { setLookupMessages({}); void load(); }, 0);
+    const timer = window.setTimeout(() => { setLookupMessages({}); setSingleLookupMessage(""); void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
 
@@ -284,7 +285,7 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
         </form>
       </SurfaceCard>
 
-      {canFilterAssignee && <ContactLookupManager status={contactStatus} onStatus={(status) => { setContactStatus(status); resetSelectionForQuery(); }} selected={selectedLeads} onRefresh={load} />}
+      {canFilterAssignee && <ContactLookupManager key={[contactStatus, companyName, aiScoreMax, aiScoreMin, assignedUserId, createdFrom, createdTo, page, reviewStatus, searchKeyword].join("|")} singleMessage={singleLookupMessage} onBatchStart={() => setSingleLookupMessage("")} status={contactStatus} onStatus={(status) => { setContactStatus(status); resetSelectionForQuery(); }} selected={selectedLeads} onRefresh={load} />}
       {selectedLeads.length > 0 && (
         <SurfaceCard className="flex flex-col gap-3 p-4 xl:flex-row xl:items-end">
           <p className="shrink-0 pb-2 text-sm font-medium text-[var(--text-primary)]">已选择 {selectedLeads.length} 条</p>
@@ -332,7 +333,12 @@ export function LeadListClient({ canFilterAssignee }: { canFilterAssignee: boole
             <tbody>{items.map((lead) => <tr className="relative isolate border-b border-[var(--border)] hover:bg-[var(--surface-hover)]" key={lead.id}>
               <td className="w-[52px] whitespace-nowrap px-4 py-3 text-center">{highlightedLeadIds.has(lead.id) && <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[var(--brand-orange-soft)] opacity-0" data-assignment-highlight={lead.id} />}<input aria-label={`选择 ${lead.companyName}`} checked={selectedLeadIds.has(lead.id)} onChange={() => toggleLead(lead.id)} type="checkbox" /></td>
               <td className="w-[270px] px-4 py-3"><p className="truncate whitespace-nowrap font-medium text-[var(--text-primary)]" title={lead.companyName}>{lead.companyName}</p><p className="mt-1 truncate whitespace-nowrap text-xs text-[var(--text-tertiary)]" title={lead.contactName || undefined}>{lead.contactName || "未记录联系人"}</p></td>
-              <td className="w-[190px] whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]"><p>{lead.phone || "-"}</p><ContactSource lead={lead} />{canFilterAssignee && !lead.phone && (!lead.contactStatus || ["PENDING_LOOKUP", "LOOKUP_FAILED", "LOOKING_UP"].includes(lead.contactStatus)) && <ContactLookupButton leadId={lead.id} onRefresh={load} onMessage={(message) => setLookupMessages((previous) => ({ ...previous, [lead.id]: message }))} />}
+              <td className="w-[190px] whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]"><p>{lead.phone || "-"}</p><ContactSource lead={lead} />{canFilterAssignee && ["LOOKUP_FAILED", "NEEDS_CONFIRM"].includes(lead.contactStatus ?? "") && lead.latestContactLookup && <p className="mt-1 whitespace-normal text-xs text-[var(--text-tertiary)]">最近反查：{({ FAILED: "反查失败", NOT_FOUND: "反查无果", NEEDS_CONFIRM: "待人工确认", REJECTED: "已驳回" } as Record<string, string>)[lead.latestContactLookup.status] || lead.latestContactLookup.status}{lead.latestContactLookup.reason && " · " + lead.latestContactLookup.reason}{lead.latestContactLookup.isMock && " · 模拟数据"} · {dateTime(lead.latestContactLookup.createdAt)}</p>}{canFilterAssignee && !lead.phone && (!lead.contactStatus || ["PENDING_LOOKUP", "LOOKUP_FAILED", "LOOKING_UP"].includes(lead.contactStatus)) && <ContactLookupButton leadId={lead.id} onRefresh={load} onMessage={(message, nextStatus) => {
+                  setLookupMessages((previous) => ({ ...previous, [lead.id]: message }));
+                  const destination = nextStatus && nextStatus !== (lead.contactStatus || "PENDING_LOOKUP")
+                    ? ({ HAS_CONTACT: "全部", NEEDS_CONFIRM: "待人工确认", LOOKUP_FAILED: "反查无果" } as Record<string, string>)[nextStatus] : null;
+                  setSingleLookupMessage(lead.companyName + "：" + message + (destination ? "，已移至“" + destination + "”" : ""));
+                }} />}
                 {lookupMessages[lead.id] && <p role="status" className="text-xs">{lookupMessages[lead.id]}</p>}<p className="mt-1 truncate text-xs" title={lead.email || undefined}>{lead.email || "-"}</p></td>
               <td className="w-[90px] whitespace-nowrap px-4 py-3 font-semibold tabular-nums">{lead.aiScore ?? "未评分"}</td>
               <td className="w-[110px] whitespace-nowrap px-4 py-3"><LeadStatusBadge status={lead.reviewStatus} /></td>

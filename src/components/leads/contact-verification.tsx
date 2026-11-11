@@ -14,20 +14,21 @@ export function ContactSource({ lead }: { lead: HumanLeadListItem }) {
   const evidence = contactEvidenceSummary(lead.phoneEvidence);
   return <div className="mt-1 whitespace-normal text-xs text-[var(--text-tertiary)]"><p>{lead.phone ? phoneSourceLabel(lead.phoneSource, lead.phoneEvidence) : "暂无电话"}</p>{evidence.sharedPhoneLeadCount > 0 && <p className="text-amber-600">疑似代账/共用电话（另 {evidence.sharedPhoneLeadCount} 条）</p>}{evidence.sharedPhoneCustomer && <p className="text-amber-600">该号码属于已有客户 {evidence.sharedPhoneCustomer}</p>}</div>;
 }
-export function ContactLookupButton({ leadId, onRefresh, onMessage, allowQuery = false }: { leadId: string; onRefresh: () => unknown; onMessage: (message: string) => void; allowQuery?: boolean }) {
+export function ContactLookupButton({ leadId, onRefresh, onMessage, allowQuery = false }: { leadId: string; onRefresh: () => unknown; onMessage: (message: string, contactStatus?: string) => void; allowQuery?: boolean }) {
   const [queryName, setQueryName] = useState(""); const [busy, setBusy] = useState(false);
   async function lookup() {
     setBusy(true); onMessage("反查中…");
     try {
       const response = await fetch("/api/crm/leads/" + encodeURIComponent(leadId) + "/contact-lookup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(queryName.trim() ? { queryName: queryName.trim() } : {}) });
       const data = await response.json();
-      onMessage(data.error || (data.isMock ? "模拟数据，不可采用" : data.reason) || ({ FOUND: "反查成功", NEEDS_CONFIRM: "待人工确认", NOT_FOUND: "反查无果", FAILED: "反查失败" } as Record<string, string>)[data.status] || "反查完成");
+      const contactStatus = response.ok && !data.error ? ({ FOUND: "HAS_CONTACT", NEEDS_CONFIRM: "NEEDS_CONFIRM", NOT_FOUND: "LOOKUP_FAILED", FAILED: "LOOKUP_FAILED" } as Record<string, string>)[data.status] : undefined;
+      onMessage(data.error || (data.isMock ? "模拟数据，不可采用" : data.reason) || ({ FOUND: "反查成功", NEEDS_CONFIRM: "待人工确认", NOT_FOUND: "反查无果", FAILED: "反查失败" } as Record<string, string>)[data.status] || "反查完成", contactStatus);
       changed(); await onRefresh();
     } catch { onMessage("反查失败，请刷新状态后重试"); } finally { setBusy(false); }
   }
   return <div className="mt-2 space-y-2 whitespace-normal">{allowQuery && <input aria-label="指定查询全称" className="w-full rounded border border-[var(--border)] bg-transparent px-3 py-2 text-sm" maxLength={100} onChange={(event) => setQueryName(event.target.value)} placeholder="指定查询全称（可选）" value={queryName} />}<button className={button} type="button" disabled={busy} onClick={() => void lookup()}>{busy ? "反查中…" : "反查"}</button></div>;
 }
-export function ContactLookupManager({ status, onStatus, selected, onRefresh }: { status: string; onStatus: (status: string) => void; selected: HumanLeadListItem[]; onRefresh: () => unknown }) {
+export function ContactLookupManager({ status, onStatus, selected, onRefresh, singleMessage = "", onBatchStart }: { status: string; onStatus: (status: string) => void; selected: HumanLeadListItem[]; onRefresh: () => unknown; singleMessage?: string; onBatchStart?: () => void }) {
   const [quota, setQuota] = useState<{ used: number; limit: number; tycConfigured: boolean; fakeSearchMode: boolean; tycMockMode: boolean } | null>(null);
   const [lookups, setLookups] = useState<Lookup[]>([]); const [page, setPage] = useState(1); const [pages, setPages] = useState(1);
   const [busy, setBusy] = useState(false); const [messages, setMessages] = useState<string[]>([]);
@@ -48,6 +49,7 @@ export function ContactLookupManager({ status, onStatus, selected, onRefresh }: 
     return () => { clearTimeout(timer); window.removeEventListener("lead-contact-updated", onChanged); };
   }, [refresh]);
   async function batch() {
+    onBatchStart?.();
     setBusy(true); setMessages([]);
     try {
       await runContactLookups(selected.filter((lead) => !lead.phone && (!lead.contactStatus || ["PENDING_LOOKUP", "LOOKUP_FAILED"].includes(lead.contactStatus))).map((lead) => lead.id), (row, index, total) => setMessages((previous) => [...previous, index + "/" + total + "：" + row.message]));
@@ -67,7 +69,7 @@ export function ContactLookupManager({ status, onStatus, selected, onRefresh }: 
     {quota && <p className="text-sm">今日天眼查额度：已用 {quota.used} / 上限 {quota.limit}{!quota.tycConfigured && " · 天眼查未配置"}</p>}
     {(quota?.fakeSearchMode || quota?.tycMockMode) && <p role="alert" className="rounded bg-amber-100 p-3 text-amber-900">当前启用了{quota.fakeSearchMode ? "假搜索" : ""} {quota.tycMockMode ? "天眼查模拟" : ""}模式；模拟反查号码不可采用。</p>}
     {status === "PENDING_LOOKUP" && <button className={button} type="button" disabled={busy || !selected.length || selected.length > 20} onClick={() => void batch()}>逐条反查已选线索（最多 20 条）</button>}
-    <div role="status" aria-live="polite">{messages.map((message, index) => <p className="text-sm" key={index}>{message}</p>)}</div>
+    <div role="status" aria-live="polite">{singleMessage ? <p className="text-sm">{singleMessage}</p> : messages.map((message, index) => <p className="text-sm" key={index}>{message}</p>)}</div>
     {status === "NEEDS_CONFIRM" && <div className="space-y-3">{lookups.length === 0 && <p className="text-sm">暂无待人工确认结果</p>}{lookups.map((row) => <article className={card} key={row.id}><div className="grid gap-4 md:grid-cols-2"><div><p className="text-xs text-[var(--text-tertiary)]">线索公司</p><p className="font-semibold">{row.lead?.companyName}</p><p>AI 评分：{row.lead?.aiScore ?? "未评分"}</p>{safeUrl(row.lead?.sourceUrl) && <a className="text-[var(--brand-orange)]" href={safeUrl(row.lead?.sourceUrl)!} target="_blank" rel="noreferrer">来源网页</a>}</div><div><p className="text-xs text-[var(--text-tertiary)]">天眼查企业</p><p className="font-semibold">{row.matchedName || "未返回名称"}</p><p>曾用名：{Array.isArray(row.rawResponse?.historyNames) ? row.rawResponse.historyNames.join("、") : "无"}</p><p>信用代码：{row.creditCode || "未提供"}</p><p>经营状态：{row.regStatus || "未知"}</p><p>电话：{row.phones?.join("、") || "无有效电话"}</p><p>邮箱：{row.emails?.join("、") || "无"}</p><p>注册地址：{String(row.rawResponse?.regLocation || "未提供")}</p></div></div><p className="text-amber-600">{row.reason}{row.isMock && " · 模拟数据"}</p><div className="flex gap-2"><button className={button} disabled={busy || row.isMock || !row.matchedName?.trim()} title={!row.matchedName?.trim() ? "未返回企业名称，只能驳回" : undefined} type="button" onClick={() => void decide(row, "ADOPT")}>确认是同一家，采用</button><button className={button} disabled={busy} type="button" onClick={() => void decide(row, "REJECT")}>不是同一家，驳回</button></div></article>)}<div className="flex items-center gap-3"><button className={button} disabled={page <= 1} type="button" onClick={() => setPage((value) => value - 1)}>上一页</button><span>{page} / {Math.max(1, pages)}</span><button className={button} disabled={page >= pages} type="button" onClick={() => setPage((value) => value + 1)}>下一页</button></div></div>}
   </section>;
 }

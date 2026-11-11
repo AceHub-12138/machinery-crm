@@ -26,6 +26,7 @@ export type HumanLeadListItem = {
   phoneVerifiedAt?: string | null;
   tycCompanyId?: string | null;
   creditCode?: string | null;
+  latestContactLookup?: { status: string; reason: string | null; isMock: boolean; createdAt: string } | null;
 };
 
 export type HumanLeadListResponse = {
