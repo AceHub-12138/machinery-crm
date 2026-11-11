@@ -145,6 +145,8 @@ curl -fsS https://dachuan.pro/api/health
 
 ## 7. 回滚
 
+### 7.1 默认只回滚代码
+
 代码优先回滚，保留新增表和字段。旧版本目录尚未覆盖，可按与上面相同、已核验的 PM2 启动方式恢复：
 
 ```bash
@@ -156,6 +158,122 @@ curl -fsS https://dachuan.pro/api/health
 
 作用：使用原目录、原 `.env` 和原运行产物恢复服务；上传目录继续使用原持久化位置。成功标准为旧版本 online 且业务验收正常，再执行 `pm2 save`。不得为了回滚删除新目录、旧目录或上传文件。若原服务并非 ecosystem 启动，必须用发布前保存的原启动配置恢复。
 
-数据库通常不回滚，新结构兼容旧代码。必须回滚结构时，先导出 `lead_contact_lookups`、`lead_lookup_daily_quotas`、`leads` 和 `lead_hunt_candidates`（含新增列），确认文件可恢复后，再由管理员审阅执行迁移目录中的 rollback.sql。它会永久丢失本期核验证据和额度，不能自动还原之前已采用的 phone/email/assignedUserId；不要回灌全库旧备份覆盖发布后其他 CRM 业务数据。
-
 本次不修改 Nginx 配置。N8N/FastGPT 获客链路保持停用，不因代码回滚自动重新启用。
+
+### 7.2 结构回滚（管理员审批后单独执行）
+
+结构回滚与迁移记录回滚必须分开处理。成功应用过的本迁移执行 rollback.sql 后，`_prisma_migrations` 中成功记录仍在；直接 `migrate deploy` 会提示没有待执行迁移，不会重建表结构。实测 `prisma migrate resolve --rolled-back 20261107010000_add_lead_contact_verification` 返回 **P3012**（该迁移并非 failed），不能把它作为本场景的回滚步骤。
+
+测试库实测可用的方法是：完整备份目标历史行，核实结构已回到基线，然后精确删除且只删除该行；再 deploy，才能真正重建 C。本建议涉及迁移历史写操作，必须经复审和管理员确认后，在维护窗口执行；不要自动化套用。默认仍优先仅回滚代码、保留兼容结构。
+
+#### 1. 备份并停止相关写入
+
+先按 deployment.md 第 2 节完成项目、数据库和 uploads 备份，核对 PM2 服务名、Nginx、环境变量及上传目录；备份必须在隔离库验证可恢复。导出核验表、额度表及 leads／候选新增列；原 rollback.sql 会永久丢失核验和额度数据，不会撤销已回填的电话或分配。
+
+确认已切回旧代码、停止新功能相关写入；若维护方式、原启动配置或实际路径不明确，停止执行，不猜测路径。下列 Bash 变量沿用已审核部署流程中的 `RELEASE_DIR`、`BACKUP_DIR`、`MYSQL_BACKUP_CONFIG`、`DB_NAME`；不回显连接密码。
+
+#### 2. 完成结构回滚并验证基线
+
+由管理员复核后单独执行原迁移目录中的 rollback.sql。通过 information_schema 对照迁移前快照：新增 12 列、4 索引、2 张表及其外键均已撤销，原列、索引、约束、数据保留。DDL 部分失败、结构不完全一致、仍有新功能写入或备份不可恢复时停止，不能删除迁移记录。
+
+#### 3. 核对并备份唯一的成功迁移行
+
+```bash
+MIGRATION_NAME=20261107010000_add_lead_contact_verification
+MIGRATION_FILE="$RELEASE_DIR/prisma/migrations/$MIGRATION_NAME/migration.sql"
+test -f "$MIGRATION_FILE"
+MIGRATION_SHA256=$(sha256sum "$MIGRATION_FILE" | cut -d ' ' -f 1)
+test "${#MIGRATION_SHA256}" -eq 64
+```
+
+作用：计算原始 migration.sql 的 SHA-256。必须与实际已应用的同版本文件和历史行 checksum 一致；若文件经过换行改写或内容变化，停止，不能改 checksum 迁就现状。
+
+```bash
+mysql --defaults-extra-file="$MYSQL_BACKUP_CONFIG" "$DB_NAME" <<SQL
+SELECT id,migration_name,checksum,started_at,finished_at,rolled_back_at,applied_steps_count
+FROM _prisma_migrations
+WHERE migration_name='$MIGRATION_NAME';
+SQL
+```
+
+作用：只读确认该名称只有一条目标成功记录，并记录精确 id；要求 checksum 匹配、finished_at 非空、rolled_back_at 为空、applied_steps_count=1。如有重复、失败记录或状态不符，停止，单独审查。
+
+```bash
+read -r -p '已核对的唯一成功迁移行 id：' MIGRATION_ROW_ID
+[[ "$MIGRATION_ROW_ID" =~ ^[a-fA-F0-9-]{36}$ ]]
+[[ "$MIGRATION_SHA256" =~ ^[a-fA-F0-9]{64}$ ]]
+HISTORY_BACKUP="$BACKUP_DIR/lead-contact-migration-history.sql"
+test ! -e "$HISTORY_BACKUP"
+mysqldump --defaults-extra-file="$MYSQL_BACKUP_CONFIG" --no-create-info --skip-add-drop-table --skip-triggers --complete-insert --default-character-set=utf8mb4 --where="id='$MIGRATION_ROW_ID' AND migration_name='$MIGRATION_NAME' AND checksum='$MIGRATION_SHA256' AND finished_at IS NOT NULL AND rolled_back_at IS NULL AND applied_steps_count=1" "$DB_NAME" _prisma_migrations > "$HISTORY_BACKUP"
+test -s "$HISTORY_BACKUP"
+```
+
+作用：将该行全部字段导出到新的专用文件。文件非空不足以证明有目标行；管理员还须核对其中恰好有该 id 的一行完整 INSERT，并在隔离库验证可恢复，再进入下一步。备份可能含迁移诊断，不公开上传。任何命令失败均停止。
+
+#### 4. 交互事务中精确删除一行
+
+```bash
+mysql --defaults-extra-file="$MYSQL_BACKUP_CONFIG" "$DB_NAME"
+```
+
+作用：进入已确认数据库的交互会话。下面的 `<精确 id>` 和 `<核对后的 checksum>` 必须手工替换为上一步已核对值；不要原样执行占位符。不要把 COMMIT 和删除拼成一行。
+
+```sql
+START TRANSACTION;
+SELECT id,migration_name,checksum,finished_at,rolled_back_at,applied_steps_count
+FROM _prisma_migrations
+WHERE id='<精确 id>'
+  AND migration_name='20261107010000_add_lead_contact_verification'
+  AND checksum='<核对后的 checksum>'
+  AND finished_at IS NOT NULL
+  AND rolled_back_at IS NULL
+  AND applied_steps_count=1
+FOR UPDATE;
+```
+
+仅当锁定结果恰好一行、与完整备份一致时，再执行：
+
+```sql
+DELETE FROM _prisma_migrations
+WHERE id='<精确 id>'
+  AND migration_name='20261107010000_add_lead_contact_verification'
+  AND checksum='<核对后的 checksum>'
+  AND finished_at IS NOT NULL
+  AND rolled_back_at IS NULL
+  AND applied_steps_count=1;
+SELECT ROW_COUNT() AS deleted_history_rows;
+```
+
+实际删除数必须恰好为 1，才单独执行：
+
+```sql
+COMMIT;
+```
+
+若不是 1，或核对发现任何不符，执行以下语句并停止排查：
+
+```sql
+ROLLBACK;
+```
+
+禁止按迁移名称批量删除、清空迁移表、修改 checksum，或删除业务表数据。这里只处理已完整回滚那条成功迁移记录。
+
+#### 5. 再次部署与验证
+
+```bash
+cd "$RELEASE_DIR"
+pnpm exec prisma migrate status
+```
+
+作用：应只显示目标迁移待应用；有其他待应用、失败或历史不一致时停止。随后：
+
+```bash
+pnpm exec prisma migrate deploy
+pnpm exec prisma migrate status
+```
+
+作用：真正重新应用该迁移并检查历史同步。再次核对 information_schema，要求 C 与首次 A 完全一致、迁移记录成功、原 CRM 数据保持；仅有 deploy 退出 0 不算通过。任一步失败，保留旧代码和维护状态，保存日志并复审，不使用 reset、db push 或批量 resolve。
+
+#### 6. 历史协调自身的恢复
+
+提交前出错可直接 ROLLBACK。删除提交后但尚未重新运行 migration 时，若决定撤销此次协调，先核对尚无该 id／新迁移记录，再由管理员审阅恢复第 3 步的精确历史行备份；这只恢复历史元数据，不恢复表结构或核验数据。若已重新执行迁移或出现部分 DDL，不得直接回灌旧历史行，须同时复核实际结构与新历史记录后制定恢复方案。禁止用旧全库备份覆盖发布后其他 CRM 数据。

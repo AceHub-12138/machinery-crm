@@ -1,9 +1,24 @@
 -- 阶段 1：仅执行本段；管理员核对版本及实际列后，再单独执行阶段 2。
 SET SESSION TRANSACTION READ ONLY;
+SET SESSION max_execution_time = 30000;
 SELECT VERSION() AS version, @@sql_mode AS sql_mode, @@character_set_server AS charset_server, @@collation_server AS collation_server;
 SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('leads','lead_hunt_candidates') ORDER BY TABLE_NAME,ORDINAL_POSITION;
 
 -- 阶段 2：只读账号执行；无新迁移列依赖；每类抽样最多 20 条；电话仅显示后四位。
+
+SET SESSION TRANSACTION READ ONLY;
+SET SESSION max_execution_time = 30000;
+
+-- COVERAGE：仅输出计数。NULL snippet 和格式不一致均计入未找到。
+SELECT COUNT(*) AS candidates_with_phone,
+       COUNT(CASE WHEN LOCATE(h.phone,h.snippet)>0 THEN 1 END) AS found_in_snippet,
+       COUNT(*)-COUNT(CASE WHEN LOCATE(h.phone,h.snippet)>0 THEN 1 END) AS missing_from_snippet,
+       (SELECT COUNT(*) FROM leads l
+        WHERE NULLIF(TRIM(l.phone),'') IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM lead_hunt_candidates c WHERE c.leadId=l.id)
+       ) AS leads_with_phone_without_candidate
+FROM lead_hunt_candidates h
+WHERE NULLIF(TRIM(h.phone),'') IS NOT NULL;
 
 -- FAX_LABEL
 SELECT 'FAX_LABEL' AS flag,COUNT(*) AS row_count FROM (SELECT 'candidate' AS entityType,h.id,h.companyName,h.phone,h.snippet,l.assignedUserId FROM lead_hunt_candidates h LEFT JOIN leads l ON l.id=h.leadId UNION ALL SELECT 'lead',id,companyName,phone,NULL,assignedUserId FROM leads) c WHERE NULLIF(TRIM(c.phone),'') IS NOT NULL AND (LOCATE(c.phone,c.snippet)>0 AND LOWER(SUBSTRING(c.snippet,GREATEST(1,LOCATE(c.phone,c.snippet)-30),LEAST(30,LOCATE(c.phone,c.snippet)-1))) REGEXP '传[[:space:]]*真|fax');

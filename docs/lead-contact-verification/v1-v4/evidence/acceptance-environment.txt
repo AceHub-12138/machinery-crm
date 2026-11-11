@@ -1,0 +1,32 @@
+interfaces=lo; IPv4 routes=0
+open.api.tianyancha.com:443 denied EAI_AGAIN
+192.0.2.1:443 denied ENETUNREACH
+2001:db8::1:443 denied ENETUNREACH
+正在核对 3103 登录、单条与批量接口。
+单条 HTTP 429：今日天眼查额度已用完（1/1）
+批量：quota-a 返回 429；总请求 1；quota-b 请求 0。
+前后 SELECT 完全相同：
+quotaDate	used
+2026-11-11	1
+id	contactStatus	contactStatusUpdatedAt
+quota-a	PENDING_LOOKUP	NULL
+quota-b	PENDING_LOOKUP	NULL
+all_lookup_rows
+2
+fixture_lookup_rows
+0
+3103 防护日志：外部 HTTP 尝试 0。
+正在核对 3101 的本地模型和实际只读工具。
+3101 小川 超管：客户 8
+3101 小川 超管：合同 4
+3101 小川 北区销售：客户 2
+3101 小川 北区销售：合同 3
+3102 双待确认样本、85 分候选及三个角色各自的一条线索已核对。
+3102 超管单条 HTTP 503。
+停止演练：输入 n 后账号和资源保留；输入 y 后本轮容器、MySQL 匿名卷、两个专用卷和临时目录均已清理。
+
+前后取样使用相同 SELECT（仅限一次性测试库）：
+SELECT quotaDate,used FROM lead_lookup_daily_quotas;
+SELECT id,contactStatus,contactStatusUpdatedAt FROM leads WHERE id IN ('quota-a','quota-b') ORDER BY id;
+SELECT COUNT(*) AS all_lookup_rows FROM lead_contact_lookups;
+SELECT COUNT(*) AS fixture_lookup_rows FROM lead_contact_lookups WHERE leadId IN ('quota-a','quota-b') OR queryNameNormalized IN ('验收测试额度甲机械有限公司','验收测试额度乙机械有限公司');

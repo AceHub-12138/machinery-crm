@@ -2,7 +2,7 @@
 
 状态：**待管理员执行**。本轮未连接正式库或任何远程数据库；D1 是新功能缺陷，不列入本排查。
 
-完整 SQL：[v4-prod-readonly-scan.sql](v4-prod-readonly-scan.sql)。除开头用户要求的 `SET SESSION TRANSACTION READ ONLY;`，所有执行语句都是 SELECT；没有 DDL、DML、临时表或变量赋值。必须由只有 SELECT 权限的账号执行，不能把会话只读设置当作权限控制的替代。
+完整 SQL：[v4-prod-readonly-scan.sql](v4-prod-readonly-scan.sql)。除每阶段开头设置会话只读和 SELECT 超时外，所有执行语句都是 SELECT；没有 DDL、DML、临时表或变量赋值。必须由只有 SELECT 权限的账号执行，不能把会话只读设置当作权限控制的替代。
 
 ## 执行顺序
 
@@ -12,7 +12,9 @@
 4. **再单独执行阶段 2**：分别统计传真标签、无邻近公司名、多个公司共用号码、已指派且命中任一项；每类抽样最多 20 行。只输出电话后 4 位，不输出 snippet、原始 phone 或核验响应。
 5. SQL 结果仅作为人工复核线索；不据此自动修正、解绑、取消分配或删除数据。是否纠错另行由业务审核决定。
 
-阶段 1、2 在同一只读会话中分段运行。大表的 LOCATE／REGEXP／共号聚合可能全表扫描，应先由管理员评估数据量、执行计划和低峰窗口；本轮没有提供或执行正式库写操作。
+每阶段均设置只读事务和 30 秒 SELECT 时限（MySQL 5.7.8+，仅作用于 SELECT）。超时立即停止余下语句，改到业务低峰时执行，或联系复审。
+
+COVERAGE 依次显示有电话的候选行数、电话能在 snippet 原样找到的行数、找不到的行数，以及有电话但没有任何关联候选的线索数。前两类原文规则只覆盖能找到的候选；格式不同或原文缺失的候选无法判断。leads 表没有原文字段，孤立旧线索只能查同号多公司；已指派统计可汇总这些共号命中。大表的 LOCATE／REGEXP／共号聚合可能全表扫描，应先由管理员评估数据量、执行计划和低峰窗口；本轮没有提供或执行正式库写操作。
 
 ## 规则范围及与 phone.ts 的差异
 
@@ -25,7 +27,9 @@
 
 ## 本地语法试跑
 
-在本轮一次性 MySQL 5.7.44 容器内另建 `crm_v4_baseline`，恢复 V2 重建时在核验迁移之前保存的 baseline schema snapshot。新核验字段检查数量为 0；未改工作区 schema／migration。随后在该库执行完整 SQL，exit 0，四类统计均返回 0，所有抽样语句无错误。
+上次在一次性 MySQL 5.7.44 容器内另建 `crm_v4_baseline`，恢复 V2 重建时在核验迁移之前保存的 baseline schema snapshot。新核验字段检查数量为 0；未改工作区 schema／migration。随后在该库执行完整 SQL，exit 0，四类统计均返回 0，所有抽样语句无错误。
+
+本次用 V1 相同的 36 条迁移重建核验迁移之前的空基线，再运行加入 COVERAGE 的完整 SQL。MySQL 5.7.44 返回 exit 0，四项覆盖计数和四类命中计数均为 0。见[本次完整输出](evidence/v4-coverage-baseline.txt)。
 
 这是空基线库上的**语法兼容性验证**，不代表正式库没有历史问题。证据：[基线恢复](evidence/v4-retest-restore-baseline.txt)、[无新列核对](evidence/v4-retest-no-new-columns.txt)、[完整试跑输出](evidence/v4-retest-baseline-syntax.txt)。测试库随容器清理；正式库结果由管理员另行填写。
 
