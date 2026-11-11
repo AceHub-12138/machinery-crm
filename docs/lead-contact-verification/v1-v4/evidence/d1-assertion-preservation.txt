@@ -1,0 +1,1 @@
+Original test bodies unchanged: only a new [D1] it block appended immediately after each describe declaration. Both added assertions failed before the SQL fix, all 36 targeted cases passed after it. git show 55ab5d9e contains only 2 production SQL lines and 24 added test lines. No schema/migration changes.

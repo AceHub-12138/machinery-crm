@@ -1,0 +1,61 @@
+D3 重建自查（2026-11-10 America/Los_Angeles）
+业务提交：93bc0c0ea64e7d5dcee9bf6246a9b1ba71d7168e
+业务 CI：success
+https://github.com/AceHub-12138/machinery-crm/actions/runs/42935368251
+
+旧环境：通过 stop-acceptance.ps1 核对标签资源并输入 y，脚本完成清理。
+旧标签容器、专用卷及临时目录已确认不存在；未接触其他项目容器或正式上传目录。
+旧清单已备份；原实际结果、截图链接逐行比对保持原文。
+新环境：通过 start-acceptance.ps1 重新构建并启动，保持运行。
+运行中 read.ts SHA256 与业务提交对应工作树一致。
+/login：3101 HTTP 200；3102 HTTP 200；3103 HTTP 200。
+启动、登录和 API 自查的凭据、Cookie、原始响应未写入本记录。
+
+启动结果：
+正在构建本机验收镜像，首次运行可能需要数分钟。
+interfaces=lo; IPv4 routes=0
+open.api.tianyancha.com:443 denied EAI_AGAIN
+192.0.2.1:443 denied ENETUNREACH
+2001:db8::1:443 denied ENETUNREACH
+已就绪 http://127.0.0.1:3101
+已就绪 http://127.0.0.1:3103
+已就绪 http://127.0.0.1:3102
+账号文件：%TEMP%\crm-acceptance\accounts.txt
+验收期间不要关闭本窗口。
+
+登录后的实际 API 与 SELECT 自查：
+正在核对 3103 登录、单条与批量接口。
+单条 HTTP 429：今日天眼查额度已用完（1/1）
+批量：quota-a 返回 429；总请求 1；quota-b 请求 0。
+前后 SELECT 完全相同：
+quotaDate	used
+2026-11-11	1
+id	contactStatus	contactStatusUpdatedAt
+quota-a	PENDING_LOOKUP	NULL
+quota-b	PENDING_LOOKUP	NULL
+quota-single	PENDING_LOOKUP	NULL
+all_lookup_rows
+2
+fixture_lookup_rows
+0
+3103 防护日志：外部 HTTP 尝试 0。
+正在核对 3101 的本地模型和实际只读工具。
+3101 小川 超管：客户 8
+3101 小川 超管：合同 4
+3101 小川 北区销售：客户 2
+3101 小川 北区销售：合同 3
+D3 超管列表：最近反查摘要仅含 status、reason、isMock、createdAt；无 rawResponse。
+D3 北区销售列表：无 latestContactLookup、contactLookups、rawResponse 字段。
+D3 南区销售列表：无 latestContactLookup、contactLookups、rawResponse 字段。
+D3 外贸列表：无 latestContactLookup、contactLookups、rawResponse 字段。
+3102 双待确认样本、85 分候选及三个角色各自的一条线索已核对。
+3102 超管单条 HTTP 503。
+
+人工样本保留核查（只读 SELECT）：
+compare / no-name = NEEDS_CONFIRM
+mock-single / north / offline / offline-a / offline-b / quota-a / quota-b / quota-single / south / trade = PENDING_LOOKUP
+候选状态 = NO_CONTACT
+mock-single 的反查记录数 = 0
+
+本地全量检查：pnpm test 163 文件 / 1304 通过；tsc 0 诊断；lint 0 errors / 622 warnings；定向 eslint 0 errors / 1 既有 warning；pnpm build 通过；git diff --check 通过。
+本轮 .env、prisma/、.github/、合同/发货/上传代码无变更，无新增 migration。

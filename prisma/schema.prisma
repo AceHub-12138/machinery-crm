@@ -201,6 +201,8 @@ model User {
   createdAfterSalesSupplementParts AfterSalesSupplementPart[] @relation("AfterSalesSupplementPartCreator")
   agentConversations           AgentConversation[]
   leadHuntTasks                LeadHuntTask[]
+  requestedLeadLookups LeadContactLookup[] @relation("LeadLookupRequester")
+  confirmedLeadLookups LeadContactLookup[] @relation("LeadLookupConfirmer")
 
   @@map("users")
 }
@@ -667,6 +669,15 @@ model Lead {
   convertedCustomerId String?
   feedbackVersion     Int              @default(0)
 
+  contactStatus String? @db.VarChar(32)
+  contactStatusUpdatedAt DateTime? @db.DateTime(3)
+  phoneSource String? @db.VarChar(32)
+  phoneEvidence Json?
+  phoneVerifiedAt DateTime? @db.DateTime(3)
+  tycCompanyId String? @db.VarChar(64)
+  creditCode String? @db.VarChar(32)
+  contactLookups LeadContactLookup[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -674,6 +685,9 @@ model Lead {
   @@index([source])
   @@index([aiScore])
   @@index([createdAt])
+  @@index([contactStatus])
+  @@index([creditCode])
+  @@index([phone])
   @@map("leads")
 }
 
@@ -765,10 +779,17 @@ model LeadHuntCandidate {
   tianyancha  Json?
   leadId      String?
 
+  contactName String? @db.VarChar(64)
+  phoneSource String? @db.VarChar(32)
+  phoneEvidence Json?
+  dedupKey String? @db.VarChar(64)
+  statusReason String? @db.VarChar(191)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([taskId, status])
+  @@index([dedupKey])
   @@map("lead_hunt_candidates")
 }
 
@@ -2122,4 +2143,45 @@ model NcProgramTemplate {
 
   @@unique([system, name])
   @@map("nc_program_templates")
+}
+
+// 联系方式核验记录只能新增和更新状态，不提供删除入口。
+model LeadContactLookup {
+  id String @id @default(uuid()) @db.VarChar(191)
+  leadId String @db.VarChar(191)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  requestedById String @db.VarChar(191)
+  requestedBy User @relation("LeadLookupRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  queryName String @db.VarChar(100)
+  queryNameNormalized String @db.VarChar(191)
+  status String @db.VarChar(32)
+  reason String? @db.VarChar(191)
+  matchedName String? @db.VarChar(191)
+  tycCompanyId String? @db.VarChar(64)
+  creditCode String? @db.VarChar(32)
+  regStatus String? @db.VarChar(64)
+  phones Json?
+  emails Json?
+  rawResponse Json?
+  charged Boolean @default(false)
+  isMock Boolean @default(false)
+  cacheOfLookupId String? @db.VarChar(191)
+  confirmedById String? @db.VarChar(191)
+  confirmedBy User? @relation("LeadLookupConfirmer", fields: [confirmedById], references: [id], onDelete: Restrict)
+  confirmedAt DateTime? @db.DateTime(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  finishedAt DateTime? @db.DateTime(3)
+  @@index([leadId, createdAt])
+  @@index([queryNameNormalized, createdAt])
+  @@index([status, createdAt])
+  @@index([requestedById])
+  @@index([confirmedById])
+  @@map("lead_contact_lookups")
+}
+
+model LeadLookupDailyQuota {
+  quotaDate String @id @db.Char(10)
+  used Int @default(0)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+  @@map("lead_lookup_daily_quotas")
 }

@@ -1,6 +1,5 @@
 import type { McpApplicationConfig } from "@/lib/mcp/application";
 import { MCP_TOOL_NAMES } from "@/lib/mcp/tools";
-import { MCP_COMMAND_TOOL_NAMES } from "@/lib/mcp/command-tools";
 
 type McpEnvironment = Record<string, string | undefined>;
 
@@ -70,30 +69,6 @@ function parseBusinessToolAllowlist(value: string | undefined) {
   return allowlist;
 }
 
-function parseCommandToolAllowlist(value: string | undefined) {
-  const allowlist = splitCsv(value);
-  if (allowlist.length === 0) throw new Error("MCP_COMMAND_TOOL_ALLOWLIST is required in LEAD_WRITE_INTERNAL mode");
-  if (new Set(allowlist).size !== allowlist.length) throw new Error("MCP_COMMAND_TOOL_ALLOWLIST must not contain duplicate tool names");
-  const unknown = allowlist.filter((toolName) => !MCP_COMMAND_TOOL_NAMES.includes(toolName as typeof MCP_COMMAND_TOOL_NAMES[number]));
-  if (unknown.length > 0) throw new Error(`MCP_COMMAND_TOOL_ALLOWLIST contains unknown tool names: ${unknown.join(", ")}`);
-  if (allowlist.length !== 1 || allowlist[0] !== "lead_upsert") {
-    throw new Error("LEAD_WRITE_INTERNAL allows only lead_upsert");
-  }
-  return allowlist;
-}
-
-function parseServicePrincipalAllowlist(value: string | undefined) {
-  const allowlist = splitCsv(value);
-  if (
-    allowlist.length === 0
-    || new Set(allowlist).size !== allowlist.length
-    || allowlist.some((principalId) => !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(principalId))
-  ) {
-    throw new Error("MCP_COMMAND_PRINCIPAL_ALLOWLIST must contain unique stable service principal IDs");
-  }
-  return allowlist;
-}
-
 const MCP_ROLES = ["SUPER_ADMIN", "SALES", "FOREIGN_TRADE", "PURCHASE", "WAREHOUSE"] as const;
 
 function parseBusinessToolRoleAllowlist(value: string | undefined) {
@@ -122,6 +97,9 @@ function requiredDatabaseUrl(value: string | undefined, name: string) {
 }
 
 export function loadMcpConfig(environment: McpEnvironment = process.env): McpApplicationConfig {
+  if (environment.MCP_TOOL_MODE?.trim().toUpperCase() === "LEAD_WRITE_INTERNAL") {
+    throw new Error("LEAD_WRITE_INTERNAL 已停用（N8N 获客链路已下线）");
+  }
   const allowedHosts = splitCsv(environment.MCP_ALLOWED_HOSTS);
   if (allowedHosts.length === 0) throw new Error("MCP_ALLOWED_HOSTS is required");
   const rejectedAuditUserId = String(environment.MCP_AUDIT_USER_ID || "").trim();
@@ -132,45 +110,21 @@ export function loadMcpConfig(environment: McpEnvironment = process.env): McpApp
     throw new Error("Legacy MCP user-bound auth is forbidden in production");
   }
   const toolMode = environment.MCP_TOOL_MODE?.trim().toUpperCase() || "IDENTITY_POC";
-  if (!["IDENTITY_POC", "FULL_READ_ONLY", "LEAD_WRITE_INTERNAL"].includes(toolMode)) {
-    throw new Error("MCP_TOOL_MODE must be IDENTITY_POC, FULL_READ_ONLY or LEAD_WRITE_INTERNAL");
+  if (!["IDENTITY_POC", "FULL_READ_ONLY"].includes(toolMode)) {
+    throw new Error("MCP_TOOL_MODE must be IDENTITY_POC or FULL_READ_ONLY");
   }
-  const commandMode = toolMode === "LEAD_WRITE_INTERNAL";
-  const apiKeys = parseApiKeys(
-    commandMode ? environment.MCP_COMMAND_API_KEYS_JSON : environment.MCP_API_KEYS_JSON,
-    toolMode === "FULL_READ_ONLY" || commandMode,
-    commandMode ? "MCP_COMMAND_API_KEYS_JSON" : "MCP_API_KEYS_JSON",
-  );
-  if (commandMode && !String(environment.MCP_API_KEYS_JSON || "").trim()) {
-    throw new Error("MCP_API_KEYS_JSON is required for credential separation in LEAD_WRITE_INTERNAL mode");
-  }
-  const readApiKeys = commandMode
-    ? parseApiKeys(environment.MCP_API_KEYS_JSON, false, "MCP_API_KEYS_JSON")
-    : [];
-  const readApiKeyHashes = new Set(readApiKeys.map((entry) => entry.keyHash));
-  if (commandMode && apiKeys.some((entry) => readApiKeyHashes.has(entry.keyHash))) {
-    throw new Error("MCP_COMMAND_API_KEYS_JSON must not reuse an MCP_API_KEYS_JSON credential");
-  }
+  const apiKeys = parseApiKeys(environment.MCP_API_KEYS_JSON, toolMode === "FULL_READ_ONLY");
   const allowedBusinessToolNames = toolMode === "FULL_READ_ONLY"
     ? parseBusinessToolAllowlist(environment.MCP_TOOL_ALLOWLIST)
     : undefined;
   const allowedBusinessToolRoles = toolMode === "FULL_READ_ONLY"
     ? parseBusinessToolRoleAllowlist(environment.MCP_ALLOWED_CALLER_ROLES)
     : undefined;
-  const allowedCommandToolNames = commandMode
-    ? parseCommandToolAllowlist(environment.MCP_COMMAND_TOOL_ALLOWLIST)
-    : undefined;
-  const allowedServicePrincipalIds = commandMode
-    ? parseServicePrincipalAllowlist(environment.MCP_COMMAND_PRINCIPAL_ALLOWLIST)
-    : undefined;
   const queryDatabaseUrl = toolMode === "FULL_READ_ONLY"
     ? requiredDatabaseUrl(environment.MCP_QUERY_DATABASE_URL, "MCP_QUERY_DATABASE_URL")
     : undefined;
-  const auditDatabaseUrl = toolMode === "FULL_READ_ONLY" || commandMode
+  const auditDatabaseUrl = toolMode === "FULL_READ_ONLY"
     ? requiredDatabaseUrl(environment.MCP_AUDIT_DATABASE_URL, "MCP_AUDIT_DATABASE_URL")
-    : undefined;
-  const commandDatabaseUrl = commandMode
-    ? requiredDatabaseUrl(environment.MCP_COMMAND_DATABASE_URL, "MCP_COMMAND_DATABASE_URL")
     : undefined;
   if (
     queryDatabaseUrl
@@ -179,14 +133,7 @@ export function loadMcpConfig(environment: McpEnvironment = process.env): McpApp
   ) {
     throw new Error("MCP_QUERY_DATABASE_URL and MCP_AUDIT_DATABASE_URL must use different database users");
   }
-  if (
-    commandDatabaseUrl
-    && auditDatabaseUrl
-    && new URL(commandDatabaseUrl).username === new URL(auditDatabaseUrl).username
-  ) {
-    throw new Error("MCP_COMMAND_DATABASE_URL and MCP_AUDIT_DATABASE_URL must use different database users");
-  }
-  if ((toolMode === "FULL_READ_ONLY" || commandMode) && legacyUserBindingEnabled) {
+  if ((toolMode === "FULL_READ_ONLY") && legacyUserBindingEnabled) {
     throw new Error(`${toolMode} forbids API-key-bound user identity`);
   }
   if (legacyUserBindingEnabled && apiKeys.some((entry) => !entry.userId)) {
@@ -198,17 +145,14 @@ export function loadMcpConfig(environment: McpEnvironment = process.env): McpApp
     rejectedAuditUserId,
     queryDatabaseUrl,
     auditDatabaseUrl,
-    commandDatabaseUrl,
     allowedHosts,
     allowedOrigins: splitCsv(environment.MCP_ALLOWED_ORIGINS),
     legacyUserBindingEnabled,
     toolMode: toolMode === "FULL_READ_ONLY"
       ? "full-read-only"
-      : toolMode === "LEAD_WRITE_INTERNAL" ? "lead-write-internal" : "identity-poc",
+      : "identity-poc",
     allowedBusinessToolNames,
     allowedBusinessToolRoles,
-    allowedCommandToolNames,
-    allowedServicePrincipalIds,
     queryTimeoutMs: parseQueryTimeout(environment.MCP_QUERY_TIMEOUT_MS),
     diagnosticLogging: environment.MCP_DIAGNOSTIC_LOGGING === "true",
   };

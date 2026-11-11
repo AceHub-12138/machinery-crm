@@ -1,0 +1,18 @@
+id	status	admitted_json_type	report_fields	admitted_text_length	total_candidates	actual_admitted_candidates
+ef6f66f5-cb5e-4cb9-9f47-3011aeed0337	done	STRING	6	255	3	0
+companyName	phone	phoneSource	evidence_excerpt	status
+苏州拓峰自动化设备有限公司	NULL	NULL	NULL	NO_CONTACT
+台州洪发阀门制造有限公司	0576-88012345	PAGE_TEXT	台州洪发阀门制造有限公司 - 公司简介
+
+台州洪发阀门制造有限公司生产各类工业阀门，机加工车间对外协作。联系电话：0576-88012345 张厂长	PENDING_CONFIRM
+宁波恒精传动科技有限公司	13812345678	PAGE_TEXT	宁波恒精传动科技有限公司 - 联系我们
+
+宁波恒精传动科技有限公司专业从事精密齿轮、联轴器与键槽加工，拥有多台数控插齿机。采购请联系王经理：13812345678	PENDING_CONFIRM
+leads
+0
+lookups
+0
+quota_rows	quota_used
+0	0
+operation_log_rows
+0

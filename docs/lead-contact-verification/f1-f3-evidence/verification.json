@@ -1,0 +1,283 @@
+{
+  "date": "2026-11-10T02:20:15.026831+00:00",
+  "timezone": "America/Los_Angeles",
+  "round": 4,
+  "branch": "codex/lead-contact-verification",
+  "baseCommit": "3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699",
+  "sourceState": "uncommitted",
+  "newCommit": null,
+  "pushed": false,
+  "round3Tests": 1281,
+  "testsAddedThisRound": 12,
+  "testFiles": 161,
+  "testsPassed": 1293,
+  "testsFailed": 0,
+  "reproduction": {
+    "command": "pnpm exec vitest run src/lib/lead-hunter/phone.test.ts",
+    "testFiles": 1,
+    "tests": 106,
+    "before": {
+      "passed": 101,
+      "failed": 5,
+      "exitCode": 1,
+      "log": "repro-before.txt",
+      "logSha256": "d34cd35dc5c3845222742fbc326a55444ca0d2866df469be2ee56d749c82e782"
+    },
+    "after": {
+      "passed": 106,
+      "failed": 0,
+      "exitCode": 0,
+      "log": "repro-after.txt",
+      "logSha256": "db10d38b7b20cba74ad422d285196ec041249299865fbcd4a64f762bf8459765"
+    },
+    "R7New": {
+      "tests": 4,
+      "beforePassed": 2,
+      "beforeFailed": 2,
+      "afterPassed": 4,
+      "afterFailed": 0
+    },
+    "R8New": {
+      "tests": 8,
+      "beforePassed": 5,
+      "beforeFailed": 3,
+      "afterPassed": 8,
+      "afterFailed": 0
+    }
+  },
+  "existingAssertionConflicts": [],
+  "existingAssertionsChanged": false,
+  "assertionPreservation": {
+    "round3RestoredSha256": "e64558ab3b42ae98e00a4d8a6e2b3b9394dc27db3399f502198cccc092e53cf4",
+    "byteIdentical": true
+  },
+  "otherModifiedFilesUnchanged": {
+    "docs/ai-context/00_current_status.md": true,
+    "docs/lead-contact-verification/README.md": true,
+    "src/components/leads/contact-verification.test.tsx": true,
+    "src/components/leads/contact-verification.tsx": true,
+    "src/lib/lead-hunter/admit.test.ts": true,
+    "src/lib/lead-hunter/admit.ts": true,
+    "src/lib/lead-hunter/contact-authenticity.test.ts": true,
+    "src/lib/lead-hunter/engine.test.ts": true,
+    "src/lib/lead-hunter/engine.ts": true,
+    "src/modules/crm/leads/contact-lookup.test.ts": true,
+    "src/modules/crm/leads/contact-lookup.ts": true
+  },
+  "sourceHashEncoding": "SHA-256 over actual file bytes; all LF",
+  "sourceFiles": {
+    "src/components/leads/contact-verification.test.tsx": "0c9c1357c2369c71c777935e42f54093f9f271112127a4ccc4eccc8a69449043",
+    "src/components/leads/contact-verification.tsx": "d84bfddbbada7eb656ca2c35106757e3967e3d521436a422be08ff83c5472665",
+    "src/lib/lead-hunter/admit.test.ts": "90d4bb551d2d35d4fe4438aaae31ea6db6eb5379e7b62ea5821f7b95f1f20d7a",
+    "src/lib/lead-hunter/admit.ts": "8c819f0d6da8e6f329ad5ff34ebebb947104c0b6b1127bde979daa8ea66ba8f7",
+    "src/lib/lead-hunter/contact-authenticity.test.ts": "b585291a43f04d38bd9507d497284f783e72ece5a9dea4e689fd60c8728a8d8f",
+    "src/lib/lead-hunter/engine.test.ts": "dcdf528f77c5dd83e46bbe957a6ebb6592febe9bb0691b1c982f41ac5132d354",
+    "src/lib/lead-hunter/engine.ts": "37ec29452eb026d07b6ff174854286b2e2299366ca30a1fcd4c27f80aca089f0",
+    "src/lib/lead-hunter/phone.test.ts": "a69e2edaca0b87109c61436f3ed20211ed6dee81dc043c1a66cb2f30ebc60c63",
+    "src/lib/lead-hunter/phone.ts": "c64226f4cd86e179dbc8f4554862bc3d006b27de9626bf9adfce69b4f0e813c6",
+    "src/modules/crm/leads/contact-lookup.test.ts": "9cb3057011efc0da777907f85eb0351051c7d80254ef35cbf88eaf5bd8d0dc2e",
+    "src/modules/crm/leads/contact-lookup.ts": "06043847066aeaedb98eed51ee387f2c123a2e3490ebc85de9906a8ca1d3a3cf"
+  },
+  "sourceFilesChangedThisRound": [
+    "src/lib/lead-hunter/phone.ts",
+    "src/lib/lead-hunter/phone.test.ts"
+  ],
+  "documentChangedThisRound": "docs/lead-contact-verification/f1-f3-remediation.md",
+  "documentSha256": "5e8ddca86c5e1dc3920e51a9c51ff69ceb92fab866a3970eca34528822c5e32c",
+  "lintErrors": 0,
+  "lintWarnings": 622,
+  "checks": [
+    {
+      "name": "test",
+      "command": "pnpm test",
+      "cwd": "<workspace>",
+      "startedAt": "2026-11-10T02:16:45.664522+00:00",
+      "endedAt": "2026-11-10T02:16:56.625133+00:00",
+      "elapsedSeconds": 10.953,
+      "exitCode": 0,
+      "log": "test.txt",
+      "order": 1,
+      "logSha256": "1140b9523d815591988b33c9df6e8c5a46af1d37e49f401bbe541acd0702a818"
+    },
+    {
+      "name": "typecheck",
+      "command": "pnpm exec tsc --noEmit",
+      "cwd": "<workspace>",
+      "startedAt": "2026-11-10T02:16:56.626131+00:00",
+      "endedAt": "2026-11-10T02:17:01.717563+00:00",
+      "elapsedSeconds": 5.094,
+      "exitCode": 0,
+      "log": "typecheck.txt",
+      "order": 2,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "lint",
+      "command": "pnpm lint",
+      "cwd": "<workspace>",
+      "startedAt": "2026-11-10T02:17:01.718065+00:00",
+      "endedAt": "2026-11-10T02:17:23.324044+00:00",
+      "elapsedSeconds": 21.609,
+      "exitCode": 0,
+      "log": "lint.txt",
+      "order": 3,
+      "logSha256": "d57b764737e90f326d5da397942bb7745614e3cc6652ebe817c09fd0521fecab"
+    },
+    {
+      "name": "changed-lint",
+      "command": "pnpm exec eslint src/lib/lead-hunter/phone.ts src/lib/lead-hunter/phone.test.ts",
+      "cwd": "<workspace>",
+      "startedAt": "2026-11-10T02:17:23.325041+00:00",
+      "endedAt": "2026-11-10T02:17:26.339114+00:00",
+      "elapsedSeconds": 3.016,
+      "exitCode": 0,
+      "log": "changed-lint.txt",
+      "order": 4,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "build",
+      "command": "pnpm build",
+      "cwd": "<workspace>",
+      "startedAt": "2026-11-10T02:17:26.340152+00:00",
+      "endedAt": "2026-11-10T02:18:04.018115+00:00",
+      "elapsedSeconds": 37.672,
+      "exitCode": 0,
+      "log": "build.txt",
+      "environment": "NEXT_FONT_GOOGLE_MOCKED_RESPONSES=<temporary-font-fixture>/google-fonts.cjs",
+      "order": 5,
+      "logSha256": "eb3e9e203715f95d579b8e2d1b074cdb7be5ca53e629f8430e517174e11b73ad"
+    },
+    {
+      "name": "diff-check",
+      "command": "git -c core.autocrlf=false diff --check",
+      "cwd": "<workspace>",
+      "startedAt": "2026-11-10T02:19:35.478555+00:00",
+      "endedAt": "2026-11-10T02:19:35.547704+00:00",
+      "elapsedSeconds": 0.062,
+      "exitCode": 0,
+      "log": "diff-check.txt",
+      "order": 6,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "numstat",
+      "command": "git -c core.autocrlf=false diff --numstat",
+      "cwd": "<workspace>",
+      "startedAt": "2026-11-10T02:19:35.547704+00:00",
+      "endedAt": "2026-11-10T02:19:35.611238+00:00",
+      "elapsedSeconds": 0.063,
+      "exitCode": 0,
+      "log": "numstat.txt",
+      "order": 7,
+      "logSha256": "050b68945ac192110065aef9baac08961f88ffa4c09bf167242ece86d49f0d73"
+    }
+  ],
+  "round3ArchivedEvidence": [
+    {
+      "original": "assertion-preservation.txt",
+      "archive": "assertion-preservation-round3.txt",
+      "sha256": "fc840f30af19f8f2b47735126ce0a3c1990722b1b4f2c52bedbe24aea2a1efd6"
+    },
+    {
+      "original": "build-font-fixture-url.txt",
+      "archive": "build-font-fixture-url-round3.txt",
+      "sha256": "fc15a25bce717ad287e927a8d137a517405da8beebd1067f3426b73e1da34c25"
+    },
+    {
+      "original": "build-initial-font-download.txt",
+      "archive": "build-initial-font-download-round3.txt",
+      "sha256": "a955498d4567712b8bbba647f6637525d8fa793d42c6ed794b1398941bfecf1b"
+    },
+    {
+      "original": "build.txt",
+      "archive": "build-round3.txt",
+      "sha256": "0acde75f07e2c81eda1decc8997965861449e3a8824bbd446ec4084b6784f0f5"
+    },
+    {
+      "original": "changed-lint.txt",
+      "archive": "changed-lint-round3.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "diff-check.txt",
+      "archive": "diff-check-round3.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "font-fixture-validation.txt",
+      "archive": "font-fixture-validation-round3.txt",
+      "sha256": "9cd27b25a967b7e8f2d9902f0b49953d2a2a86b87de8c97a6528da6417c61e6c"
+    },
+    {
+      "original": "known-limitations.txt",
+      "archive": "known-limitations-round3.txt",
+      "sha256": "a6ddfa8f765df359870b7594652a6f2e2bff038786ad0f832b6a8a8cdae7c72c"
+    },
+    {
+      "original": "lf-check.txt",
+      "archive": "lf-check-round3.txt",
+      "sha256": "96258ec7c252fe22977de253bd0c7545c98dd4b913cbdc8027a35517be02d4be"
+    },
+    {
+      "original": "lint.txt",
+      "archive": "lint-round3.txt",
+      "sha256": "e85df72cb0192596aeff3ca15caae810385ab5330788f9cc4e721cca89aba4b6"
+    },
+    {
+      "original": "numstat.txt",
+      "archive": "numstat-round3.txt",
+      "sha256": "336200c3bb4fa7b025d85511faadef5541b3d16adcd363c5379efd546e82dc68"
+    },
+    {
+      "original": "offline-font-setup.txt",
+      "archive": "offline-font-setup-round3.txt",
+      "sha256": "1bd3e64d8f54a46a0c4dd2c45f16ee0dc828d51dc6080fac95bd0f3227925c92"
+    },
+    {
+      "original": "repro-after.txt",
+      "archive": "repro-after-round3.txt",
+      "sha256": "8279a99a9567e09c8eab4915630f9c32aa516d3bb9755ee679d66483b74399c0"
+    },
+    {
+      "original": "repro-before.txt",
+      "archive": "repro-before-round3.txt",
+      "sha256": "d54ff895fbd05b9535f60b0123019b0a570da35a4ca5d67fd709203d060f0692"
+    },
+    {
+      "original": "test.txt",
+      "archive": "test-round3.txt",
+      "sha256": "eeae12da4e9c88e5023bd6cdaa1ed8993df64871d87da2cd544c484fda10f97a"
+    },
+    {
+      "original": "typecheck.txt",
+      "archive": "typecheck-round3.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "verification.json",
+      "archive": "verification-round3.json",
+      "sha256": "032b15094eb3766c8aad191d561c467175616bbf430be32984715bc9f711295b"
+    }
+  ],
+  "buildQualification": {
+    "mode": "process-only existing local real Geist WOFF2 data URI fixture",
+    "exitCode": 0,
+    "fontAssetsVerified": 5,
+    "defaultNetworkBuildAttemptedThisRound": false,
+    "releaseNote": "正式发布以 Linux CI 构建为准",
+    "windowsValidationArtifactForDeployment": false
+  },
+  "knownLimitationsReference": "f1-f3-remediation.md section 11.4; original actual probes preserved in known-limitations-round3.txt",
+  "evidenceExcerpt": "unchanged raw phone occurrence +/-80 characters; may include adjacent directory entry for display only",
+  "databaseAccessed": false,
+  "realProviderApiCalled": false,
+  "schemaModified": false,
+  "migrationModified": false,
+  "productionDeployed": false,
+  "V1": "未执行",
+  "V2": "未执行",
+  "V3": "未执行",
+  "V4": "未执行",
+  "allChangedAndNewFilesLF": true
+}

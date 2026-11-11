@@ -5,6 +5,28 @@
 - 当前开发必须保护已有 CRM 功能、权限和正式数据。
 - 每次重要补丁完成后，需要更新本文件。
 
+## 2026-11-09｜AI 获客第三轮 R4–R6（采用修订 R5；未提交、未部署）
+
+- 同一 worktree、同一分支、未提交补丁上，按公司后缀位置识别目标，修复欢迎语/版权前缀误伤；R5 改按原文条目边界，保留全部旧 R1 断言；R6 增加装饰传真标签及连续传真列表过滤。
+- 本轮新增 43 项，定向修复前 31 failed / 97 passed，修复后 128/128；全量 161 文件、1281/1281，TypeScript、lint（0 errors、622 warnings）、定向 eslint 通过；默认构建字体下载失败，采用本地真实字体的离线验收构建及最终证据检查通过。三个测试文件原有内容完整保留，无断言冲突。
+- 第二轮日志归档为 `-round2`，本轮文件保持 LF；同一行/分行的号码在前名录、只写“××厂”或简称仍有误配局限，子公司示例保守返回 null，均已记录实际结果。
+- F2、schema、migration 不改；无真实数据库或供应商操作，未提交、未推送、未部署，V1–V4 未执行。[第三轮整改详情](../lead-contact-verification/f1-f3-remediation.md)。
+
+## 2026-11-09｜AI 获客 F1/F3 第二轮返工（历史；后续 R4–R6 见上）
+
+- 同一 `codex/lead-contact-verification` worktree 在 `3c50d5bd` 的未提交补丁上增加紧凑名录有限公司类全称归属约束，以及前 30 字原文去空白后的传真标签识别；F2 已通过的逻辑保持不变。
+- 本轮新增 30 个用例：定向修复前 23 failed / 62 passed，修复后 85/85；全量 161 文件、1238/1238，TypeScript、ESLint（0 errors、622 warnings）、生产构建及最终证据检查通过。
+- 统一本次修改/新增文件为 LF；旧证据加 `-round1` 后缀保留。名录只写“××厂”或简称仍无法区分，正确简称电话可能转为管理员反查，需告知业务反查量影响。
+- 无 schema/migration、真实数据库或供应商操作；未提交、未推送、未部署，V1–V4 维持未执行。[第二轮整改详情](../lead-contact-verification/f1-f3-remediation.md#9-第二轮复审整改r1r3)。
+
+## 2026-11-06｜AI 获客联系方式核验复审 F1–F3 整改（第一轮本地通过；后续 F1/F3 复审退回，见上）
+
+- 在 `codex/lead-contact-verification` 独立 worktree、`3c50d5bd` 基线上收紧网页电话与公司前后各 80 字关联，历史候选入池同步重验；证据必须包含名称和号码。
+- 无企业名称的天眼查待确认结果禁止采用（后端 409、前端禁用），仍允许驳回；网页号码前六字有传真/Fax/FAX 标签时不提取。
+- 新增 33 个回归用例；全量 161 文件、1208 用例、TypeScript、ESLint（0 errors、622 条既有 warnings）、生产构建和补丁空白检查通过。
+- 无 schema/migration、正式数据、上传目录或服务器配置变更；未提交、未推送、未部署。V1–V4 及登录后人工验收仍待执行。
+- 文件清单、检查输出、源码指纹、部署及回滚边界见 [F1–F3 整改结论](../lead-contact-verification/f1-f3-remediation.md)。
+
 ## 2026-10-05｜安全修复批次（源码施工完成，待 PR 与部署验收）
 
 - 分支 `codex/dachuan-safety-repairs`；基于 AceHub-12138/machinery-crm 的 `f334a642`。
@@ -260,3 +282,11 @@
 - CRM「平台管理 → Agent 管理」（仅超管）：Agent 账号新增/编辑/重置密码/停用启用（软删，只加不删）；模型与 API Key 多套配置、测试连接（编辑时 Key 留空复用存量密钥但按表单地址/模型测试）、一键切换生效（即时生效无需重新部署），env 配置永远兜底。
 - 门禁：tsc 0 错、vitest 864/864、eslint 0 错（599 条既有 warning）、next build 通过；浏览器端到端验收（登录页布局/双身份登录/知识问答/业务隔离/退出/Agent 管理页）全部通过。
 - 待办：用户 localhost 审核确认 → 出部署包（含 01/02 SQL 与部署说明）→ 挂 ai.dachuan.pro 子域名（NEXT_PUBLIC_XIAOCHUAN_URL 构建期改写 + Cookie 域 .dachuan.pro，员工会被登出一次）→ 智谱搜索/网页读取 MCP 接入。
+
+## 2026-11-06｜AI 获客联系方式核验（独立分支，待复审和部署）
+
+- 用户确认以 `github/main@5d6941e0b82a5a46e76cce4227391bac5ea1650e` 为基线，分支 `codex/lead-contact-verification`，独立 worktree；原本地 `k3/sales-screen-platform@57af5403` 不变。
+- 固定 85 分入池；无电话不自动分配；管理员在线索池手动反查，名称不符或经营状态未知进入人工确认。AI 电话、邮箱必须通过原文核对；模拟反查不回填 Lead。
+- 下线旧 N8N/FastGPT Lead 写入入口，历史表、migration、数据及 MCP 只读功能保留。归档文档位于 `docs/archive/n8n-lead-pipeline/`。
+- 新增迁移 `20261107010000_add_lead_contact_verification`，未在任何数据库执行。仅生成和校验 Prisma Client，不读取运行时密钥。
+- 未连接生产、未请求真实千帆/大模型/天眼查、未部署。验收数字及限制以 `docs/lead-contact-verification/README.md` 和 evidence 为准。

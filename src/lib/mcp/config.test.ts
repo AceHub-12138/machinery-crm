@@ -150,47 +150,7 @@ describe("MCP environment configuration", () => {
     })).toThrow(/forbidden in production/);
   });
 
-  it("loads an isolated Lead command mode with separate credentials, database and principal allowlist", () => {
-    const config = loadMcpConfig({
-      NODE_ENV: "production",
-      MCP_TOOL_MODE: "LEAD_WRITE_INTERNAL",
-      MCP_API_KEYS_JSON: JSON.stringify([{ name: "readonly-fastgpt", keyHash: "8".repeat(64) }]),
-      MCP_COMMAND_API_KEYS_JSON: JSON.stringify([{ name: "lead-ingestor", keyHash: "9".repeat(64) }]),
-      MCP_COMMAND_TOOL_ALLOWLIST: "lead_upsert",
-      MCP_COMMAND_PRINCIPAL_ALLOWLIST: "ai-lead-ingestor",
-      MCP_COMMAND_DATABASE_URL: "mysql://dachuan_lead_writer:writer-password@mysql:3306/machinery_crm",
-      MCP_AUDIT_DATABASE_URL: "mysql://dachuan_mcp_audit:audit-password@mysql:3306/machinery_crm",
-      MCP_AUDIT_USER_ID: "audit-user-1",
-      MCP_ALLOWED_HOSTS: "mcp-write.internal",
-    });
-
-    expect(config).toMatchObject({
-      toolMode: "lead-write-internal",
-      apiKeys: [{ name: "lead-ingestor", keyHash: "9".repeat(64) }],
-      allowedCommandToolNames: ["lead_upsert"],
-      allowedServicePrincipalIds: ["ai-lead-ingestor"],
-      commandDatabaseUrl: "mysql://dachuan_lead_writer:writer-password@mysql:3306/machinery_crm",
-      auditDatabaseUrl: "mysql://dachuan_mcp_audit:audit-password@mysql:3306/machinery_crm",
-    });
-  });
-
-  it("requires proof that the Lead command API credential differs from every read credential", () => {
-    const environment = {
-      NODE_ENV: "production",
-      MCP_TOOL_MODE: "LEAD_WRITE_INTERNAL",
-      MCP_COMMAND_API_KEYS_JSON: JSON.stringify([{ name: "lead-ingestor", keyHash: "9".repeat(64) }]),
-      MCP_COMMAND_TOOL_ALLOWLIST: "lead_upsert",
-      MCP_COMMAND_PRINCIPAL_ALLOWLIST: "ai-lead-ingestor",
-      MCP_COMMAND_DATABASE_URL: "mysql://dachuan_lead_writer:writer-password@mysql:3306/machinery_crm",
-      MCP_AUDIT_DATABASE_URL: "mysql://dachuan_mcp_audit:audit-password@mysql:3306/machinery_crm",
-      MCP_AUDIT_USER_ID: "audit-user-1",
-      MCP_ALLOWED_HOSTS: "mcp-write.internal",
-    };
-
-    expect(() => loadMcpConfig(environment)).toThrow(/MCP_API_KEYS_JSON is required for credential separation/);
-    expect(() => loadMcpConfig({
-      ...environment,
-      MCP_API_KEYS_JSON: JSON.stringify([{ name: "readonly-fastgpt", keyHash: "9".repeat(64) }]),
-    })).toThrow(/must not reuse an MCP_API_KEYS_JSON credential/);
+  it("rejects the retired writer mode before loading credentials", () => {
+    expect(() => loadMcpConfig({ MCP_TOOL_MODE: "LEAD_WRITE_INTERNAL" })).toThrow(/已停用/);
   });
 });

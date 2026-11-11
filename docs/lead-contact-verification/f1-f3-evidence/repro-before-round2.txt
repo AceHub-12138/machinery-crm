@@ -1,0 +1,358 @@
+ RUN  v4.1.10 <workspace>
+
+ ❯ src/lib/lead-hunter/phone.test.ts (53 tests | 19 failed) 33ms
+     × 甲不能认领名录中其他公司的 0531-33334444 8ms
+     × 甲不能认领名录中其他公司的 0531-55556666 1ms
+     × 同一行空格排列也不能认领其他公司的号码 1ms
+     × 号码前最近是其他公司时，后面的目标名称不能认领号码 1ms
+     × 号码和后面的目标名称之间有其他公司时不关联 1ms
+     × 识别至少两字且带 股份有限公司 的其他公司 1ms
+     × 识别至少两字且带 有限责任公司 的其他公司 0ms
+     × 识别至少两字且带 有限公司 的其他公司 1ms
+     × 识别至少两字且带 集团有限公司 的其他公司 1ms
+     × 识别带字母数字的其他公司全称 1ms
+     × 不提取传真：传　真：0574-87654321 3ms
+     × 不提取传真：传 真：0574-87654321 2ms
+     × 不提取传真：Fax No.: 0574-87654321 1ms
+     × 不提取传真：传真
+						0574-87654321 1ms
+     × 不提取传真：传 真号：0574-87654321 1ms
+     × 不提取传真：传真号码.: 0574-87654321 1ms
+     × 不提取传真：fAx NuMbEr.: 0574-87654321 0ms
+     × 正常电话与全角空格传真并列时只保留正常电话 1ms
+     × 公司名称在旁边时，verifiedPageContact 也拒绝全角空格传真 0ms
+ ❯ src/lib/lead-hunter/engine.test.ts (17 tests | 2 failed) 38ms
+     × [R1] 紧凑名录误配 沿真实引擎路径转为无电话 18ms
+     × [R2] 全角空格传真 沿真实引擎路径转为无电话 2ms
+ ❯ src/lib/lead-hunter/admit.test.ts (15 tests | 2 failed) 31ms
+     × [R1] 紧凑名录误配 沿历史入池路径丢弃电话并延后分配 16ms
+     × [R2] 全角空格传真 沿历史入池路径丢弃电话并延后分配 2ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 23 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/lead-hunter/admit.test.ts > admitCandidates 入池分单 > [R1] 紧凑名录误配 沿历史入池路径丢弃电话并延后分配
+AssertionError: expected { id: 'lead-1', …(18) } to match object { Object (phone, phoneSource, ...) }
+(21 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "assignedUserId": null,
+-   "contactStatus": "PENDING_LOOKUP",
+-   "phone": null,
+-   "phoneSource": null,
++   "assignedUserId": "sales-zj",
++   "contactStatus": "HAS_CONTACT",
++   "phone": "0531-33334444",
++   "phoneSource": "PAGE_TEXT",
+  }
+
+ ❯ src/lib/lead-hunter/admit.test.ts:146:39
+    144|     db.addCandidate("round2", "t1", { companyName: "甲机械有限公司", phone, s…
+    145|     expect((await admitCandidates(buildUser(), "t1", ["round2"], { pri…
+    146|     expect([...db.leads.values()][0]).toMatchObject({ phone: null, pho…
+       |                                       ^
+    147|     expect(db.candidates[0]).toMatchObject({ phone: null, phoneSource:…
+    148|     expect(db.operationLogs[0].action).toBe("AUTO_ASSIGN_DEFERRED|reas…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/23]⎯
+
+ FAIL  src/lib/lead-hunter/admit.test.ts > admitCandidates 入池分单 > [R2] 全角空格传真 沿历史入池路径丢弃电话并延后分配
+AssertionError: expected { id: 'lead-1', …(18) } to match object { Object (phone, phoneSource, ...) }
+(21 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "assignedUserId": null,
+-   "contactStatus": "PENDING_LOOKUP",
+-   "phone": null,
+-   "phoneSource": null,
++   "assignedUserId": "sales-zj",
++   "contactStatus": "HAS_CONTACT",
++   "phone": "0574-87654321",
++   "phoneSource": "PAGE_TEXT",
+  }
+
+ ❯ src/lib/lead-hunter/admit.test.ts:146:39
+    144|     db.addCandidate("round2", "t1", { companyName: "甲机械有限公司", phone, s…
+    145|     expect((await admitCandidates(buildUser(), "t1", ["round2"], { pri…
+    146|     expect([...db.leads.values()][0]).toMatchObject({ phone: null, pho…
+       |                                       ^
+    147|     expect(db.candidates[0]).toMatchObject({ phone: null, phoneSource:…
+    148|     expect(db.operationLogs[0].action).toBe("AUTO_ASSIGN_DEFERRED|reas…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/23]⎯
+
+ FAIL  src/lib/lead-hunter/engine.test.ts > lead-hunter engine > [R1] 紧凑名录误配 沿真实引擎路径转为无电话
+AssertionError: expected { id: 'cand-1', leadId: null, …(18) } to match object { phone: null, …(2) }
+(20 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "phone": null,
+-   "phoneSource": null,
+-   "status": "NO_CONTACT",
++   "phone": "0531-33334444",
++   "phoneSource": "PAGE_TEXT",
++   "status": "PENDING_CONFIRM",
+  }
+
+ ❯ src/lib/lead-hunter/engine.test.ts:133:30
+    131|     const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).moc…
+    132|     await createLeadHunterEngine({ prisma: db.prisma, llm, search: { s…
+    133|     expect(db.candidates[0]).toMatchObject({ phone: null, status: "NO_…
+       |                              ^
+    134|     expect(db.candidates[0].phoneEvidence).toBeUndefined();
+    135|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/23]⎯
+
+ FAIL  src/lib/lead-hunter/engine.test.ts > lead-hunter engine > [R2] 全角空格传真 沿真实引擎路径转为无电话
+AssertionError: expected { id: 'cand-1', leadId: null, …(18) } to match object { phone: null, …(2) }
+(20 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "phone": null,
+-   "phoneSource": null,
+-   "status": "NO_CONTACT",
++   "phone": "0574-87654321",
++   "phoneSource": "PAGE_TEXT",
++   "status": "PENDING_CONFIRM",
+  }
+
+ ❯ src/lib/lead-hunter/engine.test.ts:133:30
+    131|     const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).moc…
+    132|     await createLeadHunterEngine({ prisma: db.prisma, llm, search: { s…
+    133|     expect(db.candidates[0]).toMatchObject({ phone: null, status: "NO_…
+       |                              ^
+    134|     expect(db.candidates[0].phoneEvidence).toBeUndefined();
+    135|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 甲不能认领名录中其他公司的 0531-33334444
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:8:60
+      6|   const directory = "甲机械有限公司 电话：0531-11112222\n乙机械有限公司 电话：0531-3333444…
+      7|   it.each(["0531-33334444", "0531-55556666"])("甲不能认领名录中其他公司的 %s", (pho…
+      8|     expect(verifiedPageContact(phone, directory, company)).toBeNull();
+       |                                                            ^
+      9|     expect(pagePhoneEvidence(null, directory, phone, company)).toBeNul…
+     10|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 甲不能认领名录中其他公司的 0531-55556666
+AssertionError: expected '0531-55556666' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-55556666"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:8:60
+      6|   const directory = "甲机械有限公司 电话：0531-11112222\n乙机械有限公司 电话：0531-3333444…
+      7|   it.each(["0531-33334444", "0531-55556666"])("甲不能认领名录中其他公司的 %s", (pho…
+      8|     expect(verifiedPageContact(phone, directory, company)).toBeNull();
+       |                                                            ^
+      9|     expect(pagePhoneEvidence(null, directory, phone, company)).toBeNul…
+     10|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 同一行空格排列也不能认领其他公司的号码
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:15:112
+     13|   });
+     14|   it("同一行空格排列也不能认领其他公司的号码", () => {
+     15|     expect(verifiedPageContact("0531-33334444", "甲机械有限公司 电话 0531-11112…
+       |                                                                                                                ^
+     16|   });
+     17|   it("号码前最近是其他公司时，后面的目标名称不能认领号码", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 号码前最近是其他公司时，后面的目标名称不能认领号码
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:18:95
+     16|   });
+     17|   it("号码前最近是其他公司时，后面的目标名称不能认领号码", () => {
+     18|     expect(verifiedPageContact("0531-33334444", "乙机械有限公司 电话 0531-33334…
+       |                                                                                               ^
+     19|   });
+     20|   it("号码和后面的目标名称之间有其他公司时不关联", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 号码和后面的目标名称之间有其他公司时不关联
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:21:95
+     19|   });
+     20|   it("号码和后面的目标名称之间有其他公司时不关联", () => {
+     21|     expect(verifiedPageContact("0531-33334444", "电话 0531-33334444 乙机械有…
+       |                                                                                               ^
+     22|   });
+     23|   it.each(["股份有限公司", "有限责任公司", "有限公司", "集团有限公司"])("识别至少两字且带 %s 的其他公司",…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 识别至少两字且带 股份有限公司 的其他公司
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 识别至少两字且带 有限责任公司 的其他公司
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 识别至少两字且带 有限公司 的其他公司
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 识别至少两字且带 集团有限公司 的其他公司
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:24:99
+     22|   });
+     23|   it.each(["股份有限公司", "有限责任公司", "有限公司", "集团有限公司"])("识别至少两字且带 %s 的其他公司",…
+     24|     expect(verifiedPageContact("0531-33334444", `甲机械有限公司 乙方${suffix} 电…
+       |                                                                                                   ^
+     25|   });
+     26|   it("识别带字母数字的其他公司全称", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R1] 紧凑名录中的公司电话归属 > 识别带字母数字的其他公司全称
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:27:94
+     25|   });
+     26|   it("识别带字母数字的其他公司全称", () => {
+     27|     expect(verifiedPageContact("0531-33334444", "甲机械有限公司 A2有限公司 电话 053…
+       |                                                                                              ^
+     28|   });
+     29|   it.each([
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 不提取传真：传　真：0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 不提取传真：传 真：0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 不提取传真：Fax No.: 0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 不提取传真：传真
+						0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 不提取传真：传 真号：0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 不提取传真：传真号码.: 0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 不提取传真：fAx NuMbEr.: 0574-87654321
+AssertionError: expected [ { value: '0574-87654321', …(1) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "kind": "landline",
++     "value": "0574-87654321",
++   },
++ ]
+
+ ❯ src/lib/lead-hunter/phone.test.ts:50:33
+     48|     "电话/传真：0574-87654321",
+     49|   ])("不提取传真：%s", (text) => {
+     50|     expect(extractPhones(text)).toEqual([]);
+       |                                 ^
+     51|   });
+     52|   it("正常电话与全角空格传真并列时只保留正常电话", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 正常电话与全角空格传真并列时只保留正常电话
+AssertionError: expected [ …(2) ] to deeply equal [ { value: '0574-11112222', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+      "kind": "landline",
+      "value": "0574-11112222",
+    },
++   {
++     "kind": "landline",
++     "value": "0574-87654321",
++   },
+  ]
+
+ ❯ src/lib/lead-hunter/phone.test.ts:53:75
+     51|   });
+     52|   it("正常电话与全角空格传真并列时只保留正常电话", () => {
+     53|     expect(extractPhones("电话：0574-11112222\u3000传\u3000真：0574-87654321…
+       |                                                                           ^
+     54|   });
+     55|   it("超过三十字的传真标签不误伤正常号码", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/23]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R2] 带空白和英文扩展标签的传真过滤 > 公司名称在旁边时，verifiedPageContact 也拒绝全角空格传真
+AssertionError: expected '0574-87654321' to be null
+
+- Expected:
+null
+
++ Received:
+"0574-87654321"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:59:95
+     57|   });
+     58|   it("公司名称在旁边时，verifiedPageContact 也拒绝全角空格传真", () => {
+     59|     expect(verifiedPageContact("0574-87654321", "甲机械有限公司 传\u3000真：0574…
+       |                                                                                               ^
+     60|   });
+     61| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/23]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  23 failed | 62 passed (85)
+   Start at  17:37:33
+   Duration  913ms (transform 329ms, setup 0ms, import 826ms, tests 102ms, environment 0ms)

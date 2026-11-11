@@ -1,0 +1,11 @@
+{
+  "A": "PASS: 12 nullable columns, 4 indexes, 2 tables, 3 RESTRICT/CASCADE foreign keys",
+  "B": "PASS: identical to original baseline; old columns and fixture data unchanged",
+  "C": "PASS: byte-identical ordered information_schema snapshot to A; old data unchanged",
+  "deleteLeadWithLookup": "RESTRICT rejected with MySQL 1451",
+  "lookupRowsAfterRollbackAndRedeploy": 0,
+  "historyDirectRedeploy": "exit 0; no pending migrations; structures remain rolled back",
+  "resolveRolledBack": "exit 1; P3012: successfully applied migration is not in failed state",
+  "testOnlyHistoryHandling": "verified B matches baseline; backed up exact history row; deleted only matching migration_name + checksum successful row (1 row); redeployed; C identical to A",
+  "productionAdvice": "No automatic history DELETE; require separate reviewed migration-history reconciliation after backup and verification; resolve --rolled-back is not valid for a previously successful record"
+}

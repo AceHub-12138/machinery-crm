@@ -1,0 +1,14 @@
+{
+  "case": "V2-a task creation and completion",
+  "taskId": "ef6f66f5-cb5e-4cb9-9f47-3011aeed0337",
+  "finding": "report.admitted is JSON STRING with repeated escaping, expected numeric 0 before any admission",
+  "confirmedBy": "actual HTTP task detail plus SELECT JSON_TYPE(JSON_EXTRACT(report, admitted))",
+  "suspectedSource": "src/lib/lead-hunter/engine.ts",
+  "lines": [
+    92
+  ],
+  "sameExpressionInBaseline": true,
+  "fixAttempted": false,
+  "furtherAcceptanceStopped": true,
+  "V2bExecuted": false
+}

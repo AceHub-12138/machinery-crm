@@ -1,0 +1,247 @@
+{
+  "date": "2026-11-09",
+  "timezone": "America/Los_Angeles",
+  "round": 3,
+  "branch": "codex/lead-contact-verification",
+  "baseCommit": "3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699",
+  "sourceState": "uncommitted",
+  "newCommit": null,
+  "pushed": false,
+  "round2Tests": 1238,
+  "testsAddedThisRound": 43,
+  "testFiles": 161,
+  "testsPassed": 1281,
+  "testsFailed": 0,
+  "reproduction": {
+    "testFiles": 3,
+    "tests": 128,
+    "before": {
+      "passed": 97,
+      "failed": 31,
+      "exitCode": 1,
+      "log": "repro-before.txt"
+    },
+    "after": {
+      "passed": 128,
+      "failed": 0,
+      "exitCode": 0,
+      "log": "repro-after.txt"
+    },
+    "R4New": {
+      "tests": 9,
+      "beforeFailed": 7,
+      "afterFailed": 0
+    },
+    "R5New": {
+      "tests": 14,
+      "beforeFailed": 6,
+      "afterFailed": 0
+    },
+    "R6New": {
+      "tests": 20,
+      "beforeFailed": 18,
+      "afterFailed": 0
+    }
+  },
+  "R5Rule": "raw entry boundaries: newline, carriage return, Chinese full stop, Chinese/ASCII semicolon, vertical bar; if entry has a company full name, match only this entry; otherwise preserve cross-entry 80-character R1 behavior; nearest-name rule withdrawn",
+  "existingAssertionConflicts": [],
+  "existingAssertionsChanged": false,
+  "assertionPreservation": {
+    "src/lib/lead-hunter/phone.test.ts": {
+      "restoredRound2Sha256": "7dbc7e7d1e34964b7d3a42bc14811ff15e51466c3f6eaae53eb191ff5e564672",
+      "unchanged": true
+    },
+    "src/lib/lead-hunter/engine.test.ts": {
+      "restoredRound2Sha256": "7b37f74856053fac1a124f2ca1ffb7e5934b74bf0d811dd79382e86f76530f04",
+      "unchanged": true
+    },
+    "src/lib/lead-hunter/admit.test.ts": {
+      "restoredRound2Sha256": "9fae31aa2a3170146e9a774f9d953463528fdb77ecc146ef774f59a4d0e8598d",
+      "unchanged": true
+    }
+  },
+  "lintErrors": 0,
+  "lintWarnings": 622,
+  "checks": [
+    {
+      "order": 1,
+      "command": "pnpm test",
+      "exitCode": 0,
+      "log": "test.txt",
+      "logSha256": "eeae12da4e9c88e5023bd6cdaa1ed8993df64871d87da2cd544c484fda10f97a"
+    },
+    {
+      "order": 2,
+      "command": "pnpm exec tsc --noEmit",
+      "exitCode": 0,
+      "log": "typecheck.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "order": 3,
+      "command": "pnpm lint",
+      "exitCode": 0,
+      "log": "lint.txt",
+      "logSha256": "e85df72cb0192596aeff3ca15caae810385ab5330788f9cc4e721cca89aba4b6"
+    },
+    {
+      "order": 4,
+      "command": "pnpm exec eslint src/lib/lead-hunter/phone.ts src/lib/lead-hunter/phone.test.ts src/lib/lead-hunter/engine.test.ts src/lib/lead-hunter/admit.test.ts",
+      "exitCode": 0,
+      "log": "changed-lint.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "order": 5,
+      "command": "pnpm build (process-only NEXT_FONT_GOOGLE_MOCKED_RESPONSES, real local fonts embedded as data URIs)",
+      "exitCode": 0,
+      "log": "build.txt",
+      "logSha256": "0acde75f07e2c81eda1decc8997965861449e3a8824bbd446ec4084b6784f0f5"
+    },
+    {
+      "order": 6,
+      "command": "git -c core.autocrlf=false diff --check",
+      "exitCode": 0,
+      "log": "diff-check.txt",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "order": 7,
+      "command": "git -c core.autocrlf=false diff --numstat",
+      "exitCode": 0,
+      "log": "numstat.txt",
+      "logSha256": "336200c3bb4fa7b025d85511faadef5541b3d16adcd363c5379efd546e82dc68"
+    }
+  ],
+  "buildQualification": {
+    "defaultBuildExitCode": 1,
+    "defaultBuildFailure": "Existing Google Geist network font download failed",
+    "defaultBuildLog": "build-initial-font-download.txt",
+    "firstFontFixtureBuildExitCode": 0,
+    "firstFontFixtureAssetsAccepted": false,
+    "firstFontFixtureLog": "build-font-fixture-url.txt",
+    "finalOfflineRealFontBuildExitCode": 0,
+    "finalEmbeddedFontHashesVerified": true,
+    "fontEvidence": [
+      "offline-font-setup.txt",
+      "font-fixture-validation.txt"
+    ],
+    "validationArtifactOnly": true,
+    "productionFontConfigChanged": false,
+    "normalLinuxCIBuildStillRequiredBeforeRelease": true
+  },
+  "lineEndings": {
+    "expected": "LF",
+    "exitCode": 0,
+    "log": "lf-check.txt"
+  },
+  "sourceHashEncoding": "SHA-256 over actual UTF-8 file bytes; all LF",
+  "sourceFiles": {
+    "src/components/leads/contact-verification.test.tsx": "0c9c1357c2369c71c777935e42f54093f9f271112127a4ccc4eccc8a69449043",
+    "src/components/leads/contact-verification.tsx": "d84bfddbbada7eb656ca2c35106757e3967e3d521436a422be08ff83c5472665",
+    "src/lib/lead-hunter/admit.test.ts": "90d4bb551d2d35d4fe4438aaae31ea6db6eb5379e7b62ea5821f7b95f1f20d7a",
+    "src/lib/lead-hunter/admit.ts": "8c819f0d6da8e6f329ad5ff34ebebb947104c0b6b1127bde979daa8ea66ba8f7",
+    "src/lib/lead-hunter/contact-authenticity.test.ts": "b585291a43f04d38bd9507d497284f783e72ece5a9dea4e689fd60c8728a8d8f",
+    "src/lib/lead-hunter/engine.test.ts": "dcdf528f77c5dd83e46bbe957a6ebb6592febe9bb0691b1c982f41ac5132d354",
+    "src/lib/lead-hunter/engine.ts": "37ec29452eb026d07b6ff174854286b2e2299366ca30a1fcd4c27f80aca089f0",
+    "src/lib/lead-hunter/phone.test.ts": "e64558ab3b42ae98e00a4d8a6e2b3b9394dc27db3399f502198cccc092e53cf4",
+    "src/lib/lead-hunter/phone.ts": "682e351f1d9c4c3505426bf3044a22d56b04266a7b4c585ea8ebf30c4016b487",
+    "src/modules/crm/leads/contact-lookup.test.ts": "9cb3057011efc0da777907f85eb0351051c7d80254ef35cbf88eaf5bd8d0dc2e",
+    "src/modules/crm/leads/contact-lookup.ts": "06043847066aeaedb98eed51ee387f2c123a2e3490ebc85de9906a8ca1d3a3cf"
+  },
+  "sourceFilesChangedThisRound": [
+    "src/lib/lead-hunter/phone.ts",
+    "src/lib/lead-hunter/phone.test.ts",
+    "src/lib/lead-hunter/engine.test.ts",
+    "src/lib/lead-hunter/admit.test.ts"
+  ],
+  "round2SourcesUnchanged": {
+    "src/components/leads/contact-verification.test.tsx": true,
+    "src/components/leads/contact-verification.tsx": true,
+    "src/lib/lead-hunter/admit.ts": true,
+    "src/lib/lead-hunter/contact-authenticity.test.ts": true,
+    "src/lib/lead-hunter/engine.ts": true,
+    "src/modules/crm/leads/contact-lookup.test.ts": true,
+    "src/modules/crm/leads/contact-lookup.ts": true
+  },
+  "round2Evidence": {
+    "manifest": "verification-round2.json",
+    "archiveLogMapping": {
+      "test.txt": {
+        "file": "test-round2.txt",
+        "sha256": "fa4016fbcf914996456c579145d580aeab89e4ec343f9600807e28ea0756b7d8",
+        "unchanged": true
+      },
+      "typecheck.txt": {
+        "file": "typecheck-round2.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unchanged": true
+      },
+      "lint.txt": {
+        "file": "lint-round2.txt",
+        "sha256": "e85df72cb0192596aeff3ca15caae810385ab5330788f9cc4e721cca89aba4b6",
+        "unchanged": true
+      },
+      "changed-lint.txt": {
+        "file": "changed-lint-round2.txt",
+        "sha256": "77a096d9352ff9bef25771795ab2092e75c929d88edd8460904c8880b636259d",
+        "unchanged": true
+      },
+      "build.txt": {
+        "file": "build-round2.txt",
+        "sha256": "b8f9a7e7c415f369a7f040c907dd1e6ffc44d5907d3373a5761014039072a373",
+        "unchanged": true
+      },
+      "diff-check.txt": {
+        "file": "diff-check-round2.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unchanged": true
+      },
+      "numstat.txt": {
+        "file": "numstat-round2.txt",
+        "sha256": "6f7e27571a6d45c33fa538274f736353bd7a3cf31d7a501c347978b78d85f38a",
+        "unchanged": true
+      }
+    }
+  },
+  "knownLimitations": [
+    {
+      "id": "inline_numbers_first",
+      "pageText": "电话：0531-11112222 甲机械有限公司 电话：0531-33334444 乙机械有限公司",
+      "phone": "0531-33334444",
+      "companyName": "甲机械有限公司",
+      "result": "0531-33334444"
+    },
+    {
+      "id": "split_numbers_first",
+      "pageText": "电话：0531-11112222\n甲机械有限公司\n电话：0531-33334444\n乙机械有限公司",
+      "phone": "0531-33334444",
+      "companyName": "甲机械有限公司",
+      "result": "0531-33334444"
+    },
+    {
+      "id": "factory_short_name",
+      "pageText": "甲机械有限公司 电话：0531-11112222 乙机械厂 电话：0531-33334444",
+      "phone": "0531-33334444",
+      "companyName": "甲机械有限公司",
+      "result": "0531-33334444"
+    },
+    {
+      "id": "subsidiary",
+      "pageText": "甲机械有限公司是乙集团有限公司的子公司。销售电话：0531-11112222",
+      "phone": "0531-11112222",
+      "companyName": "甲机械有限公司",
+      "result": null
+    }
+  ],
+  "productionDeployed": false,
+  "databaseAccessed": false,
+  "realLeadProviderApiCalled": false,
+  "externalGoogleFontDownloadAttemptedByInitialBuild": true,
+  "schemaChanged": false,
+  "migrationChanged": false,
+  "V1": "NOT_RUN",
+  "V2": "NOT_RUN",
+  "V3": "NOT_RUN",
+  "V4": "NOT_RUN"
+}

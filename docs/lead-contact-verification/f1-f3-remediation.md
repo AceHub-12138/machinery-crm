@@ -1,0 +1,336 @@
+# AI 获客联系方式核验 F1–F3 整改结论
+
+状态：**已复审通过，业务提交已推送 github 功能分支，Linux PR checks 全部成功。V1–V4 未执行，禁止合并，未部署。详见第 12 节。**
+
+第 1–8 节保留第一轮施工历史，第 9 节保留第二轮记录，第 10 节保留第三轮记录，第 11 节为第四轮小修结果，第 12 节记录提交与 Linux CI；第 6 节人工验收清单已逐轮补充。
+
+## 1. 分支、基线和提交状态
+
+- 整改日期：2026-11-06（America/Los_Angeles）。
+- 施工分支：`codex/lead-contact-verification`；使用该分支已有的独立 worktree，不改动其他开发分支。
+- 基线及当前 HEAD：`3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699`。
+- 本次修改尚未提交、未推送，没有新的 commit SHA。已验证源码的 SHA-256 清单和检查退出码见 [verification.json](f1-f3-evidence/verification.json)，不能将基线 SHA 当作含有本次补丁的版本。
+- 建议提交信息：`fix: 修复获客电话公司关联、无名称采用及传真误提取`。
+
+## 2. 已修改文件
+
+| 文件 | 修改内容 |
+| --- | --- |
+| `src/lib/lead-hunter/phone.ts` | 新增 `phoneNearCompany`；网页电话核验与证据生成共用公司关联规则；按每次号码出现位置过滤前六字内的传真/Fax/FAX 标签 |
+| `src/lib/lead-hunter/engine.ts` | 将目标公司名称传入网页电话核验及证据生成，不合格电话按无电话处理 |
+| `src/lib/lead-hunter/admit.ts` | 历史候选摘要、证据分别重新核验，丢弃不合格电话，保留无电话入池及延后分配 |
+| `src/modules/crm/leads/contact-lookup.ts` | 企业名称为 null、空字符串或纯空白时，ADOPT 返回 409；REJECT 仍可执行 |
+| `src/components/leads/contact-verification.tsx` | 无企业名称时禁用“采用”并显示原因提示，保留“驳回” |
+| `src/lib/lead-hunter/phone.test.ts` | 公司名称规范化、后缀、短主体、80 字边界、证据定位、传真标签及重复号码测试 |
+| `src/lib/lead-hunter/engine.test.ts` | 名录电话误配、传真和正常电话的实际引擎路径回归；更新原有正常样例以提供公司名称证据 |
+| `src/lib/lead-hunter/admit.test.ts` | 历史名录号码丢弃且不分配；防止跨片段拼接关联；允许凭独立有效证据入池；更新正常样例 |
+| `src/lib/lead-hunter/contact-authenticity.test.ts` | 原有号码原文匹配测试补充目标公司参数 |
+| `src/modules/crm/leads/contact-lookup.test.ts` | 无名称采用返回 409、无写入副作用，并且仍可驳回 |
+| `src/components/leads/contact-verification.test.tsx` | 渲染真实管理组件，检查无名称采用按钮禁用、正常名称可采用、驳回保持可用 |
+| `docs/ai-context/00_current_status.md` | 记录本次整改状态和验证边界 |
+| `docs/lead-contact-verification/README.md` | 添加本整改结论入口，保留原施工验收历史 |
+| 本报告及 `f1-f3-evidence/` | 整改说明、检查输出、退出码和源码指纹 |
+
+## 3. 逐项整改
+
+### F1：号码与公司关联
+
+在号码原文位置的前后各 80 个字符范围内，核对规范化公司全称，或删除“股份有限公司、有限责任公司、有限公司、集团、公司、厂”等尾缀后至少四个字符的主体。先截取原文窗口，再做 NFKC、大小写、空格和标点规范化，标点不会扩大范围。主体过短时只接受全称。
+
+引擎和历史候选入池均使用同一底层匹配逻辑。证据取自通过检查的那一次号码出现位置，包含号码和匹配名称；不会退回第一处无关联号码，也不会把摘要和旧证据拼接出虚假的邻近关系。不合格电话丢弃，高分候选仍可无电话入池，不分配销售，等待管理员反查。
+
+根因：原先只验证号码在整段网页中出现，证据也仅截取号码前后 40 字，没有名称关联约束。这是按报告要求收紧的文本证据规则，不能代替实际拨号确认归属。
+
+### F2：无名称禁止采用
+
+在事务内、占用记录和写入电话之前检查 `matchedName.trim()`。缺失或为空时仅拒绝 ADOPT，返回 409；线索、反查记录及日志均不变，管理员仍能驳回。前端采用按钮按同样的非空条件禁用。
+
+根因：原先确认操作只验证状态、模拟标记和经营状态，没有检查返回的企业名称是否存在。
+
+### F3：传真不作为电话
+
+在提取手机号和座机时，保留每次匹配的原文位置；前六个字符中包含“传真”或不区分大小写的 `fax` 时跳过。同号若随后以正常电话出现，仍可采用该正常记录。结构化工商电话清洗逻辑不变。
+
+根因：原先先取出号码字符串，丢失了号码前的传真标签。
+
+## 4. 第一轮自动检查与原始输出（历史）
+
+新增 33 个用例，全部通过。业务测试注入假数据库及假客户端，没有连接真实数据库或调用供应商。
+
+| 检查 | 结果 | 输出 |
+| --- | --- | --- |
+| `pnpm test` | exit 0；161 文件、1208 用例全部通过 | [全量测试](f1-f3-evidence/test-round1.txt) |
+| `pnpm exec tsc --noEmit` | exit 0；无诊断输出 | [类型检查](f1-f3-evidence/typecheck-round1.txt) |
+| `pnpm lint` | exit 0；0 errors、622 warnings，与原施工报告相同 | [全仓 lint](f1-f3-evidence/lint-round1.txt) |
+| 修改文件 `pnpm exec eslint …` | exit 0；0 errors、2 条原有未使用类型导入 warning | [定向 lint](f1-f3-evidence/changed-lint-round1.txt) |
+| `pnpm build` | exit 0；编译、TypeScript、页面生成成功 | [完整构建](f1-f3-evidence/build-round1.txt) |
+| `git diff --check` | exit 0 | [补丁空白检查](f1-f3-evidence/diff-check-round1.txt) |
+
+构建保留原施工报告中的 middleware 弃用提示，以及 next.config.ts → uploads 路径的 NFT 文件追踪 warning；本次未扩大范围处理这些既有警告。
+
+修复前先运行新增的故障回归：4 个文件共 57 用例，12 failed、45 passed，复现三项缺口；修复后原命令 57/57 通过。补充边界及界面用例后，相关六文件共 84/84 通过，全量数量为上表所列。
+
+保留两次初始检查失败记录：[全量测试缺 gzip](f1-f3-evidence/test-initial-missing-gzip-round1.txt)（2 failed、1206 passed，exit 1）、[JSON 空值类型错误](f1-f3-evidence/typecheck-initial-round1.txt)（exit 2）。随后为当前验证进程补入已安装 Git 的 usr/bin 到 PATH，并正确处理 Prisma JSON 的 null/undefined，重跑通过；未安装依赖、未修改系统 PATH、未放宽测试断言。
+
+日志保留完整命令输出，仅将本机工作目录替换为 `<workspace>`，规范行尾空白及末尾空行；没有修改诊断正文。空日志表示无诊断输出，第一轮退出码另见 verification-round1.json。
+
+## 5. 数据库变更
+
+本补丁没有新增或修改表、字段、索引或 migration；没有执行数据库命令，也没有清理历史数据。既有联系方式核验迁移是否已部署仍需独立确认。本补丁不会自动清理已经入池的历史电话。
+
+## 6. 手动测试方法（在隔离测试环境操作）
+
+1. 用超级管理员查看名录页候选：甲公司名称距离乙公司电话超过 80 字。预期候选无电话；≥85 分可入池，状态待反查、未指派销售。
+2. 测试“甲公司 电话 xxx”。预期保留电话，原文证据同时包含名称和号码；区域配置匹配时沿用原有分配规则。
+3. 测试公司“恒精有限公司”，原文只有“恒精 电话 xxx”。预期不保留；原文出现完整“恒精有限公司”才可保留。
+4. 将符合以上条件的历史候选入池，确认使用同样规则；无有效关联的旧证据不能保留电话。
+5. 在待人工确认列表查看无名称的结果。“采用”应置灰，“驳回”可用；直接向确认接口提交 ADOPT，应返回 409，电话及分配不变。
+6. 测试“传真：0574-87654321”“Fax: 0574-87654321”和正常电话并列，确认仅正常电话保留。
+7. 用区域销售登录，确认仍只有原有证据摘要，没有反查管理和采用入口；后台接口继续执行原角色限制。
+8. 紧凑名录排列甲、乙、丙公司及各自电话（多行和一行各一次），验证甲只能认领自己的电话，不能认领乙、丙电话；号码在目标名称前面且前方为其他公司时也应丢弃。
+9. 测试“传　真：0574-87654321”（中间为 U+3000 全角空格），确认引擎及历史入池路径都丢弃该传真；与正常电话并列时只保留正常电话。
+10. 测试“电话：0531-11112222”后页脚为“版权所有甲机械有限公司”，确认目标公司电话可保留，正常前缀不会被当作别家公司。
+11. 测试“传真（Fax）：0574-87654321”和“【传真】0574-87654321”，确认不保留号码。
+12. 测试“传真：0574-87654321 / 0574-87654322”，确认两个号码都丢弃；另测“电话：0574-11112222 / 0574-11113333（传真另询）”，确认两个正常电话均保留。
+
+以上登录后浏览器步骤为待执行清单，本次未冒充人工实测。
+
+## 7. 部署步骤与 V1–V4 状态
+
+本次没有执行部署。V1（MySQL 5.7 迁移往返）、V2（真实测试库完整流程和 SQL）、V3（真实天眼查小规模联调）、V4（正式库历史脏数据只读排查）**均未执行，不得标记通过**。
+
+1. 先复审本补丁，并完成 V1–V4 及登录后页面验收。V3 应由管理员确认供应商账号及调用额度后操作；V4 不删除正式数据。
+2. 审核通过后再提交最终源码、记录 SHA，由 GitHub Actions 构建对应 Linux 发布包；本地未提交源码和 Windows 构建产物不能直接当成发布包。
+3. 部署前备份项目和数据库，确认实际目录、PM2 服务名、Nginx、环境变量及上传目录；按 [原部署文档](deployment.md) 的分段命令、作用和失败停止条件操作。
+4. 本补丁没有新增迁移。若此前核验功能尚未部署，其原有迁移仍须按原发布流程审查、验证和执行，不能因本补丁“无迁移”而省略。
+5. 新目录部署，不覆盖 `.env` 或持久化 uploads；切换后按第 6 节验收，出现异常立即停止发布并恢复原版本。
+
+## 8. 回滚方案
+
+当前为未提交补丁，停止采用本补丁即可；后续如需撤回，按本报告文件清单逐项还原，先保存其他新增工作，不使用整仓强制重置或清理。
+
+发布后按 [原部署文档第 7 节](deployment.md#7-回滚) 恢复发布前保留的代码目录和已核验 PM2 启动配置，保留原环境变量、数据库和上传目录，检查服务及关键业务恢复。本补丁没有数据库结构回滚步骤，不应执行旧 migration 的 rollback.sql 来撤销这三项修复。
+
+代码回滚不会撤销上线后用户已采用的电话、已入池线索或销售分配；有业务数据纠错需求时应单独审核处理，不回灌全库旧备份。
+
+## 9. 第二轮复审整改（R1–R3）
+
+日期：2026-11-09（America/Los_Angeles）。沿用 `codex/lead-contact-verification` 同一 worktree 和未提交补丁，HEAD 仍为 `3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699`。没有新开分支、提交、推送或部署。
+
+### 9.1 问题、根因与修改点
+
+- **R1：紧凑名录误配。** 第一轮只要求 80 字窗口内出现目标名称，未排除期间的其他公司。现在保留原文前后各 80 字及名称规范化规则，识别“至少两个汉字、字母或数字 + 股份有限公司 / 有限责任公司 / 有限公司 / 集团有限公司”的公司全称。规范化位置用于判断目标名称和号码之间是否隔着其他公司；号码后出现目标名称时，还要求号码前最近的公司全称不是其他公司。不会把“公司电话”“公司地址”“厂址”作为其他企业。公司名称范围中的目标名称片段不作为另一家公司。
+- **共用路径及证据。** 仅修改 `phone.ts` 底层函数，引擎和历史候选入池继续通过 `verifiedPageContact` 共用它；摘录仍是通过检查的号码原文前后各 80 字，包含匹配名称与号码。`engine.ts`、`admit.ts` 本轮没有额外业务改动。
+- **R2：传真写法漏过滤。** 第一轮对前六个原文字符直接查标签，无法识别拆字空格、Fax No. 和表格换行。现在先取号码前最多 30 字原文，再去除所有空白（包括 U+3000、U+00A0、换行、制表符），检查末尾的“传真 / 传真号 / 传真号码 / fax / fax no / fax number”，英文不分大小写，允许点和冒号。只检查末尾标签，超出原文范围的“传真”字样不会误伤正常电话。同号后续正常电话记录仍可保留；“电话/传真”合并标签仍保守跳过；结构化 `splitAndSanitizePhones` 不变。
+- **旧断言唯一例外。** 旧测试要求“传真 + 5 个空格 + 号码”保留，与 R2 新规则冲突。用户在本轮明确同意仅更新该旧边界测试：范围内丢弃、超过 30 字范围保留；保留原测试中其余断言，并增加 28/29 空格精确边界。未放宽或删除其他旧断言。
+- **R3：行尾。** 对本次相对基线所有修改和新增文件统一 LF，包含第一轮补丁、报告和证据；没有改 Git 的 autocrlf 配置。使用关闭 autocrlf 的单次命令检查增删行数，详见 [numstat.txt](f1-f3-evidence/numstat-round2.txt)；[lf-check.txt](f1-f3-evidence/lf-check-round2.txt) 列出每个文件的行尾检查与行数。未跟踪的新报告和日志不出现在普通 git diff numstat 中，另由该清单覆盖。
+- **F2 保持不变。** `contact-lookup.ts`、`contact-verification.tsx` 及其测试，与第一轮 LF 内容 SHA-256 一致；无 schema/migration 改动。
+
+本轮实际内容修改文件：`src/lib/lead-hunter/phone.ts`、`phone.test.ts`、`engine.test.ts`、`admit.test.ts`，以及本报告、当前状态文档和证据。其余第一轮补丁仅在需要时统一 LF；不覆盖原分支的其他工作。
+
+### 9.2 新增用例清单
+
+共新增 **30 个用例**，没有增加依赖或访问真实服务。
+
+| 位置 | 数量 | 新增内容 |
+| --- | ---: | --- |
+| `phone.test.ts` 的 `[R1]` | 15 | 三行名录甲误认乙/丙两例、自己的号码、一行紧凑排列、前方其他公司阻止后方目标认领、后方中间出现其他公司、四种有限公司类后缀、字母数字公司名、四种正常电话/地址/厂址/销售部及后续条目 |
+| `phone.test.ts` 的 `[R2]` | 11 | 八种标签（含四个原始复现、NBSP、传真号码、混合大小写 fax number、电话/传真）、正常电话与全角空格传真并列、超过 30 字不误伤、verifiedPageContact 全角空格传真路径 |
+| `engine.test.ts` | 2 | 紧凑名录及全角空格传真沿真实引擎路径成为 NO_CONTACT，电话和证据不保留 |
+| `admit.test.ts` | 2 | 紧凑名录及全角空格传真历史候选仍可无电话入池，PENDING_LOOKUP、无销售分配并记录延后分配 |
+
+第一轮 80 字边界、短主体、全称规范化、证据定位和其他旧用例均纳入全量检查。
+
+### 9.3 修复前后测试数字与全量检查
+
+先只加 R1/R2 新测试，未改实现，也未更新冲突的旧边界测试，执行：
+
+```text
+pnpm exec vitest run src/lib/lead-hunter/phone.test.ts src/lib/lead-hunter/engine.test.ts src/lib/lead-hunter/admit.test.ts
+修复前：3 files failed；23 failed、62 passed（85 total）
+修复后：3 files passed；85 passed、0 failed
+```
+
+新增 R1 的 17 个用例中，修复前 12 failed、5 passed；新增 R2 的 13 个用例中，修复前 11 failed、2 passed。修复后分别 17/17、13/13 通过。原三文件 55 个用例继续通过（含经用户确认更新的一个 R2 边界用例）。完整失败输出：[repro-before.txt](f1-f3-evidence/repro-before-round2.txt)；修复后：[repro-after.txt](f1-f3-evidence/repro-after-round2.txt)。
+
+以下严格按指令顺序运行，完整日志及每个源码文件的 SHA-256 见 [verification.json](f1-f3-evidence/verification-round2.json)。
+
+| 顺序 | 检查 | 结果 | 输出 |
+| ---: | --- | --- | --- |
+| 1 | `pnpm test` | exit 0；161 文件、1238 用例，0 失败（1208 + 30） | [test.txt](f1-f3-evidence/test-round2.txt) |
+| 2 | `pnpm exec tsc --noEmit` | exit 0；0 诊断 | [typecheck.txt](f1-f3-evidence/typecheck-round2.txt) |
+| 3 | `pnpm lint` | exit 0；0 errors、622 warnings | [lint.txt](f1-f3-evidence/lint-round2.txt) |
+| 4 | 11 个第一轮及本轮修改源码/测试文件定向 eslint | exit 0；0 errors、2 条原有 warning | [changed-lint.txt](f1-f3-evidence/changed-lint-round2.txt) |
+| 5 | `pnpm build` | exit 0；编译、TypeScript、122/122 静态页面生成成功，保留原有 middleware/NFT 警告 | [build.txt](f1-f3-evidence/build-round2.txt) |
+| 6 | `git diff --check`（关闭 autocrlf） | exit 0；无诊断输出 | [diff-check.txt](f1-f3-evidence/diff-check-round2.txt) |
+| 7 | `git diff --numstat`（关闭 autocrlf） | exit 0；各文件增删行数与实际补丁相符 | [numstat.txt](f1-f3-evidence/numstat-round2.txt) |
+
+第一轮全部旧日志及 verification.json 已改名追加 `-round1`，保留内容，并在第 4 节指向归档日志。第一轮 manifest 保留原文件名引用，查阅其旧日志时需使用对应的 `-round1` 文件。本轮日志独立生成；没有用本轮结果覆盖第一轮记录。全量测试仅为当前进程补入已安装 Git usr/bin 的 PATH；日志仅替换工作目录为 `<workspace>`、统一 LF 和尾部空白，不改诊断正文。
+
+### 9.4 遗留问题（本轮只记录）
+
+1. **模拟/停业结果无法驳回。** `src/modules/crm/leads/contact-lookup.ts:170`，`confirmLeadContact` 内 `row.isMock || companyOperatingStatus(row.regStatus) === "INACTIVE"` 检查位于采用/驳回分支之前，因此对 REJECT 同样返回 409。但 `src/components/leads/contact-verification.tsx:71` 的“驳回”按钮仅按 busy 禁用，模拟结果仍能点击；管理员点击后收到 409。按本轮范围不修改，等待单独立项。
+2. **召回和成本影响。** 收紧后的名称规则会丢弃仅有简称或省略地名前缀的正确电话，例如“大川重工 电话 xxx”对应“山东大川重工机床股份有限公司”。高分线索仍可无电话入池，等待管理员反查，可能增加天眼查反查量和费用；上线前须明确告知管理员及业务，并评估每日额度。
+3. **名录识别局限。** 排除他家公司只识别指定的有限公司类全称。条目若只写“××厂”、简称或单独“集团”，本规则无法区分其电话归属；不宣称彻底解决所有名录形式，也不能代替实际拨号核实。
+
+本轮没有连接或操作真实数据库，没有调用天眼查、搜索或模型等真实供应商；V1–V4 全部维持“未执行”。本补丁不提供生产上线批准；部署及回滚仍受第 7、8 节约束。
+
+## 10. 第三轮复审整改（R4–R6）
+
+日期：2026-11-09（America/Los_Angeles）。同一 worktree、同一 `codex/lead-contact-verification` 分支，基线/HEAD 仍为 `3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699`；继续保留未提交补丁，没有新开分支、提交、推送或部署。
+
+### 10.1 规则冲突处理与修改范围
+
+原 R5“前后两侧最近公司”规则会误伤现有 R1 正向断言，发现后曾暂停，期间没有修改文件。后续施工采用本轮明确下达的**原文条目边界规则**，不实现已作废的最近公司规则。本轮没有更新、删除或放宽任何既有断言。三个测试文件去除本轮新增块后，与施工开始时内容逐字相同；核对记录见 [assertion-preservation.txt](f1-f3-evidence/assertion-preservation-round3.txt)。
+
+本轮仅修改 `src/lib/lead-hunter/phone.ts`、`phone.test.ts`、`engine.test.ts`、`admit.test.ts`，以及整改报告、当前状态文档和证据。F2、引擎与入池业务文件、schema、migration 均不改；未返工的七个源码/测试文件 SHA-256 与第二轮一致。
+
+### 10.2 问题、根因与修改点
+
+- **R4：正常前缀导致召回误伤。** 第二轮的公司名正则从连续汉字或数字的最左边匹配，吞入“欢迎访问”“版权所有”“2024”等前缀，再按片段起点寻找目标名，导致把目标自己判为其他公司。现在先找规范化后目标全称及至少四字主体的全部出现区间，再定位每一处“股份有限公司 / 有限责任公司 / 集团有限公司 / 有限公司”后缀。保留后缀前至少两个汉字、字母或数字的限制；后缀区间落在目标出现区间内则属于目标，否则为其他公司，按后缀位置排序。
+- **修订 R5：号码在前的跨条目误配。** 在规范化前的原文上，以 `\n`、`\r`、“。”“；”“;”“|”分条，逗号、顿号、空格、冒号、括号不分条。号码所在条目内有任何有限公司类全称时，仅在该条目内应用原 R1 规则，并保留号码前后各 80 字限制；没有全称时继续沿用第二轮跨条目 80 字窗口。主体名称按同样逻辑处理，不增加额外规则。原有“前面的目标优先、期间不能夹其他公司、后面的目标须满足前方公司约束”等条件保留。
+- **R6：装饰标签和传真列表漏过滤。** 前 30 字原文仍先去空白，传真标签后允许 Unicode 标点/符号、可选“为/是”和可选 fax/fax no 等英文补充，覆盖括号、【】及混合写法。号码匹配按原文位置排序；一处判为传真后，中间仅为空白、`/`、`、`、`,`、`，`、`;`、`；`的后续号码继续判为传真，可以连续传递。出现正常“电话”标签会中断传递，同号后来的正常记录仍可保留。`splitAndSanitizePhones` 不变，最终提取结果仍按原有规则去重、手机优先。
+- **证据与行尾保持。** 网页核验和证据生成继续共用同一底层匹配；证据摘录仍为通过检查的号码原文前后各 80 字，不改成公司名拼接内容。本轮全部修改/新增文件为 LF，未改 autocrlf 配置。
+
+### 10.3 新增用例及修复前后数字
+
+仅新增测试后先运行，未改实现，随后修复并运行同一命令：
+
+```text
+pnpm exec vitest run src/lib/lead-hunter/phone.test.ts src/lib/lead-hunter/engine.test.ts src/lib/lead-hunter/admit.test.ts
+修复前：3 files failed；31 failed、97 passed（128 total）
+修复后：3 files passed；128 passed、0 failed
+```
+
+日志：[repro-before.txt](f1-f3-evidence/repro-before-round3.txt)、[repro-after.txt](f1-f3-evidence/repro-after-round3.txt)。原有三文件 85 项完整保留，本轮新增 **43 项**：
+
+| 分组 | 新增数量 | 修复前 | 修复后 | 内容 |
+| --- | ---: | --- | --- | --- |
+| R4 | 9 | 7 failed、2 passed | 9/9 | 五个前缀复现、主体前紧贴汉字、版权所有其他公司反例；engine/admit 各一个保留电话的真实路径用例 |
+| 修订 R5 | 14 | 6 failed、8 passed | 14/14 | 原复现及自己的电话、中文分号、分行联系页、名称与电话分行名录、其他四种条目边界、五种不得分条的标点/空格 |
+| R6 | 20 | 18 failed、2 passed | 20/20 | 四个复现、Fax No./“是”/符号/Tel-Fax、七种传真列表分隔符、传真另询正常电话、同号后续正常记录、两个连续传真网页核验、正常电话与传真列表并列 |
+
+### 10.4 按指定顺序执行的全量检查
+
+| 顺序 | 检查 | 结果 | 证据 |
+| ---: | --- | --- | --- |
+| 1 | `pnpm test` | exit 0；161 文件、1281/1281（1238 + 43），0 失败 | [test.txt](f1-f3-evidence/test-round3.txt) |
+| 2 | `pnpm exec tsc --noEmit` | exit 0；0 诊断 | [typecheck.txt](f1-f3-evidence/typecheck-round3.txt) |
+| 3 | `pnpm lint` | exit 0；0 errors、622 warnings | [lint.txt](f1-f3-evidence/lint-round3.txt) |
+| 4 | 本轮四个修改源码/测试文件定向 eslint | exit 0；0 诊断 | [changed-lint.txt](f1-f3-evidence/changed-lint-round3.txt) |
+| 5 | `pnpm build` | exit 0；本地真实字体 data URI 验收模式，122/122 页面生成成功（见下方说明） | [build.txt](f1-f3-evidence/build-round3.txt) |
+| 6 | `git diff --check`（关闭 autocrlf） | exit 0；无诊断输出 | [diff-check.txt](f1-f3-evidence/diff-check-round3.txt) |
+| 7 | `git diff --numstat`（关闭 autocrlf） | exit 0；行数与实际补丁相符 | [numstat.txt](f1-f3-evidence/numstat-round3.txt) |
+
+构建过程额外说明：首次默认 `pnpm build` 因 Next.js 内置 Google Geist 字体下载失败而 exit 1（[原始失败日志](f1-f3-evidence/build-initial-font-download-round3.txt)），因此这次默认构建不是完全离线。没有访问真实数据库或发起天眼查、搜索、模型等业务 API 调用。随后仅在验证进程设置 `NEXT_FONT_GOOGLE_MOCKED_RESPONSES`，使用本机已有的五个真实 Geist WOFF2 文件。第一次离线响应把字体写为本机 URL，虽然编译 exit 0，但产物校验不合格，没有作为最终构建结论；保留 [该次日志](f1-f3-evidence/build-font-fixture-url-round3.txt)。最终将同一真实字体字节以内嵌 data URI 注入验收 CSS，重新构建 exit 0，已核对产出 CSS 内五个 WOFF2 的 SHA-256 与本地原字体逐一相同（[字体校验](f1-f3-evidence/font-fixture-validation-round3.txt)、[设置及指纹](f1-f3-evidence/offline-font-setup-round3.txt)）。没有修改页面、字体配置、依赖或系统环境；夹具只供当前离线代码验收，不能把此 Windows 验收产物作为发布包。发布前仍需正常配置下的 Linux CI 构建。构建保留原有 middleware 弃用及 NFT 警告。
+
+第二轮全部日志和 verification.json 已加 `-round2` 后缀原样保留；第一轮 `-round1` 文件也保留。第 9 节已改为链接第二轮归档。当前源码 SHA-256、检查退出码和归档日志映射见 [verification.json](f1-f3-evidence/verification-round3.json)，LF 逐文件检查见 [lf-check.txt](f1-f3-evidence/lf-check-round3.txt)。日志仅替换工作目录为 `<workspace>`、统一 LF 和尾部空白，诊断正文不改写。
+
+### 10.5 更新后的已知局限（实际探针结果）
+
+以下仅记录当前实际结果，不作为“已修复”或必须通过的断言；离线直接调用 `verifiedPageContact` 的完整输入/输出见 [known-limitations.txt](f1-f3-evidence/known-limitations-round3.txt)，目标均为“甲机械有限公司”。
+
+| 场景及原文 | 目标认领号码 | 实际结果 |
+| --- | --- | --- |
+| 同一行号码在前：`电话：0531-11112222 甲机械有限公司 电话：0531-33334444 乙机械有限公司` | 0531-33334444 | 返回该号码，仍可能误配；同一条目前方目标优先 |
+| 分行号码在前：`电话：0531-11112222\n甲机械有限公司\n电话：0531-33334444\n乙机械有限公司` | 0531-33334444 | 返回该号码，仍可能误配；本条无全称，回退跨条目窗口 |
+| 简称/厂条目：`甲机械有限公司 电话：0531-11112222 乙机械厂 电话：0531-33334444` | 0531-33334444 | 返回该号码，无法区分只写“××厂”或简称的其他企业 |
+| 子公司：`甲机械有限公司是乙集团有限公司的子公司。销售电话：0531-11112222` | 0531-11112222 | `null`，保守丢弃，不能理解母子公司语义关系 |
+
+第 9.4 节的其他遗留问题继续保留：模拟/停业结果驳回会返回 409，本轮不修；名称简称、省略地名前缀仍可能导致正确电话被丢弃，高分线索转待管理员反查，可能增加天眼查反查量，上线前应告知管理员和业务并评估额度。上述规则仍是文本证据约束，不证明电话实际可接通或最终归属。
+
+### 10.6 数据、发布和回滚边界
+
+未连接、未操作真实数据库，未调用天眼查、搜索或模型等真实供应商；没有 schema/migration 变化。V1–V4 维持“未执行”，登录后人工清单仍待执行。本轮不提交、不推送、不部署；若需撤回，只逐项撤销本轮增量，保留第二轮补丁和其他现有工作，不整仓还原。后续发布与代码回滚仍按第 7、8 节的备份、验收及数据保留要求执行。
+
+
+## 11. 第四轮小修（R7–R8）
+
+### 11.1 范围、根因和修改点
+
+本轮继续在 `codex/lead-contact-verification`、HEAD `3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699` 的已有未提交补丁上施工。仅修改 `phone.ts`、`phone.test.ts`、本报告和验证证据；其他已有修改文件保持字节一致，不改 F2、schema、migration、配置或依赖。
+
+- **R7：主体紧接不同后缀。** 原来仅接受后缀完整落在目标全称/主体区间内，目标至少四字的主体后紧接另一种有限公司类后缀时被误判为其他公司。现在为目标出现区间标记是否为合格主体；后缀起点恰好等于该主体区间终点时也视为目标。中间夹着其他字、主体不足四字仍不放宽，其余归属及条目边界规则不变。
+- **R8：传真连续传递限制同一行。** 原来的连续传递分隔符包含 `\s`，导致跨 `\n` / `\r` 的无标签号码也被丢弃。现在仅在传递分隔符中排除这两种换行；空格、制表符、U+3000、U+00A0 及 `/、,，;；` 仍可连续传递。`faxLabel` 的前 30 字去空白识别不改，传真标签与号码之间跨行的表格文本仍过滤。`splitAndSanitizePhones` 不改。
+
+### 11.2 新增用例与先红后绿
+
+先只添加测试并运行 `pnpm exec vitest run src/lib/lead-hunter/phone.test.ts`，记录失败后再修改实现；未删除、更新或放宽任何已有断言。
+
+| 分组 | 新增数 | 修复前 | 修复后 | 用例 |
+| --- | ---: | --- | --- | --- |
+| R7 | 4 | 2 失败、2 通过 | 4 通过、0 失败 | 有限责任公司、带欢迎前缀的股份有限公司；主体后夹“设备”的姊妹公司仍拒绝；三字主体仍拒绝不同后缀 |
+| R8 | 8 | 3 失败、5 通过 | 8 通过、0 失败 | LF/CR/CRLF 后无标签手机保留；同一行斜杠传真全部过滤；传真标签跨行制表符仍过滤；制表符/U+3000/U+00A0 仍传递传真 |
+| phone.test.ts 合计 | 106 | 5 失败、101 通过，exit 1 | 106 通过、0 失败，exit 0 | 原有 94 项原样保留，新增 12 项 |
+
+证据：[修复前](f1-f3-evidence/repro-before.txt)、[修复后](f1-f3-evidence/repro-after.txt)。去掉本轮新增的 R7/R8 测试块，文件与第三轮版本的字节及 SHA-256 完全一致；其余旧源码/测试也与第三轮指纹一致，见 [断言保留检查](f1-f3-evidence/assertion-preservation.txt)。**无已有断言冲突。**
+
+### 11.3 全量检查及证据保留
+
+按以下顺序离线执行：
+
+| 顺序 | 检查 | 结果 |
+| ---: | --- | --- |
+| 1 | `pnpm test` | exit 0；161 文件、1293/1293（1281 + 12），0 失败 |
+| 2 | `pnpm exec tsc --noEmit` | exit 0；0 诊断 |
+| 3 | `pnpm lint` | exit 0；0 errors、622 warnings |
+| 4 | `pnpm exec eslint src/lib/lead-hunter/phone.ts src/lib/lead-hunter/phone.test.ts` | exit 0；0 诊断 |
+| 5 | `pnpm build` | exit 0；本地真实字体离线验收构建成功，122/122 页面生成，正式发布以 Linux CI 构建为准 |
+| 6 | `git -c core.autocrlf=false diff --check` | exit 0；无诊断 |
+| 7 | `git -c core.autocrlf=false diff --numstat` | exit 0；实际增删行见证据 numstat.txt（Git 基线累计补丁） |
+
+本轮构建只在验证进程设置 `NEXT_FONT_GOOGLE_MOCKED_RESPONSES`，沿用第三轮真实 Geist WOFF2 的 data URI 本地响应，不修改源码字体配置或依赖，不再尝试默认联网字体构建。**正式发布以 Linux CI 构建为准**，此 Windows 离线验收产物不能直接部署。日志继续注明此边界，字体设置及产物指纹分别见 [设置](f1-f3-evidence/offline-font-setup.txt)、[字体产物校验](f1-f3-evidence/font-fixture-validation.txt)。
+
+第三轮 17 份当前证据已逐一加 `-round3` 后缀保留，SHA-256 与归档前相同；第一、二轮归档保留。第 10 节历史链接已指向第三轮归档，避免把历史数字与本轮日志混淆。本轮命令、工作目录、起止时间、耗时、退出码、日志和各源码 SHA-256 见 [verification.json](f1-f3-evidence/verification.json)。本轮新增/修改文件均为 LF，见 [LF 检查](f1-f3-evidence/lf-check.txt)。检查日志仅规范化 LF、尾部空白和工作区路径，不修改诊断正文。
+
+### 11.4 已知局限与人工复核
+
+R7 有意取舍：目标为“济南恒精机械有限公司”时，“济南恒精机械集团有限公司”的号码会被视为目标号码（至少 4 字的主体紧接“集团有限公司”）。集团与本公司通常为同一主体；人工验收时留意。
+
+前轮记录的限制继续保留：只写“××厂”或简称的名录无法区分；同条目号码在前及公司名称/号码分行的某些排列仍可能误配；子公司语义例仍保守返回 `null`。简称、省略地名前缀的正确电话仍可能被丢弃，增加管理员反查量，发布前须告知管理员和业务。模拟/停业结果的驳回 409 仍仅记录、不修复，详见第 9、10 节。
+
+新增展示局限：**证据摘录仍取号码前后各 80 字，名称在前的名录中，摘录可能带上相邻条目的文字。只是展示内容，不影响判定。** 本轮不修改证据摘录规则。
+
+人工复核可采用本轮新增用例：长主体换后缀应保留电话，姊妹公司及短主体不同后缀应拒绝；传真后换行的无标签手机应保留，同一行传真列表和跨行传真标签应过滤。人工验收尚未执行，V1–V4 仍为“未执行”，不以单元测试替代真实验收。
+
+### 11.5 数据库、发布与回滚
+
+未连接、未操作数据库，未调用真实供应商；无字段、表结构或迁移脚本变化。本轮不提交、不推送、不部署。若需撤回，仅撤销本节记录的两处源码增量和新增测试，保留第三轮及之前的未提交补丁，不执行整仓还原。正式发布与回滚另按第 7、8 节执行，本轮未执行任何部署操作。
+
+
+## 12. 提交与 CI
+
+### 12.1 提交前敏感信息检查记录
+
+依据授权，仅将当前 `verification.json` 的七个 `cwd` 值替换为 `<workspace>`；字段名和其他内容不变，LF 保持。未修改第一、二、三轮归档，也未重新生成源码校验值或重跑测试、lint、构建。该 JSON 中的文档指纹记录第四轮离线验证时的报告快照，本节为之后的提交记录。
+
+**已复审核对**：四处姓名候选是测试中的“王经理”和空的 contactName，不是真实客户；前次扫描的 410 处电话候选为测试里编造的号码、SHA-256 校验值中的数字片段，以及迁移目录时间戳中的片段，均不是真实客户电话。本轮仅记录复审结论，不修改相关测试或证据。
+
+重新核对全部 65 个待提交文件：分支及基线符合；修改文件正好 13 个，未跟踪文件仅本报告和证据目录，共 52 个。数据库连接串/密码赋值、API key/token、Authorization/Cookie 头或赋值、本机用户名以及指定的本机绝对路径模式均为 0 命中；65 个文件全部 LF。仅进行上述文档更新和七处值脱敏，业务源码和测试不变。
+
+### 12.2 提交与 Linux CI 状态
+
+- 记录日期：2026-11-09（America/Los_Angeles）。
+- 业务提交：`852fd129aee956bb85a51923afe9e95c58d3efa3`，保留原提交，没有修改、amend 或重做。
+- 推送目标：`github = AceHub-12138/machinery-crm`，仅功能分支 `codex/lead-contact-verification`。
+- 推送前：工作区干净；fetch github 后，远程功能分支为 `3c50d5bd9a6d0d7877e7c5e81f3ad76e90fb4699`；`git merge-base --is-ancestor` 返回 0。
+- 普通推送成功：`3c50d5bd..852fd129  codex/lead-contact-verification -> codex/lead-contact-verification`。
+- [草稿 PR #2](https://github.com/AceHub-12138/machinery-crm/pull/2)：head 为功能分支，base 为 main；正文首行“⚠ V1–V4 未执行，禁止合并”，附本报告链接。
+- [业务提交 Linux PR checks 运行](https://github.com/AceHub-12138/machinery-crm/actions/runs/42745329374)：由 pull_request 自动触发，关联 head SHA 为上述业务提交；Ubuntu runner，整体结论 **success**。
+
+| 步骤 | 结果 | 日志核对 |
+| --- | --- | --- |
+| `pnpm install --frozen-lockfile` | 通过 | 正常锁定依赖安装 |
+| `pnpm exec prisma generate` | 通过 | 生成 Prisma Client 6.8.2；无数据库迁移 |
+| `pnpm exec tsc --noEmit` | 通过 | 0 诊断 |
+| `pnpm lint` | 通过 | 0 errors、622 warnings |
+| `pnpm test` | 通过 | 161 文件、1293/1293 测试，0 失败 |
+| `pnpm build` | 通过 | 编译成功，122/122 页面生成 |
+
+构建在 Linux 干净检出后运行仓库正常配置，沿用 `next/font/google` 的 Google 字体加载；未设置本地字体替代响应，未修改源码、字体配置或工作流。该次正常 Linux 构建已替代先前 Windows 本地字体模式作为构建通过证据，不能替代 V1–V4、人工验收或部署授权。
+
+### 12.3 敏感信息复核与操作边界
+
+敏感信息结论**已复审核对**，详见第 12.1 节：四处姓名候选和前次 410 处电话候选均非真实客户资料；七处 cwd 已按授权脱敏，其他归档保持不变。本次仅追加报告记录，不再修改任何业务源码、测试或证据文件。
+
+PR 保持草稿、未合并；未推送 main 或其他分支/tag，未强推，未手动运行 build-standalone，未部署，未连接或操作数据库，未调用天眼查等真实业务供应商。Google 字体下载为本次明确要求的正常构建流程。V1–V4 全部仍为“未执行”。本报告更新以单独 docs 提交普通推送到 github 的同一功能分支。

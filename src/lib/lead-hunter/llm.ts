@@ -5,7 +5,7 @@
 
 import type { XiaochuanConfig } from "@/lib/agent/config";
 
-export type LlmCaller = (options: { system: string; user: string; maxTokens: number }) => Promise<unknown>;
+export type LlmCaller = (options: { system: string; user: string; maxTokens: number; signal?: AbortSignal }) => Promise<unknown>;
 
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -29,7 +29,7 @@ export function parseLlmJsonContent(rawContent: string): unknown {
 }
 
 export function createLlmCaller(config: XiaochuanConfig, fetchImpl: FetchLike = fetch): LlmCaller {
-  const request = async (options: { system: string; user: string; maxTokens: number }) => {
+  const request = async (options: { system: string; user: string; maxTokens: number; signal?: AbortSignal }) => {
     const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
@@ -44,11 +44,10 @@ export function createLlmCaller(config: XiaochuanConfig, fetchImpl: FetchLike = 
         // 获客批处理追求快与省：与对话引擎同款做法，显式关闭深度思考
         enable_thinking: false,
       }),
-      signal: AbortSignal.timeout(config.requestTimeoutMs),
+      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(config.requestTimeoutMs)]) : AbortSignal.timeout(config.requestTimeoutMs),
     });
     if (!response.ok) {
-      const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
-      throw new Error(`LLM 调用失败 ${response.status}${detail ? `：${detail}` : ""}`);
+      throw new Error(`LLM 调用失败 ${response.status}`);
     }
     const data = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
     const content = data.choices?.[0]?.message?.content;
@@ -61,6 +60,7 @@ export function createLlmCaller(config: XiaochuanConfig, fetchImpl: FetchLike = 
     try {
       return await request(options);
     } catch {
+      options.signal?.throwIfAborted();
       return await request(options);
     }
   };

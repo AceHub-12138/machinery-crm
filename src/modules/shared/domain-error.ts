@@ -5,7 +5,7 @@
 export class DomainError extends Error {
   constructor(
     message: string,
-    public readonly status: 400 | 403 | 404 | 409 | 503 = 400,
+    public readonly status: 400 | 401 | 403 | 404 | 409 | 429 | 502 | 503 | 504 = 400,
     public readonly details?: Record<string, unknown>
   ) {
     super(message);

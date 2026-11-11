@@ -32,13 +32,8 @@ describe("identity acceptance environment preparation", () => {
     expect(allowlist).toHaveLength(24);
     expect(new Set(allowlist).size).toBe(24);
     expect(allowlist).toEqual(expect.arrayContaining(["lead_list", "lead_get", "lead_stats"]));
-    const privateJwk = JSON.parse(readFileSync(join(directory, ".lead-service-private-jwk"), "utf8"));
-    expect(privateJwk).toMatchObject({ kty: "OKP", crv: "Ed25519" });
-    expect(privateJwk.d).toBeTypeOf("string");
-    expect(content).not.toContain(privateJwk.d);
     expect(content).toMatch(/^AGENT_AUTH_PUBLIC_KEYS_JSON=\[/m);
-    expect(content).toContain("LEAD_WRITER_AUTH_ISSUER=http://fastgpt:3000");
-    expect(content).toContain("LEAD_E2E_MOCK_URL=http://lead-llm-mock:4010/v1/chat/completions");
+    expect(content).not.toMatch(/LEAD_WRITER_AUTH_|LEAD_E2E_|MCP_COMMAND_/);
     expect(spawnSync(process.execPath, [validateScript, output], { encoding: "utf8" })).toMatchObject({ status: 0, stderr: "" });
   });
 });

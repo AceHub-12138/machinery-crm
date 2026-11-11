@@ -1,0 +1,70 @@
+
+ RUN  v4.1.10 <workspace>
+
+ ❯ src/lib/lead-hunter/phone.test.ts (106 tests | 5 failed) 39ms
+     × 至少四字主体紧接不同后缀仍关联目标：济南恒精机械有限责任公司 电话：0531-11112222 12ms
+     × 至少四字主体紧接不同后缀仍关联目标：欢迎访问济南恒精机械股份有限公司 电话：0531-11112222 2ms
+     ×
+ 后无标签手机保留 3ms
+     ×
+ 后无标签手机保留 1ms
+     ×
+ 后无标签手机保留 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R7] 主体紧接不同有限公司类后缀 > 至少四字主体紧接不同后缀仍关联目标：济南恒精机械有限责任公司 电话：0531-11112222
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R7] 主体紧接不同有限公司类后缀 > 至少四字主体紧接不同后缀仍关联目标：欢迎访问济南恒精机械股份有限公司 电话：0531-11112222
+AssertionError: expected null to be '0531-11112222' // Object.is equality
+
+- Expected:
+"0531-11112222"
+
++ Received:
+null
+
+ ❯ src/lib/lead-hunter/phone.test.ts:9:70
+      7|     "欢迎访问济南恒精机械股份有限公司 电话：0531-11112222",
+      8|   ])("至少四字主体紧接不同后缀仍关联目标：%s", (text) => {
+      9|     expect(verifiedPageContact("0531-11112222", text, "济南恒精机械有限公司")).t…
+       |                                                                      ^
+     10|   });
+     11|   it("主体与后缀之间有其他字时仍拒绝姊妹公司号码", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R8] 传真连续传递不跨行 >
+ 后无标签手机保留
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R8] 传真连续传递不跨行 >
+ 后无标签手机保留
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R8] 传真连续传递不跨行 >
+ 后无标签手机保留
+AssertionError: expected [] to deeply equal [ { value: '13800000000', …(1) } ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "kind": "mobile",
+-     "value": "13800000000",
+-   },
+- ]
++ []
+
+ ❯ src/lib/lead-hunter/phone.test.ts:21:70
+     19| describe("[R8] 传真连续传递不跨行", () => {
+     20|   it.each(["\n", "\r", "\r\n"])("%s 后无标签手机保留", (separator) => {
+     21|     expect(extractPhones(`传真：0574-87654321${separator}13800000000`)).t…
+       |                                                                      ^
+     22|   });
+     23|   it("同一行斜杠连接的传真仍全部过滤", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 101 passed (106)
+   Start at  18:15:59
+   Duration  368ms (transform 58ms, setup 0ms, import 85ms, tests 39ms, environment 0ms)
+

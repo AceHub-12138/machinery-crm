@@ -1,0 +1,9 @@
+Docker client/server: 29.6.1; Docker Desktop: 4.82.0; Compose: v5.3.0
+Image: mysql:5.7.44
+Digest: sha256:4bc6bc963e6d8443453676cae56536f4b8156d78bae03c0145cbe47c2aad73bb
+Engine: running
+Container: lead-contact-v1v2-2a943272
+Binding: 127.0.0.1:59793
+Host directory mounts: none
+version	sql_mode	character_set_server	collation_server
+5.7.44	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4_unicode_ci

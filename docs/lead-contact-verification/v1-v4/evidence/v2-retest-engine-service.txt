@@ -1,0 +1,18 @@
+Captured service output; not a process exit-status report.
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://127.0.0.1:58575
+- Network:       http://127.0.0.1:58575
+✓ Ready in 557ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+- Experiments (use with caution):
+  · proxyClientMaxBodySize: "100mb"
+  · serverActions
+
+ GET /api/auth/csrf 200 in 1205ms (next.js: 1039ms, proxy.ts: 135ms, application-code: 31ms)
+ POST /api/auth/callback/credentials 200 in 329ms (next.js: 45ms, proxy.ts: 10ms, application-code: 274ms)
+ GET /api/auth/session 200 in 32ms (next.js: 5ms, proxy.ts: 15ms, application-code: 11ms)
+ POST /api/lead-hunter/tasks 200 in 142ms (next.js: 101ms, proxy.ts: 10ms, application-code: 30ms)
+ GET /api/lead-hunter/tasks/2ecb3800-a90f-4db9-9420-a71d9daf6607 200 in 950ms (next.js: 905ms, proxy.ts: 19ms, application-code: 27ms)
+ POST /api/lead-hunter/tasks 200 in 46ms (next.js: 2ms, proxy.ts: 7ms, application-code: 36ms)
+ GET /api/lead-hunter/tasks/19e22a22-0a4b-43ee-9b18-ecc009184765 200 in 79ms (next.js: 48ms, proxy.ts: 11ms, application-code: 21ms)
+ GET /api/lead-hunter/tasks/19e22a22-0a4b-43ee-9b18-ecc009184765 200 in 45ms (next.js: 4ms, proxy.ts: 7ms, application-code: 33ms)

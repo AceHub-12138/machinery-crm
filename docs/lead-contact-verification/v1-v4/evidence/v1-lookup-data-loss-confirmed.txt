@@ -1,0 +1,2 @@
+verification_rows_after_redeploy
+0

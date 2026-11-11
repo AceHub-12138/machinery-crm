@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   leadCount: vi.fn(),
   leadFindFirst: vi.fn(),
   eventFindMany: vi.fn(),
+  lookupFindMany: vi.fn(),
   userFindMany: vi.fn(),
   transaction: vi.fn(),
   lockLead: vi.fn(),
@@ -57,6 +58,7 @@ describe("Lead 人类只读模块", () => {
     mocks.transaction.mockImplementation(async (callback) => callback({
       lead: { findFirst: mocks.leadFindFirst },
       leadFeedbackEvent: { findMany: mocks.eventFindMany },
+      leadContactLookup: { findMany: mocks.lookupFindMany },
       $queryRaw: mocks.lockLead,
     }));
   });
@@ -106,6 +108,39 @@ describe("Lead 人类只读模块", () => {
     expect(mocks.leadFindMany).toHaveBeenLastCalledWith(expect.objectContaining({
       where: { reviewStatus: "INVALID" },
     }));
+  });
+
+  it("D3 超管仅查询最近一条反查的四字段摘要", async () => {
+    const summary = { status: "FAILED", reason: "模拟数据，不可采用", isMock: true, createdAt: new Date("2026-11-10T00:00:00Z") };
+    mocks.leadFindMany.mockResolvedValue([{ id: "failed", assignedUserId: null, contactLookups: [summary] }]);
+    mocks.leadCount.mockResolvedValue(1);
+    const result = await listHumanLeads(admin, new URLSearchParams());
+    expect(mocks.leadFindMany.mock.calls[0][0].select.contactLookups).toEqual({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1,
+      select: { status: true, reason: true, isMock: true, createdAt: true },
+    });
+    expect(result.items[0]).toHaveProperty("latestContactLookup", summary);
+    expect(result.items[0]).not.toHaveProperty("contactLookups");
+    expect(JSON.stringify(result)).not.toContain("rawResponse");
+  });
+
+  it.each([sales, foreignTrade])("D3 $role 不查询或返回最近反查字段", async (user) => {
+    // 即使依赖意外多返回关系字段，也不能传给非管理员。
+    mocks.leadFindMany.mockResolvedValue([{ id: "own", assignedUserId: user.id, contactLookups: [{ status: "FAILED", reason: "private-reason", isMock: true, createdAt: new Date() }] }]);
+    mocks.leadCount.mockResolvedValue(1);
+    mocks.userFindMany.mockResolvedValue([]);
+    const result = await listHumanLeads(user, new URLSearchParams());
+    expect(mocks.leadFindMany.mock.calls[0][0].where).toEqual({ assignedUserId: user.id });
+    expect(mocks.leadFindMany.mock.calls[0][0].select).not.toHaveProperty("contactLookups");
+    expect(result.items[0]).not.toHaveProperty("latestContactLookup");
+    expect(result.items[0]).not.toHaveProperty("contactLookups");
+    expect(JSON.stringify(result)).not.toContain("private-reason");
+  });
+  it("combines contact and company filters with sales ownership, and rejects unknown statuses", async () => {
+    mocks.leadFindMany.mockResolvedValue([]); mocks.leadCount.mockResolvedValue(0);
+    await listHumanLeads(sales, new URLSearchParams({ contactStatus: "LEGACY", companyName: "甲" }));
+    expect(mocks.leadFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { assignedUserId: sales.id, contactStatus: null, companyName: { contains: "甲" } } }));
+    await expect(listHumanLeads(admin, new URLSearchParams({ contactStatus: "invented" }))).rejects.toMatchObject({ status: 400 });
   });
 
   it("SALES 列表只查询本人 Lead 并映射指派用户", async () => {
@@ -232,6 +267,7 @@ describe("Lead 人类只读模块", () => {
     const reviewedAt = new Date("2026-08-19T01:00:00.000Z");
     mocks.leadFindFirst.mockResolvedValue({
       id: "lead-sales",
+      phoneEvidence: { rawResponse: { private: "hidden" }, allPhones: ["secret"], sharedPhoneLeadCount: 2, sharedPhoneCustomer: "已有客户" },
       companyName: "销售本人线索",
       contactName: "李经理",
       phone: "13800000001",
@@ -275,6 +311,9 @@ describe("Lead 人类只读模块", () => {
       orderBy: [{ reviewedAt: "desc" }, { id: "desc" }],
     }));
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
+    expect(result.phoneEvidence).toEqual({ sharedPhoneLeadCount: 2, sharedPhoneCustomer: "已有客户", manuallyConfirmed: false });
+    expect(result.contactLookups).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain("rawResponse");
     expect(mocks.lockLead).toHaveBeenCalledTimes(1);
     expect(mocks.lockLead.mock.invocationCallOrder[0]).toBeLessThan(mocks.eventFindMany.mock.invocationCallOrder[0]);
     expect(result).toEqual(expect.objectContaining({

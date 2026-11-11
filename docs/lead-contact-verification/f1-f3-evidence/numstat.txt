@@ -1,0 +1,13 @@
+22	0	docs/ai-context/00_current_status.md
+2	0	docs/lead-contact-verification/README.md
+16	3	src/components/leads/contact-verification.test.tsx
+1	1	src/components/leads/contact-verification.tsx
+45	1	src/lib/lead-hunter/admit.test.ts
+5	3	src/lib/lead-hunter/admit.ts
+2	2	src/lib/lead-hunter/contact-authenticity.test.ts
+36	1	src/lib/lead-hunter/engine.test.ts
+2	2	src/lib/lead-hunter/engine.ts
+214	1	src/lib/lead-hunter/phone.test.ts
+85	9	src/lib/lead-hunter/phone.ts
+10	0	src/modules/crm/leads/contact-lookup.test.ts
+1	0	src/modules/crm/leads/contact-lookup.ts

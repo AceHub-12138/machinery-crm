@@ -19,6 +19,14 @@ export type HumanLeadListItem = {
   assignedUser: LeadUserSummary | null;
   createdAt: string;
   feedbackVersion: number;
+  contactStatus?: string | null;
+  contactStatusUpdatedAt?: string | null;
+  phoneSource?: string | null;
+  phoneEvidence?: unknown;
+  phoneVerifiedAt?: string | null;
+  tycCompanyId?: string | null;
+  creditCode?: string | null;
+  latestContactLookup?: { status: string; reason: string | null; isMock: boolean; createdAt: string } | null;
 };
 
 export type HumanLeadListResponse = {
@@ -53,4 +61,5 @@ export type HumanLeadDetail = Omit<HumanLeadListItem, "assignedUser"> & {
   updatedAt: string;
   assignedUser: LeadUserSummary | null;
   feedbackEvents: HumanLeadFeedbackEvent[];
+  contactLookups?: Array<{ id: string; createdAt: string; status: string; queryName: string; matchedName: string | null; reason: string | null; isMock: boolean }>;
 };

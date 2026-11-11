@@ -29,6 +29,14 @@ async function runMiddleware(path: string, role: string | null): Promise<Respons
 
 beforeEach(() => vi.clearAllMocks());
 
+describe("contact verification unauthenticated responses", () => {
+  it.each(["/api/crm/leads/l/contact-lookup", "/api/crm/leads/contact-lookups", "/api/crm/leads/contact-lookups/quota", "/api/crm/leads/contact-lookups/q/confirm"])("returns JSON 401 instead of a login redirect for %s", async (path) => {
+    const response = await runMiddleware(path, null);
+    expect(response.status).toBe(401);
+    expect(response.headers.get("location")).toBeNull();
+  });
+});
+
 describe("附件双身份鉴权边界", () => {
   const matcher = new RegExp(`^${config.matcher[0]}$`);
   it("显式把上传和附件读取交给路由鉴权，Agent 不被 CRM 登录页拦截", () => {

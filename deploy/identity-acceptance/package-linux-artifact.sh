@@ -51,11 +51,9 @@ docker save "$runner_image" | gzip -9 > "$artifact_dir/images/dachuanpro-identit
   done < "$acceptance_dir/external-images.lock.tsv"
 } > "$artifact_dir/EXTERNAL_IMAGE_IDS.tsv"
 
-for file in docker-compose.yml start.sh accept.sh accept-lead-e2e.sh rollback.sh build-fastgpt.sh pull-external-images.sh validate-prebuilt-image-archive.mjs verify-db-init-privilege-log.mjs external-images.lock.tsv generate-linux-report.mjs provision-fastgpt-key.mjs provision-lead-e2e.mjs lead-e2e-workflow.mjs prepare-env.mjs validate-env.mjs .env.identity-acceptance.example Dockerfile.fastgpt Dockerfile.mcp Dockerfile.acceptance nginx.conf; do
+for file in docker-compose.yml start.sh accept.sh rollback.sh build-fastgpt.sh pull-external-images.sh validate-prebuilt-image-archive.mjs verify-db-init-privilege-log.mjs external-images.lock.tsv generate-linux-report.mjs provision-fastgpt-key.mjs prepare-env.mjs validate-env.mjs .env.identity-acceptance.example Dockerfile.fastgpt Dockerfile.mcp Dockerfile.acceptance nginx.conf; do
   cp -a "$acceptance_dir/$file" "$artifact_dir/deploy/identity-acceptance/$file"
 done
-cp -a "$repo_root/deploy/fastgpt/v4.15.1/workflows/lead-score-agent-v1.json" "$artifact_dir/deploy/fastgpt/v4.15.1/workflows/lead-score-agent-v1.json"
-cp -a "$repo_root/deploy/fastgpt/v4.15.1/workflows/lead-write-agent-v1.json" "$artifact_dir/deploy/fastgpt/v4.15.1/workflows/lead-write-agent-v1.json"
 chmod +x "$artifact_dir/deploy/identity-acceptance/"*.sh
 
 write_sha256sums() {

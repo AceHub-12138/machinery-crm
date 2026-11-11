@@ -1,0 +1,370 @@
+ RUN  v4.1.10 <workspace>
+
+ ❯ src/lib/lead-hunter/phone.test.ts (94 tests | 29 failed) 44ms
+     × 正常前缀不把目标自身判成其他公司：欢迎访问甲机械有限公司 电话：0531-11112222 10ms
+     × 正常前缀不把目标自身判成其他公司：本公司甲机械有限公司联系电话：0531-11112222 1ms
+     × 正常前缀不把目标自身判成其他公司：电话：0531-11112222
+版权所有甲机械有限公司 1ms
+     × 正常前缀不把目标自身判成其他公司：电话：0531-11112222 Copyright©2024甲机械有限公司 1ms
+     × 正常前缀不把目标自身判成其他公司：欢迎来到山东大川重工机床股份有限公司官网 电话：0531-11112222 1ms
+     × 不跨到上一条目认领乙的电话 1ms
+     × 中文分号分隔的号码在前名录也不误配 2ms
+     × 原文分隔符
+ 划分条目 1ms
+     × 原文分隔符 。 划分条目 1ms
+     × 原文分隔符 ; 划分条目 0ms
+     × 原文分隔符 | 划分条目 0ms
+     × 不提取传真：传真（Fax）：0574-87654321 3ms
+     × 不提取传真：【传真】0574-87654321 1ms
+     × 不提取传真：传真号码为：0574-87654321 1ms
+     × 不提取传真：传真：0574-87654321 / 0574-87654322 1ms
+     × 不提取传真：传真（Fax No.）：0574-87654321 1ms
+     × 不提取传真：传真号码是：0574-87654321 1ms
+     × 不提取传真：传真☆【】：0574-87654321 0ms
+     × 分隔符   连接的传真连续传递 1ms
+     × 分隔符 / 连接的传真连续传递 1ms
+     × 分隔符 、 连接的传真连续传递 0ms
+     × 分隔符 , 连接的传真连续传递 0ms
+     × 分隔符 ， 连接的传真连续传递 0ms
+     × 分隔符 ; 连接的传真连续传递 0ms
+     × 分隔符 ； 连接的传真连续传递 0ms
+     × 同号后来正常标为电话时仍然保留 2ms
+     × 网页核验也拒绝连续传真 0574-87654321 0ms
+     × 网页核验也拒绝连续传真 0574-87654322 0ms
+     × 正常电话与传真列表并列时只保留正常电话 1ms
+ ❯ src/lib/lead-hunter/admit.test.ts (16 tests | 1 failed) 32ms
+     × [R4] 欢迎访问前缀沿历史入池路径保留电话及区域分配 16ms
+ ❯ src/lib/lead-hunter/engine.test.ts (18 tests | 1 failed) 39ms
+     × [R4] 欢迎访问前缀沿真实引擎路径保留目标电话 20ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 31 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/lead-hunter/admit.test.ts > admitCandidates 入池分单 > [R4] 欢迎访问前缀沿历史入池路径保留电话及区域分配
+AssertionError: expected { id: 'lead-1', …(18) } to match object { phone: '0531-11112222', …(4) }
+(17 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "assignedUserId": "sales-zj",
+-   "contactStatus": "HAS_CONTACT",
+-   "phone": "0531-11112222",
+-   "phoneEvidence": {
+-     "excerpt": StringContaining "欢迎访问甲机械有限公司 电话：0531-11112222",
+-   },
+-   "phoneSource": "PAGE_TEXT",
++   "assignedUserId": null,
++   "contactStatus": "PENDING_LOOKUP",
++   "phone": null,
++   "phoneEvidence": undefined,
++   "phoneSource": null,
+  }
+
+ ❯ src/lib/lead-hunter/admit.test.ts:144:39
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/31]⎯
+
+ FAIL  src/lib/lead-hunter/engine.test.ts > lead-hunter engine > [R4] 欢迎访问前缀沿真实引擎路径保留目标电话
+AssertionError: expected { id: 'cand-1', leadId: null, …(17) } to match object { phone: '0531-11112222', …(3) }
+(16 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "phone": "0531-11112222",
+-   "phoneEvidence": {
+-     "excerpt": StringContaining "欢迎访问甲机械有限公司 电话：0531-11112222",
+-   },
+-   "phoneSource": "PAGE_TEXT",
+-   "status": "PENDING_CONFIRM",
++   "phone": null,
++   "phoneSource": null,
++   "status": "NO_CONTACT",
+  }
+
+ ❯ src/lib/lead-hunter/engine.test.ts:132:30
+    130|     const llm = vi.fn().mockResolvedValueOnce({ keywords: ["k"] }).moc…
+    131|     await createLeadHunterEngine({ prisma: db.prisma, llm, search: { s…
+    132|     expect(db.candidates[0]).toMatchObject({ phone: "0531-11112222", s…
+       |                              ^
+    133|   });
+    134|   it.each([
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R4] 按公司后缀位置识别带前缀的目标 > 正常前缀不把目标自身判成其他公司：欢迎访问甲机械有限公司 电话：0531-11112222
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R4] 按公司后缀位置识别带前缀的目标 > 正常前缀不把目标自身判成其他公司：本公司甲机械有限公司联系电话：0531-11112222
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R4] 按公司后缀位置识别带前缀的目标 > 正常前缀不把目标自身判成其他公司：电话：0531-11112222
+版权所有甲机械有限公司
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R4] 按公司后缀位置识别带前缀的目标 > 正常前缀不把目标自身判成其他公司：电话：0531-11112222 Copyright©2024甲机械有限公司
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R4] 按公司后缀位置识别带前缀的目标 > 正常前缀不把目标自身判成其他公司：欢迎来到山东大川重工机床股份有限公司官网 电话：0531-11112222
+AssertionError: expected null to be '0531-11112222' // Object.is equality
+
+- Expected:
+"0531-11112222"
+
++ Received:
+null
+
+ ❯ src/lib/lead-hunter/phone.test.ts:13:65
+     11|     ["欢迎访问宁波恒精 电话：0531-11112222", "宁波恒精有限公司"],
+     12|   ])("正常前缀不把目标自身判成其他公司：%s", (text, company) => {
+     13|     expect(verifiedPageContact("0531-11112222", text, company)).toBe("…
+       |                                                                 ^
+     14|     expect(pagePhoneEvidence(null, text, "0531-11112222", company)?.ex…
+     15|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R5] 原文条目边界约束号码在前的名录 > 不跨到上一条目认领乙的电话
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:25:65
+     23|   const text = "电话：0531-11112222 甲机械有限公司\n电话：0531-33334444 乙机械有限公司";
+     24|   it("不跨到上一条目认领乙的电话", () => {
+     25|     expect(verifiedPageContact("0531-33334444", text, company)).toBeNu…
+       |                                                                 ^
+     26|   });
+     27|   it("同一份名录甲仍能认领自己的电话", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R5] 原文条目边界约束号码在前的名录 > 中文分号分隔的号码在前名录也不误配
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:31:84
+     29|   });
+     30|   it("中文分号分隔的号码在前名录也不误配", () => {
+     31|     expect(verifiedPageContact("0531-33334444", text.replace("\n", "；"…
+       |                                                                                    ^
+     32|   });
+     33|   it("电话所在条目无公司全称时保留名称分行联系页", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R5] 原文条目边界约束号码在前的名录 > 原文分隔符
+ 划分条目
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R5] 原文条目边界约束号码在前的名录 > 原文分隔符 。 划分条目
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R5] 原文条目边界约束号码在前的名录 > 原文分隔符 ; 划分条目
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R5] 原文条目边界约束号码在前的名录 > 原文分隔符 | 划分条目
+AssertionError: expected '0531-33334444' to be null
+
+- Expected:
+null
+
++ Received:
+"0531-33334444"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:40:90
+     38|   });
+     39|   it.each(["\r", "。", ";", "|"])("原文分隔符 %s 划分条目", (separator) => {
+     40|     expect(verifiedPageContact("0531-33334444", text.replace("\n", sep…
+       |                                                                                          ^
+     41|   });
+     42|   it.each(["，", "、", " ", "：", "（联系）"])("%s 不拆分同一条目", (separator) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 不提取传真：传真（Fax）：0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 不提取传真：【传真】0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 不提取传真：传真号码为：0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 不提取传真：传真（Fax No.）：0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 不提取传真：传真号码是：0574-87654321
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 不提取传真：传真☆【】：0574-87654321
+AssertionError: expected [ { value: '0574-87654321', …(1) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "kind": "landline",
++     "value": "0574-87654321",
++   },
++ ]
+
+ ❯ src/lib/lead-hunter/phone.test.ts:58:33
+     56|     "Tel/Fax: 0574-87654321",
+     57|   ])("不提取传真：%s", (text) => {
+     58|     expect(extractPhones(text)).toEqual([]);
+       |                                 ^
+     59|   });
+     60|   it.each([" ", "/", "、", ",", "，", ";", "；"])("分隔符 %s 连接的传真连续传递", (se…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 不提取传真：传真：0574-87654321 / 0574-87654322
+AssertionError: expected [ { value: '0574-87654322', …(1) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "kind": "landline",
++     "value": "0574-87654322",
++   },
++ ]
+
+ ❯ src/lib/lead-hunter/phone.test.ts:58:33
+     56|     "Tel/Fax: 0574-87654321",
+     57|   ])("不提取传真：%s", (text) => {
+     58|     expect(extractPhones(text)).toEqual([]);
+       |                                 ^
+     59|   });
+     60|   it.each([" ", "/", "、", ",", "，", ";", "；"])("分隔符 %s 连接的传真连续传递", (se…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 分隔符   连接的传真连续传递
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 分隔符 / 连接的传真连续传递
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 分隔符 、 连接的传真连续传递
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 分隔符 , 连接的传真连续传递
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 分隔符 ， 连接的传真连续传递
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 分隔符 ; 连接的传真连续传递
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 分隔符 ； 连接的传真连续传递
+AssertionError: expected [ Array(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "kind": "mobile",
++     "value": "13900002222",
++   },
++   {
++     "kind": "landline",
++     "value": "0574-87654322",
++   },
++ ]
+
+ ❯ src/lib/lead-hunter/phone.test.ts:61:95
+     59|   });
+     60|   it.each([" ", "/", "、", ",", "，", ";", "；"])("分隔符 %s 连接的传真连续传递", (se…
+     61|     expect(extractPhones(`传真：0574-87654321${separator}13900002222${sep…
+       |                                                                                               ^
+     62|   });
+     63|   it("号码后面的传真另询说明不误伤两个正常电话", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 同号后来正常标为电话时仍然保留
+AssertionError: expected [ …(2) ] to deeply equal [ { value: '0574-87654321', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+      "kind": "landline",
+      "value": "0574-87654321",
+    },
++   {
++     "kind": "landline",
++     "value": "0574-87654322",
++   },
+  ]
+
+ ❯ src/lib/lead-hunter/phone.test.ts:69:81
+     67|   });
+     68|   it("同号后来正常标为电话时仍然保留", () => {
+     69|     expect(extractPhones("【传真】0574-87654321 / 0574-87654322；电话：0574-87…
+       |                                                                                 ^
+     70|   });
+     71|   it.each(["0574-87654321", "0574-87654322"])("网页核验也拒绝连续传真 %s", (phone…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 网页核验也拒绝连续传真 0574-87654321
+AssertionError: expected '0574-87654321' to be null
+
+- Expected:
+null
+
++ Received:
+"0574-87654321"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:72:100
+     70|   });
+     71|   it.each(["0574-87654321", "0574-87654322"])("网页核验也拒绝连续传真 %s", (phone…
+     72|     expect(verifiedPageContact(phone, "甲机械有限公司 传真（Fax）：0574-87654321 /…
+       |                                                                                                    ^
+     73|   });
+     74|   it("正常电话与传真列表并列时只保留正常电话", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 网页核验也拒绝连续传真 0574-87654322
+AssertionError: expected '0574-87654322' to be null
+
+- Expected:
+null
+
++ Received:
+"0574-87654322"
+
+ ❯ src/lib/lead-hunter/phone.test.ts:72:100
+     70|   });
+     71|   it.each(["0574-87654321", "0574-87654322"])("网页核验也拒绝连续传真 %s", (phone…
+     72|     expect(verifiedPageContact(phone, "甲机械有限公司 传真（Fax）：0574-87654321 /…
+       |                                                                                                    ^
+     73|   });
+     74|   it("正常电话与传真列表并列时只保留正常电话", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/31]⎯
+
+ FAIL  src/lib/lead-hunter/phone.test.ts > [R6] 装饰传真标签与连续传真号码 > 正常电话与传真列表并列时只保留正常电话
+AssertionError: expected [ …(3) ] to deeply equal [ { value: '0574-11112222', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+      "kind": "landline",
+      "value": "0574-11112222",
+    },
++   {
++     "kind": "landline",
++     "value": "0574-87654321",
++   },
++   {
++     "kind": "landline",
++     "value": "0574-87654322",
++   },
+  ]
+
+ ❯ src/lib/lead-hunter/phone.test.ts:75:86
+     73|   });
+     74|   it("正常电话与传真列表并列时只保留正常电话", () => {
+     75|     expect(extractPhones("电话：0574-11112222　传　真（Fax）：0574-87654321 / 05…
+       |                                                                                      ^
+     76|   });
+     77| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/31]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  31 failed | 97 passed (128)
+   Start at  17:55:40
+   Duration  663ms (transform 346ms, setup 0ms, import 773ms, tests 115ms, environment 0ms)

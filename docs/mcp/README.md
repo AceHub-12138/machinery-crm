@@ -4,7 +4,7 @@
 
 `MCP_TOOL_MODE=IDENTITY_POC` 只暴露 `dachuan_identity_who_am_i`；`MCP_TOOL_MODE=FULL_READ_ONLY` 暴露该身份工具和下列 24 个只读业务工具，共 25 个。模式只能在隔离验收或经准入的服务器测试环境切换，不能把隔离配置直接复制到生产。
 
-`MCP_TOOL_MODE=LEAD_WRITE_INTERNAL` 是与上述目录隔离的内部写模式，只暴露 `lead_upsert`，只接受独立服务断言。N3 最小权限部署见 [Lead 写路径 N3 手动部署与回滚](LEAD_WRITE_N3_DEPLOYMENT.md)；N8N → FastGPT → N3 接入见 [N4 端到端部署与回滚](LEAD_E2E_N4_DEPLOYMENT.md)，评分契约见 [Lead 评分画像 Prompt v1](LEAD_SCORING_PROMPT_V1.md)。
+旧获客写模式已停用。历史部署文档仅供追溯，见 [获客链路归档](../archive/n8n-lead-pipeline/README.md)；只读工具目录保持不变。
 
 ## 工具目录
 

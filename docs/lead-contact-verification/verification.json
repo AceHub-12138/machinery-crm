@@ -1,0 +1,30 @@
+{
+  "status": "PASS_OFFLINE_PENDING_EXTERNAL_VALIDATION",
+  "clientDate": "2026-11-06",
+  "baseline": "5d6941e0b82a5a46e76cce4227391bac5ea1650e",
+  "testedSourceHead": "61283cf85eef40edc0403ead47ba49ceea531813",
+  "branch": "codex/lead-contact-verification",
+  "prismaValidateExit": 0,
+  "prismaGenerateExit": 0,
+  "typecheckExit": 0,
+  "testExit": 0,
+  "testFiles": 161,
+  "tests": 1175,
+  "lintExit": 0,
+  "lintErrors": 0,
+  "lintWarnings": 622,
+  "finalChangedLintExit": 0,
+  "buildExit": 0,
+  "staticGenerationPages": 122,
+  "turbopackWarnings": 1,
+  "realProviderRequests": 0,
+  "databaseMigrationsExecuted": 0,
+  "serverOperations": 0,
+  "originalWorkspaceUnchanged": true,
+  "limitations": [
+    "MySQL 5.7 up/rollback/up not run: Docker engine unavailable",
+    "Real provider account, response and billing not verified",
+    "Authenticated browser/manual business acceptance not run",
+    "Original audit-repro files unavailable; tests independently recreated from the plan"
+  ]
+}

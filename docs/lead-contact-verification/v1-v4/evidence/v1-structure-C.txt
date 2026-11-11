@@ -1,0 +1,157 @@
+section
+COLUMNS
+TABLE_NAME	COLUMN_NAME	COLUMN_TYPE	IS_NULLABLE	COLUMN_DEFAULT	EXTRA	ORDINAL_POSITION	CHARACTER_SET_NAME	COLLATION_NAME
+leads	id	varchar(191)	NO	NULL		1	utf8mb4	utf8mb4_unicode_ci
+leads	companyName	varchar(191)	NO	NULL		2	utf8mb4	utf8mb4_unicode_ci
+leads	contactName	varchar(191)	YES	NULL		3	utf8mb4	utf8mb4_unicode_ci
+leads	phone	varchar(191)	YES	NULL		4	utf8mb4	utf8mb4_unicode_ci
+leads	email	varchar(191)	YES	NULL		5	utf8mb4	utf8mb4_unicode_ci
+leads	source	enum('BAIDU_SEARCH','MANUAL','OTHER')	NO	NULL		6	utf8mb4	utf8mb4_unicode_ci
+leads	sourceUrl	varchar(2048)	YES	NULL		7	utf8mb4	utf8mb4_unicode_ci
+leads	searchKeyword	varchar(191)	YES	NULL		8	utf8mb4	utf8mb4_unicode_ci
+leads	aiScore	int(11)	YES	NULL		9	NULL	NULL
+leads	profile	json	YES	NULL		10	NULL	NULL
+leads	sourceModelVersion	varchar(191)	YES	NULL		11	utf8mb4	utf8mb4_unicode_ci
+leads	extractorVersion	varchar(191)	YES	NULL		12	utf8mb4	utf8mb4_unicode_ci
+leads	sourceSystem	varchar(191)	YES	NULL		13	utf8mb4	utf8mb4_unicode_ci
+leads	externalLeadId	varchar(191)	YES	NULL		14	utf8mb4	utf8mb4_unicode_ci
+leads	idempotencyKey	varchar(191)	YES	NULL		15	utf8mb4	utf8mb4_unicode_ci
+leads	payloadHash	varchar(191)	YES	NULL		16	utf8mb4	utf8mb4_unicode_ci
+leads	dedupKey	varchar(191)	YES	NULL		17	utf8mb4	utf8mb4_unicode_ci
+leads	duplicateOfLeadId	varchar(191)	YES	NULL		18	utf8mb4	utf8mb4_unicode_ci
+leads	duplicateConfidence	int(11)	YES	NULL		19	NULL	NULL
+leads	dedupStatus	enum('UNIQUE','PENDING_REVIEW','CONFIRMED_DUPLICATE','CONFIRMED_UNIQUE')	NO	UNIQUE		20	utf8mb4	utf8mb4_unicode_ci
+leads	reviewStatus	enum('PENDING','HIGH_INTENT','MID_INTENT','LOW_INTENT','INVALID')	NO	PENDING		21	utf8mb4	utf8mb4_unicode_ci
+leads	assignedUserId	varchar(191)	YES	NULL		22	utf8mb4	utf8mb4_unicode_ci
+leads	reviewedByUserId	varchar(191)	YES	NULL		23	utf8mb4	utf8mb4_unicode_ci
+leads	reviewedAt	datetime(3)	YES	NULL		24	NULL	NULL
+leads	convertedCustomerId	varchar(191)	YES	NULL		25	utf8mb4	utf8mb4_unicode_ci
+leads	feedbackVersion	int(11)	NO	0		26	NULL	NULL
+leads	createdAt	datetime(3)	NO	CURRENT_TIMESTAMP(3)		27	NULL	NULL
+leads	updatedAt	datetime(3)	NO	NULL		28	NULL	NULL
+leads	contactStatus	varchar(32)	YES	NULL		29	utf8mb4	utf8mb4_unicode_ci
+leads	contactStatusUpdatedAt	datetime(3)	YES	NULL		30	NULL	NULL
+leads	phoneSource	varchar(32)	YES	NULL		31	utf8mb4	utf8mb4_unicode_ci
+leads	phoneEvidence	json	YES	NULL		32	NULL	NULL
+leads	phoneVerifiedAt	datetime(3)	YES	NULL		33	NULL	NULL
+leads	tycCompanyId	varchar(64)	YES	NULL		34	utf8mb4	utf8mb4_unicode_ci
+leads	creditCode	varchar(32)	YES	NULL		35	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	id	varchar(191)	NO	NULL		1	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	leadId	varchar(191)	NO	NULL		2	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	requestedById	varchar(191)	NO	NULL		3	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	queryName	varchar(100)	NO	NULL		4	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	queryNameNormalized	varchar(191)	NO	NULL		5	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	status	varchar(32)	NO	NULL		6	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	reason	varchar(191)	YES	NULL		7	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	matchedName	varchar(191)	YES	NULL		8	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	tycCompanyId	varchar(64)	YES	NULL		9	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	creditCode	varchar(32)	YES	NULL		10	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	regStatus	varchar(64)	YES	NULL		11	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	phones	json	YES	NULL		12	NULL	NULL
+lead_contact_lookups	emails	json	YES	NULL		13	NULL	NULL
+lead_contact_lookups	rawResponse	json	YES	NULL		14	NULL	NULL
+lead_contact_lookups	charged	tinyint(1)	NO	0		15	NULL	NULL
+lead_contact_lookups	isMock	tinyint(1)	NO	0		16	NULL	NULL
+lead_contact_lookups	cacheOfLookupId	varchar(191)	YES	NULL		17	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	confirmedById	varchar(191)	YES	NULL		18	utf8mb4	utf8mb4_unicode_ci
+lead_contact_lookups	confirmedAt	datetime(3)	YES	NULL		19	NULL	NULL
+lead_contact_lookups	createdAt	datetime(3)	NO	CURRENT_TIMESTAMP(3)		20	NULL	NULL
+lead_contact_lookups	finishedAt	datetime(3)	YES	NULL		21	NULL	NULL
+lead_hunt_candidates	id	varchar(191)	NO	NULL		1	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	taskId	varchar(191)	NO	NULL		2	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	companyName	varchar(191)	NO	NULL		3	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	sourceUrl	varchar(2048)	YES	NULL		4	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	snippet	text	YES	NULL		5	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	keywords	json	YES	NULL		6	NULL	NULL
+lead_hunt_candidates	round	int(11)	YES	NULL		7	NULL	NULL
+lead_hunt_candidates	score	int(11)	YES	NULL		8	NULL	NULL
+lead_hunt_candidates	scoreReason	text	YES	NULL		9	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	phone	varchar(191)	YES	NULL		10	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	email	varchar(191)	YES	NULL		11	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	province	varchar(191)	YES	NULL		12	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	city	varchar(191)	YES	NULL		13	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	status	varchar(191)	NO	NULL		14	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	tianyancha	json	YES	NULL		15	NULL	NULL
+lead_hunt_candidates	leadId	varchar(191)	YES	NULL		16	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	createdAt	datetime(3)	NO	CURRENT_TIMESTAMP(3)		17	NULL	NULL
+lead_hunt_candidates	updatedAt	datetime(3)	NO	NULL		18	NULL	NULL
+lead_hunt_candidates	contactName	varchar(64)	YES	NULL		19	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	phoneSource	varchar(32)	YES	NULL		20	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	phoneEvidence	json	YES	NULL		21	NULL	NULL
+lead_hunt_candidates	dedupKey	varchar(64)	YES	NULL		22	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_candidates	statusReason	varchar(191)	YES	NULL		23	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_tasks	id	varchar(191)	NO	NULL		1	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_tasks	status	varchar(191)	NO	NULL		2	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_tasks	config	json	NO	NULL		3	NULL	NULL
+lead_hunt_tasks	progress	json	YES	NULL		4	NULL	NULL
+lead_hunt_tasks	report	json	YES	NULL		5	NULL	NULL
+lead_hunt_tasks	error	varchar(191)	YES	NULL		6	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_tasks	createdById	varchar(191)	NO	NULL		7	utf8mb4	utf8mb4_unicode_ci
+lead_hunt_tasks	createdAt	datetime(3)	NO	CURRENT_TIMESTAMP(3)		8	NULL	NULL
+lead_hunt_tasks	updatedAt	datetime(3)	NO	NULL		9	NULL	NULL
+lead_lookup_daily_quotas	quotaDate	char(10)	NO	NULL		1	utf8mb4	utf8mb4_unicode_ci
+lead_lookup_daily_quotas	used	int(11)	NO	0		2	NULL	NULL
+lead_lookup_daily_quotas	updatedAt	datetime(3)	NO	NULL		3	NULL	NULL
+users	id	varchar(191)	NO	NULL		1	utf8mb4	utf8mb4_unicode_ci
+users	email	varchar(191)	NO	NULL		2	utf8mb4	utf8mb4_unicode_ci
+users	password	varchar(191)	NO	NULL		3	utf8mb4	utf8mb4_unicode_ci
+users	name	varchar(191)	NO	NULL		4	utf8mb4	utf8mb4_unicode_ci
+users	role	enum('SUPER_ADMIN','SALES','FOREIGN_TRADE','PURCHASE','WAREHOUSE')	NO	NULL		5	utf8mb4	utf8mb4_unicode_ci
+users	region	varchar(191)	NO	其他		6	utf8mb4	utf8mb4_unicode_ci
+users	isActive	tinyint(1)	NO	1		7	NULL	NULL
+users	createdAt	datetime(3)	NO	CURRENT_TIMESTAMP(3)		8	NULL	NULL
+users	updatedAt	datetime(3)	NO	NULL		9	NULL	NULL
+users	territories	json	NO	NULL		10	NULL	NULL
+users	viewScope	varchar(191)	NO	TERRITORY		11	utf8mb4	utf8mb4_unicode_ci
+users	avatarPath	varchar(191)	YES	NULL		12	utf8mb4	utf8mb4_unicode_ci
+section
+INDEXES
+TABLE_NAME	INDEX_NAME	NON_UNIQUE	SEQ_IN_INDEX	COLUMN_NAME	SUB_PART
+leads	leads_aiScore_idx	1	1	aiScore	NULL
+leads	leads_contactStatus_idx	1	1	contactStatus	NULL
+leads	leads_createdAt_idx	1	1	createdAt	NULL
+leads	leads_creditCode_idx	1	1	creditCode	NULL
+leads	leads_dedupKey_key	0	1	dedupKey	NULL
+leads	leads_idempotencyKey_key	0	1	idempotencyKey	NULL
+leads	leads_phone_idx	1	1	phone	NULL
+leads	leads_reviewStatus_idx	1	1	reviewStatus	NULL
+leads	leads_source_idx	1	1	source	NULL
+leads	PRIMARY	0	1	id	NULL
+lead_contact_lookups	lead_contact_lookups_confirmedById_idx	1	1	confirmedById	NULL
+lead_contact_lookups	lead_contact_lookups_leadId_createdAt_idx	1	1	leadId	NULL
+lead_contact_lookups	lead_contact_lookups_leadId_createdAt_idx	1	2	createdAt	NULL
+lead_contact_lookups	lead_contact_lookups_queryNameNormalized_createdAt_idx	1	1	queryNameNormalized	NULL
+lead_contact_lookups	lead_contact_lookups_queryNameNormalized_createdAt_idx	1	2	createdAt	NULL
+lead_contact_lookups	lead_contact_lookups_requestedById_idx	1	1	requestedById	NULL
+lead_contact_lookups	lead_contact_lookups_status_createdAt_idx	1	1	status	NULL
+lead_contact_lookups	lead_contact_lookups_status_createdAt_idx	1	2	createdAt	NULL
+lead_contact_lookups	PRIMARY	0	1	id	NULL
+lead_hunt_candidates	lead_hunt_candidates_dedupKey_idx	1	1	dedupKey	NULL
+lead_hunt_candidates	lead_hunt_candidates_taskId_status_idx	1	1	taskId	NULL
+lead_hunt_candidates	lead_hunt_candidates_taskId_status_idx	1	2	status	NULL
+lead_hunt_candidates	PRIMARY	0	1	id	NULL
+lead_hunt_tasks	lead_hunt_tasks_createdAt_idx	1	1	createdAt	NULL
+lead_hunt_tasks	lead_hunt_tasks_createdById_fkey	1	1	createdById	NULL
+lead_hunt_tasks	lead_hunt_tasks_status_createdAt_idx	1	1	status	NULL
+lead_hunt_tasks	lead_hunt_tasks_status_createdAt_idx	1	2	createdAt	NULL
+lead_hunt_tasks	PRIMARY	0	1	id	NULL
+lead_lookup_daily_quotas	PRIMARY	0	1	quotaDate	NULL
+users	PRIMARY	0	1	id	NULL
+users	users_email_key	0	1	email	NULL
+section
+FOREIGN_KEYS
+TABLE_NAME	CONSTRAINT_NAME	COLUMN_NAME	REFERENCED_TABLE_NAME	REFERENCED_COLUMN_NAME	DELETE_RULE	UPDATE_RULE
+lead_contact_lookups	lead_contact_lookups_confirmedById_fkey	confirmedById	users	id	RESTRICT	CASCADE
+lead_contact_lookups	lead_contact_lookups_leadId_fkey	leadId	leads	id	RESTRICT	CASCADE
+lead_contact_lookups	lead_contact_lookups_requestedById_fkey	requestedById	users	id	RESTRICT	CASCADE
+lead_hunt_candidates	lead_hunt_candidates_taskId_fkey	taskId	lead_hunt_tasks	id	CASCADE	CASCADE
+lead_hunt_tasks	lead_hunt_tasks_createdById_fkey	createdById	users	id	RESTRICT	CASCADE
+section
+TABLES
+TABLE_NAME	ENGINE	TABLE_COLLATION
+leads	InnoDB	utf8mb4_unicode_ci
+lead_contact_lookups	InnoDB	utf8mb4_unicode_ci
+lead_hunt_candidates	InnoDB	utf8mb4_unicode_ci
+lead_hunt_tasks	InnoDB	utf8mb4_unicode_ci
+lead_lookup_daily_quotas	InnoDB	utf8mb4_unicode_ci
+users	InnoDB	utf8mb4_unicode_ci

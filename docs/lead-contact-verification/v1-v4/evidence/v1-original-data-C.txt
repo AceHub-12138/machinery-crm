@@ -1,0 +1,8 @@
+id	email	name	role	region	territories	viewScope
+v1-admin	v1-admin@example.test	V1测试管理员	SUPER_ADMIN	其他	[]	ALL
+id	companyName	contactName	phone	source	aiScore	profile	updatedAt
+v1-lead	V1甲机械有限公司	测试联系人	0531-11112222	MANUAL	90	{"fixture": "V1-original"}	2026-11-10 03:15:17.410
+id	status	config	createdById	updatedAt
+v1-task	DONE	{"fixture": "V1-original"}	v1-admin	2026-11-10 03:15:17.414
+id	taskId	companyName	snippet	phone	score	status	updatedAt
+v1-candidate	v1-task	V1甲机械有限公司	V1甲机械有限公司 电话：0531-11112222	0531-11112222	90	READY	2026-11-10 03:15:17.418

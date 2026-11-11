@@ -42,6 +42,9 @@ export default auth((req) => {
   }
 
   if (!req.auth) {
+    if (pathname.startsWith("/api/crm/leads/contact-lookups") || /^\/api\/crm\/leads\/[^/]+\/contact-lookup$/.test(pathname)) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", req.url);
     return NextResponse.redirect(loginUrl);
   }

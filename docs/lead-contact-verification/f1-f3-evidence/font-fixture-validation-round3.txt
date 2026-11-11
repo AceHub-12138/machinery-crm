@@ -1,0 +1,3 @@
+First offline fixture: build exit 0, but CSS kept local absolute URLs instead of bundling fonts; not accepted as final build validation.
+Final fixture: embed the same real WOFF2 font bytes as data URIs; verify emitted CSS hashes after build.
+Final emitted CSS: all five embedded WOFF2 contents exactly match local font SHA-256 values. PASS.

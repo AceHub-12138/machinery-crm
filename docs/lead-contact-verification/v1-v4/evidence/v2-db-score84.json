@@ -1,0 +1,76 @@
+{
+  "leads": [
+    {
+      "id": "7a363bb8-fee9-4434-8fef-6b5ac1e5cd60",
+      "name": "宁波恒精传动科技有限公司",
+      "phone": "13812345678",
+      "phoneSource": "PAGE_TEXT",
+      "contactStatus": "HAS_CONTACT",
+      "phoneEvidence": {
+        "excerpt": "宁波恒精传动科技有限公司 - 联系我们\n\n宁波恒精传动科技有限公司专业从事精密齿轮、联轴器与键槽加工，拥有多台数控插齿机。采购请联系王经理：13812345678",
+        "sourceUrl": "https://www.example-hengjing.cn/contact?kw=D1%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95&c=1-0",
+        "extractedAt": "2026-11-10T03:45:18.274Z"
+      },
+      "assignedUserId": null
+    }
+  ],
+  "lead_hunt_candidates": [
+    {
+      "id": "4f699095-b4fa-4dcf-b6fe-8e6db49e0ddb",
+      "name": "苏州拓峰自动化设备有限公司",
+      "phone": null,
+      "score": 90,
+      "leadId": null,
+      "status": "NO_CONTACT",
+      "phoneSource": null,
+      "phoneEvidence": null
+    },
+    {
+      "id": "5f0d88fa-08d9-4bd2-ad2f-0a929518bcbc",
+      "name": "台州洪发阀门制造有限公司",
+      "phone": "0576-88012345",
+      "score": 90,
+      "leadId": null,
+      "status": "PENDING_CONFIRM",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "台州洪发阀门制造有限公司 - 公司简介\n\n台州洪发阀门制造有限公司生产各类工业阀门，机加工车间对外协作。联系电话：0576-88012345 张厂长",
+        "sourceUrl": "https://www.example-hongfa.com/about?kw=D1%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95&c=1-1",
+        "extractedAt": "2026-11-10T03:45:17.417Z"
+      }
+    },
+    {
+      "id": "adb0786c-7868-4405-8c5f-d799c7e12d0e",
+      "name": "宁波恒精传动科技有限公司",
+      "phone": "13812345678",
+      "score": 90,
+      "leadId": "7a363bb8-fee9-4434-8fef-6b5ac1e5cd60",
+      "status": "ADMITTED",
+      "phoneSource": "PAGE_TEXT",
+      "phoneEvidence": {
+        "excerpt": "宁波恒精传动科技有限公司 - 联系我们\n\n宁波恒精传动科技有限公司专业从事精密齿轮、联轴器与键槽加工，拥有多台数控插齿机。采购请联系王经理：13812345678",
+        "sourceUrl": "https://www.example-hengjing.cn/contact?kw=D1%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95&c=1-0",
+        "extractedAt": "2026-11-10T03:45:18.274Z"
+      }
+    },
+    {
+      "id": "score84",
+      "name": "D1评分84有限公司",
+      "phone": null,
+      "score": 84,
+      "leadId": null,
+      "status": "PENDING_CONFIRM",
+      "phoneSource": null,
+      "phoneEvidence": null
+    }
+  ],
+  "lead_contact_lookups": [],
+  "lead_lookup_daily_quotas": [],
+  "operation_logs": [
+    {
+      "id": "81e28c11-91c7-41b4-a7e6-0dd7e2464459",
+      "action": "AUTO_ASSIGN_FAILED|old=-|new=-|reason=NO_MATCHING_ASSIGNEE",
+      "entityId": "7a363bb8-fee9-4434-8fef-6b5ac1e5cd60"
+    }
+  ]
+}
